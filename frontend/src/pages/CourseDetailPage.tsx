@@ -141,7 +141,7 @@ export default function CourseDetailPage() {
       
     } catch (error) {
       console.error('Failed to load course details:', error);
-      setError('Không thể tải thông tin khóa học');
+      setError('Không thể tải thông tin môn học');
     } finally {
       setLoading(false);
     }
@@ -159,7 +159,7 @@ export default function CourseDetailPage() {
       setProgress(status.progress);
     } catch (error) {
       console.error('Failed to enroll:', error);
-      setError('Không thể đăng ký khóa học');
+      setError('Không thể đăng ký môn học');
     }
   };
 
@@ -196,7 +196,7 @@ export default function CourseDetailPage() {
   if (error || !course) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error || 'Khóa học không tồn tại'}</Alert>
+        <Alert severity="error">{error || 'Môn học không tồn tại'}</Alert>
       </Box>
     );
   }
@@ -259,7 +259,7 @@ export default function CourseDetailPage() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <PeopleIcon fontSize="small" color="action" />
                   <Typography variant="body2" color="text.secondary">
-                    {course.enrollmentCount || 0} học viên
+                    {Math.max(0, course.enrollmentCount || 0)} học sinh
                   </Typography>
                 </Stack>
                 {course.estimatedDuration && (

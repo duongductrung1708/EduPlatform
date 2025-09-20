@@ -125,7 +125,7 @@ export default function StudentProgress() {
               {progressData.length}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Khóa học đã đăng ký
+              Môn học đã đăng ký
             </Typography>
           </Paper>
         </Grid>
@@ -144,7 +144,7 @@ export default function StudentProgress() {
               {progressData.filter(p => p.progress.percentage === 100).length}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Khóa học hoàn thành
+              Môn học hoàn thành
             </Typography>
           </Paper>
         </Grid>
@@ -205,7 +205,7 @@ export default function StudentProgress() {
                     </Avatar>
                     <Box flex={1}>
                       <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
-                        {typeof progress.courseId === 'object' ? progress.courseId.title : 'Khóa học'}
+                        {typeof progress.courseId === 'object' ? progress.courseId.title : 'Môn học'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Đăng ký: {new Date(progress.enrolledAt).toLocaleDateString('vi-VN')}

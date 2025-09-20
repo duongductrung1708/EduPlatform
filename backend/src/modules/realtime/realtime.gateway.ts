@@ -73,4 +73,34 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       timestamp: new Date().toISOString(),
     });
   }
+
+  // Course invitation events
+  emitCourseInvitationCreated(studentId: string, invitationData: any) {
+    this.server.to(`user:${studentId}`).emit('courseInvitationCreated', {
+      ...invitationData,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  emitCourseInvitationAccepted(courseId: string, invitationData: any) {
+    this.server.to(`course:${courseId}`).emit('courseInvitationAccepted', {
+      ...invitationData,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  emitCourseInvitationDeclined(courseId: string, invitationData: any) {
+    this.server.to(`course:${courseId}`).emit('courseInvitationDeclined', {
+      ...invitationData,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Course enrollment events (updated)
+  emitCourseEnrollmentAdded(courseId: string, enrollmentData: any) {
+    this.server.to(`course:${courseId}`).emit('courseEnrollmentAdded', {
+      ...enrollmentData,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }

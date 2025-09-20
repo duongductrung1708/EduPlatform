@@ -4,7 +4,8 @@ import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from '../../models/user.model';
-import { RegisterDto, LoginDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyOtpDto } from './dto/auth.dto';
+import { OtpService } from '../otp/otp.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
+    private otpService: OtpService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -53,23 +55,30 @@ export class AuthService {
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(password, saltRounds);
 
-      // Create user
+      // Create user (unverified initially)
       const user = new this.userModel({
         email: email.toLowerCase(),
         passwordHash,
         name: name.trim(),
         role,
-        verified: false, // TODO: Implement email verification
+        verified: false, // Will be verified after OTP confirmation
       });
 
       await user.save();
 
-      // Generate tokens
-      const tokens = await this.generateTokens(user);
+      // Send OTP email
+      const otpSent = await this.otpService.sendOtpEmail(email.toLowerCase(), 'registration');
+      
+      if (!otpSent) {
+        // If email sending fails, delete the user and throw error
+        await this.userModel.findByIdAndDelete(user._id);
+        throw new BadRequestException('Không thể gửi email xác thực. Vui lòng kiểm tra email và thử lại.');
+      }
 
       return {
-        ...tokens,
-        user: this.sanitizeUser(user),
+        message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+        email: email.toLowerCase(),
+        requiresVerification: true,
       };
     } catch (error: any) {
       if (error?.code === 11000) {
@@ -115,10 +124,10 @@ export class AuthService {
         throw new UnauthorizedException('Mật khẩu không đúng. Vui lòng kiểm tra lại mật khẩu hoặc sử dụng chức năng quên mật khẩu.');
       }
 
-      // Check if user is verified (optional - can be enabled later)
-      // if (!user.verified) {
-      //   throw new ForbiddenException('Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản.');
-      // }
+      // Check if user is verified
+      if (!user.verified) {
+        throw new ForbiddenException('Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản.');
+      }
 
       // Update last login
       user.lastLoginAt = new Date();
@@ -227,6 +236,107 @@ export class AuthService {
     user.resetPasswordExpires = undefined as any;
     await user.save();
     return { message: 'Đặt lại mật khẩu thành công' };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const { email, otp } = verifyOtpDto;
+
+    // Validate input
+    if (!email || !email.trim()) {
+      throw new BadRequestException('Email không được để trống');
+    }
+
+    if (!otp || !otp.trim()) {
+      throw new BadRequestException('Mã OTP không được để trống');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new BadRequestException('Email không đúng định dạng');
+    }
+
+    try {
+      // Find user
+      const user = await this.userModel.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        throw new UnauthorizedException('Không tìm thấy tài khoản với email này');
+      }
+
+      // Check if user is already verified
+      if (user.verified) {
+        throw new BadRequestException('Tài khoản đã được xác thực trước đó');
+      }
+
+      // Verify OTP
+      const isValidOtp = await this.otpService.verifyOtp(email.toLowerCase(), otp, 'registration');
+      if (!isValidOtp) {
+        throw new UnauthorizedException('Mã OTP không đúng hoặc đã hết hạn');
+      }
+
+      // Mark user as verified
+      user.verified = true;
+      await user.save();
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user);
+
+      return {
+        ...tokens,
+        user: this.sanitizeUser(user),
+        message: 'Xác thực tài khoản thành công!',
+      };
+    } catch (error: any) {
+      // Re-throw known exceptions
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      // Handle unexpected errors
+      throw new BadRequestException('Xác thực tài khoản thất bại. Vui lòng thử lại sau.');
+    }
+  }
+
+  async resendOtp(email: string) {
+    if (!email || !email.trim()) {
+      throw new BadRequestException('Email không được để trống');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new BadRequestException('Email không đúng định dạng');
+    }
+
+    try {
+      // Check if user exists and is not verified
+      const user = await this.userModel.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        throw new UnauthorizedException('Không tìm thấy tài khoản với email này');
+      }
+
+      if (user.verified) {
+        throw new BadRequestException('Tài khoản đã được xác thực trước đó');
+      }
+
+      // Resend OTP
+      const otpSent = await this.otpService.resendOtp(email.toLowerCase(), 'registration');
+      
+      if (!otpSent) {
+        throw new BadRequestException('Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
+      }
+
+      return {
+        message: 'Đã gửi lại mã OTP. Vui lòng kiểm tra email.',
+        email: email.toLowerCase(),
+      };
+    } catch (error: any) {
+      // Re-throw known exceptions
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      // Handle unexpected errors
+      throw new BadRequestException('Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
+    }
   }
 
   async generateTokens(user: UserDocument) {

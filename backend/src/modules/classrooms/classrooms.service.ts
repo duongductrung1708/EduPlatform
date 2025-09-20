@@ -7,6 +7,7 @@ import { Assignment, AssignmentDocument } from '../../models/assignment.model';
 import { User, UserDocument } from '../../models/user.model';
 import { CreateClassroomDto, UpdateClassroomDto, JoinClassroomDto } from './dto/classroom.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ClassroomsService {
@@ -16,6 +17,7 @@ export class ClassroomsService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Assignment.name) private assignmentModel: Model<AssignmentDocument>,
     private realtimeGateway: RealtimeGateway,
+    private emailService: EmailService,
   ) {}
 
   async create(createClassroomDto: CreateClassroomDto, createdBy: string): Promise<ClassroomDocument> {
@@ -202,7 +204,7 @@ export class ClassroomsService {
         _id: { $in: migratedClassroom.studentIds }
       }).select('name email avatarUrl');
       
-      migratedClassroom.studentIds = populatedStudents;
+      migratedClassroom.studentIds = populatedStudents.map(s => s._id) as any;
     }
     
     return migratedClassroom || classroom;
@@ -297,6 +299,26 @@ export class ClassroomsService {
     classroom.studentIds.push(new Types.ObjectId(studentId));
     await classroom.save();
 
+    // Get teacher info for email
+    const teacher = await this.userModel.findById(userId);
+
+    // Send invitation email
+    if (teacher) {
+      try {
+        await this.emailService.sendClassroomInvitationEmail(
+          student.email,
+          student.name,
+          classroom.title,
+          teacher.name,
+          classroom.inviteCode
+        );
+        console.log(`Classroom invitation email sent to ${student.email}`);
+      } catch (error) {
+        console.error('Failed to send classroom invitation email:', error);
+        // Don't throw error, adding student should still succeed
+      }
+    }
+
     // Emit real-time event
     this.realtimeGateway.emitClassroomStudentAdded(classroomId, student);
 
@@ -359,14 +381,14 @@ export class ClassroomsService {
     const freshData = await this.classroomModel.findById(classroom._id).lean();
 
     // Migrate name to title if needed
-    if (!classroom.title && freshData?.name) {
-      classroom.title = freshData.name;
+    if (!classroom.title && (freshData as any)?.name) {
+      classroom.title = (freshData as any).name;
       needsUpdate = true;
     }
 
     // Migrate students to studentIds if needed
-    if ((!classroom.studentIds || classroom.studentIds.length === 0) && freshData?.students && freshData.students.length > 0) {
-      classroom.studentIds = freshData.students;
+    if ((!classroom.studentIds || classroom.studentIds.length === 0) && (freshData as any)?.students && (freshData as any).students.length > 0) {
+      classroom.studentIds = (freshData as any).students;
       needsUpdate = true;
     } else if (!classroom.studentIds) {
       classroom.studentIds = [];
@@ -374,8 +396,8 @@ export class ClassroomsService {
     }
 
     // Migrate teacherId to teacherIds if needed
-    if ((!classroom.teacherIds || classroom.teacherIds.length === 0) && freshData?.teacherId) {
-      classroom.teacherIds = [freshData.teacherId];
+    if ((!classroom.teacherIds || classroom.teacherIds.length === 0) && (freshData as any)?.teacherId) {
+      classroom.teacherIds = [(freshData as any).teacherId];
       needsUpdate = true;
     } else if (!classroom.teacherIds) {
       classroom.teacherIds = [];

@@ -67,7 +67,7 @@ export default function TeacherOverview() {
           Tổng quan
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Quản lý lớp học và khóa học của bạn
+          Quản lý lớp học và môn học của bạn
         </Typography>
       </Box>
 
@@ -347,7 +347,7 @@ export default function TeacherOverview() {
                           {c.courseId?.title ? ` • Khóa: ${c.courseId.title}` : ''}
                         </Typography>
                         <Stack direction="row" spacing={1}>
-                          <Chip size="small" label={`${c.studentsCount || 0} học sinh`} sx={{ borderColor: '#EF5B5B', color: '#EF5B5B' }} variant="outlined" />
+                          <Chip size="small" label={`${Math.max(0, c.studentsCount || 0)} học sinh`} sx={{ borderColor: '#EF5B5B', color: '#EF5B5B' }} variant="outlined" />
                           <Chip size="small" label={`${c.assignmentsCount || 0} bài tập`} sx={{ borderColor: '#AED6E6', color: '#AED6E6' }} variant="outlined" />
                         </Stack>
                       </Box>
@@ -458,7 +458,7 @@ export default function TeacherOverview() {
                   <Box sx={{ textAlign: 'center', py: 4 }}>
                     <PublicIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                     <Typography variant="body2" color="text.secondary">
-                      Chưa có khóa học công khai nào.
+                      Chưa có môn học công khai nào.
                     </Typography>
                   </Box>
                 )}

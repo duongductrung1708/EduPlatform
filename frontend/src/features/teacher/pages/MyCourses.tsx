@@ -28,10 +28,12 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import SettingsIcon from '@mui/icons-material/Settings';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { SkeletonGrid } from '../../../components/LoadingSkeleton';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 const PRIMARY_CATEGORIES = ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'];
@@ -56,6 +58,8 @@ export default function MyCourses() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseItem | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<CourseItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -77,15 +81,11 @@ export default function MyCourses() {
       setLoading(true);
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      const res = await coursesApi.listAll(1, 100);
-      // Filter courses created by current user
-      const myCourses = res.items.filter(course => 
-        course.createdBy?._id === user?._id
-      );
-      setCourses(myCourses);
+      const res = await coursesApi.getMyCourses();
+      setCourses(res || []);
     } catch (error) {
       console.error('Failed to load courses:', error);
-      setError('Không thể tải danh sách khóa học');
+      setError('Không thể tải danh sách môn học');
     } finally {
       setLoading(false);
     }
@@ -110,8 +110,42 @@ export default function MyCourses() {
   };
 
   const handleCreateCourse = async () => {
+    // Clear previous errors
+    setError(null);
+    
+    // Validate required fields
     if (!title || !slug || !description || !category || !level) {
       setError('Vui lòng điền đầy đủ các trường bắt buộc');
+      return;
+    }
+
+    // Validate field lengths
+    if (title.length < 2) {
+      setError('Tên môn học phải có ít nhất 2 ký tự');
+      return;
+    }
+
+    if (slug.length < 2) {
+      setError('Slug phải có ít nhất 2 ký tự');
+      return;
+    }
+
+    if (description.length < 3) {
+      setError('Mô tả phải có ít nhất 3 ký tự');
+      return;
+    }
+
+    // Validate category
+    const validCategories = ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'];
+    if (!validCategories.includes(category)) {
+      setError(`Môn học phải là một trong: ${validCategories.join(', ')}`);
+      return;
+    }
+
+    // Validate level
+    const validLevels = ['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'];
+    if (!validLevels.includes(level)) {
+      setError(`Cấp lớp phải là một trong: ${validLevels.join(', ')}`);
       return;
     }
 
@@ -123,15 +157,29 @@ export default function MyCourses() {
         description,
         category,
         level,
+        visibility: 'public',
+        status: 'published',
         tags: [category.toLowerCase(), level.toLowerCase()]
       });
       
-      setSuccess(`Khóa học "${newCourse.title}" đã được tạo thành công!`);
+      setSuccess(`Môn học "${newCourse.title}" đã được tạo thành công!`);
       setCreateDialogOpen(false);
       resetForm();
       loadCourses();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi tạo khóa học');
+      console.error('Create course error:', err);
+      
+      // Handle validation errors
+      if (err.response?.data?.message && Array.isArray(err.response.data.message)) {
+        const validationErrors = err.response.data.message.join(', ');
+        setError(`Lỗi validation: ${validationErrors}`);
+      } else if (err.response?.data?.message) {
+        setError(`Lỗi: ${err.response.data.message}`);
+      } else if (err.response?.data?.error) {
+        setError(`Lỗi: ${err.response.data.error}`);
+      } else {
+        setError('Đã xảy ra lỗi khi tạo môn học. Vui lòng thử lại.');
+      }
     }
   };
 
@@ -155,40 +203,63 @@ export default function MyCourses() {
 
     try {
       setError(null);
-      // Note: You'll need to implement updateCourse in the API
-      // await coursesApi.updateCourse(editingCourse._id, {
-      //   title,
-      //   slug,
-      //   description,
-      //   category,
-      //   level,
-      //   visibility,
-      //   status,
-      //   tags: [category.toLowerCase(), level.toLowerCase()]
-      // });
+      await coursesApi.update(editingCourse._id, {
+        title,
+        description,
+        category,
+        level,
+        visibility,
+        status,
+        tags: [category.toLowerCase(), level.toLowerCase()]
+      });
       
-      setSuccess(`Khóa học "${title}" đã được cập nhật thành công!`);
+      setSuccess(`Môn học "${title}" đã được cập nhật thành công!`);
       setEditDialogOpen(false);
       resetForm();
       setEditingCourse(null);
       loadCourses();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi cập nhật khóa học');
+      console.error('Update course error:', err);
+      
+      // Handle validation errors
+      if (err.response?.data?.message && Array.isArray(err.response.data.message)) {
+        const validationErrors = err.response.data.message.join(', ');
+        setError(`Lỗi validation: ${validationErrors}`);
+      } else if (err.response?.data?.message) {
+        setError(`Lỗi: ${err.response.data.message}`);
+      } else if (err.response?.data?.error) {
+        setError(`Lỗi: ${err.response.data.error}`);
+      } else {
+        setError('Đã xảy ra lỗi khi cập nhật môn học. Vui lòng thử lại.');
+      }
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa khóa học này?')) {
-      return;
-    }
+  const handleDeleteCourse = (course: CourseItem) => {
+    setCourseToDelete(course);
+    setConfirmDialogOpen(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
 
     try {
-      // Note: You'll need to implement deleteCourse in the API
-      // await coursesApi.deleteCourse(courseId);
-      setSuccess('Khóa học đã được xóa thành công!');
+      setError(null);
+      await coursesApi.delete(courseToDelete._id);
+      setSuccess(`Môn học "${courseToDelete.title}" đã được xóa thành công!`);
+      setConfirmDialogOpen(false);
+      setCourseToDelete(null);
       loadCourses();
     } catch (err: any) {
-      setError('Đã xảy ra lỗi khi xóa khóa học');
+      console.error('Delete course error:', err);
+      
+      if (err.response?.data?.message) {
+        setError(`Lỗi: ${err.response.data.message}`);
+      } else if (err.response?.data?.error) {
+        setError(`Lỗi: ${err.response.data.error}`);
+      } else {
+        setError('Đã xảy ra lỗi khi xóa môn học. Vui lòng thử lại.');
+      }
     }
   };
 
@@ -249,7 +320,7 @@ export default function MyCourses() {
                   navigate(`/teacher/courses/${courses[0]._id}/manage`);
                 } else {
                   // Show a dialog to select which course to manage
-                  const courseId = window.prompt('Nhập ID khóa học cần quản lý:');
+                  const courseId = window.prompt('Nhập ID môn học cần quản lý:');
                   if (courseId) {
                     navigate(`/teacher/courses/${courseId}/manage`);
                   }
@@ -277,7 +348,7 @@ export default function MyCourses() {
       </Box>
 
       {/* Alerts */}
-      {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2, whiteSpace: 'pre-line' }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
 
       {/* Courses Grid */}
@@ -366,9 +437,18 @@ export default function MyCourses() {
                       <IconButton 
                         size="small" 
                         onClick={() => navigate(`/teacher/courses/${course._id}/manage`)}
-                        sx={{ bgcolor: 'secondary.main', color: 'white', '&:hover': { bgcolor: 'secondary.dark' } }}
+                        sx={{ bgcolor: '#4ECDC4', color: 'white', '&:hover': { bgcolor: '#45B7D1' } }}
                       >
                         <SettingsIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Quản lý học sinh">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => navigate(`/teacher/courses/${course._id}/students`)}
+                        sx={{ bgcolor: '#96CEB4', color: 'white', '&:hover': { bgcolor: '#FFEAA7' } }}
+                      >
+                        <ManageAccountsIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Chỉnh sửa">
@@ -383,7 +463,7 @@ export default function MyCourses() {
                     <Tooltip title="Xóa">
                       <IconButton 
                         size="small" 
-                        onClick={() => handleDeleteCourse(course._id)}
+                        onClick={() => handleDeleteCourse(course)}
                         sx={{ bgcolor: 'error.main', color: 'white', '&:hover': { bgcolor: 'error.dark' } }}
                       >
                         <DeleteIcon fontSize="small" />
@@ -438,18 +518,19 @@ export default function MyCourses() {
               transition: 'all 0.3s ease'
             }}
           >
-            Tạo khóa học ngay!
+            Tạo môn học ngay!
           </Button>
         </Paper>
       )}
 
       {/* Create Course Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Tạo khóa học mới</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Tạo môn học mới</DialogTitle>
         <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 2, whiteSpace: 'pre-line' }}>{error}</Alert>}
           <TextField
             fullWidth
-            label="Tiêu đề khóa học"
+            label="Tiêu đề môn học"
             value={title}
             onChange={handleTitleChange}
             margin="normal"
@@ -522,18 +603,19 @@ export default function MyCourses() {
             Hủy
           </Button>
           <Button variant="contained" onClick={handleCreateCourse}>
-            Tạo khóa học
+            Tạo môn học
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Course Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Chỉnh sửa khóa học</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Chỉnh sửa môn học</DialogTitle>
         <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 2, whiteSpace: 'pre-line' }}>{error}</Alert>}
           <TextField
             fullWidth
-            label="Tiêu đề khóa học"
+            label="Tiêu đề môn học"
             value={title}
             onChange={handleTitleChange}
             margin="normal"
@@ -605,10 +687,25 @@ export default function MyCourses() {
             Hủy
           </Button>
           <Button variant="contained" onClick={handleUpdateCourse}>
-            Cập nhật khóa học
+            Cập nhật môn học
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        onClose={() => {
+          setConfirmDialogOpen(false);
+          setCourseToDelete(null);
+        }}
+        onConfirm={confirmDeleteCourse}
+        title="Xóa môn học"
+        message={`Bạn có chắc chắn muốn xóa môn học "${courseToDelete?.title}"? Hành động này không thể hoàn tác và sẽ xóa tất cả dữ liệu liên quan.`}
+        confirmText="Xóa môn học"
+        cancelText="Hủy"
+        type="delete"
+      />
     </Box>
   );
 }

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { IAttachment } from './lesson.model';
+// import { IAttachment } from './lesson.model';
 
 export type AssignmentDocument = Assignment & Document;
 export type SubmissionDocument = Submission & Document;
@@ -10,7 +10,7 @@ export interface IAssignment {
   classroomId: Types.ObjectId;
   title: string;
   description?: string;
-  attachments?: IAttachment[];
+  attachments?: any[];
   dueDate?: Date;
   totalPoints?: number;
   createdBy: Types.ObjectId;
@@ -22,7 +22,7 @@ export interface ISubmission {
   assignmentId: Types.ObjectId;
   studentId: Types.ObjectId;
   contentText?: string;
-  attachments?: IAttachment[];
+  attachments?: any[];
   submittedAt: Date;
   graded?: boolean;
   grade?: number;
@@ -49,7 +49,7 @@ export class Assignment {
     }],
     default: []
   })
-  attachments?: IAttachment[];
+  attachments?: any[];
 
   @Prop()
   dueDate?: Date;
@@ -81,7 +81,7 @@ export class Submission {
     }],
     default: []
   })
-  attachments?: IAttachment[];
+  attachments?: any[];
 
   @Prop({ default: Date.now })
   submittedAt!: Date;

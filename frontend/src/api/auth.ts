@@ -12,6 +12,21 @@ export interface RegisterRequest {
   role?: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  email: string;
+  requiresVerification: boolean;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpRequest {
+  email: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
@@ -30,8 +45,18 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+  register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     const response = await apiClient.post('/api/auth/register', data);
+    return response.data;
+  },
+
+  verifyOtp: async (data: VerifyOtpRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post('/api/auth/verify-otp', data);
+    return response.data;
+  },
+
+  resendOtp: async (data: ResendOtpRequest): Promise<{ message: string; email: string }> => {
+    const response = await apiClient.post('/api/auth/resend-otp', data);
     return response.data;
   },
 

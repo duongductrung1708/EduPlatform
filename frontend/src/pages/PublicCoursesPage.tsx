@@ -21,9 +21,9 @@ export default function PublicCoursesPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Khóa học công khai</Typography>
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Môn học công khai</Typography>
       <TextField
-        placeholder="Tìm kiếm khóa học..."
+        placeholder="Tìm kiếm môn học..."
         size="small"
         value={search}
         onChange={(e) => setSearch(e.target.value)}

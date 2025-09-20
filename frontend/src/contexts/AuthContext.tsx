@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, AuthResponse } from '../api/auth';
+import { authApi, AuthResponse, RegisterResponse } from '../api/auth';
 
 interface User {
   id: string;
@@ -9,14 +9,46 @@ interface User {
   verified: boolean;
 }
 
+interface SelectedSubject {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+interface SelectedGradeLevel {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+interface SelectedCourse {
+  _id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  level?: string;
+  coverImage?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string, role?: string) => Promise<void>;
+  register: (email: string, name: string, password: string, role?: string) => Promise<RegisterResponse>;
   logout: () => void;
   loading: boolean;
   token: string | null;
   setUserProfile: (updates: Partial<User>) => void;
+  refreshUserState: () => void;
+  selectedSubject: SelectedSubject | null;
+  setSelectedSubject: (subject: SelectedSubject | null) => void;
+  selectedGradeLevel: SelectedGradeLevel | null;
+  setSelectedGradeLevel: (gradeLevel: SelectedGradeLevel | null) => void;
+  selectedCourse: SelectedCourse | null;
+  setSelectedCourse: (course: SelectedCourse | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,21 +69,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState<SelectedGradeLevel | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<SelectedCourse | null>(null);
 
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('accessToken');
     const userData = localStorage.getItem('user');
+    const subjectData = localStorage.getItem('selectedSubject');
+    const gradeLevelData = localStorage.getItem('selectedGradeLevel');
+    const courseData = localStorage.getItem('selectedCourse');
     
     if (token && userData) {
       try {
         setUser(JSON.parse(userData));
         setToken(token);
+        
+        // Load selected subject if exists
+        if (subjectData) {
+          setSelectedSubject(JSON.parse(subjectData));
+        }
+        
+        // Load selected grade level if exists
+        if (gradeLevelData) {
+          setSelectedGradeLevel(JSON.parse(gradeLevelData));
+        }
+        
+        // Load selected course if exists
+        if (courseData) {
+          setSelectedCourse(JSON.parse(courseData));
+        }
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('selectedSubject');
+        localStorage.removeItem('selectedGradeLevel');
+        localStorage.removeItem('selectedCourse');
       }
     }
     setLoading(false);
@@ -75,16 +131,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (email: string, name: string, password: string, role = 'student') => {
+  const register = async (email: string, name: string, password: string, role = 'student'): Promise<RegisterResponse> => {
     try {
-      const response: AuthResponse = await authApi.register({ email, name, password, role });
+      const response: RegisterResponse = await authApi.register({ email, name, password, role });
       
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      // If registration requires verification, return the response without setting user/token
+      if (response.requiresVerification) {
+        return response;
+      }
       
-      setUser(response.user);
-      setToken(response.accessToken);
+      // If direct login (fallback for admin users), handle as before
+      const authResponse = response as any as AuthResponse;
+      localStorage.setItem('accessToken', authResponse.accessToken);
+      localStorage.setItem('refreshToken', authResponse.refreshToken);
+      localStorage.setItem('user', JSON.stringify(authResponse.user));
+      
+      setUser(authResponse.user);
+      setToken(authResponse.accessToken);
+      
+      return response;
     } catch (error: any) {
       console.error('Register error:', error);
       // Extract specific error message from API response
@@ -97,8 +162,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('selectedSubject');
+    localStorage.removeItem('selectedGradeLevel');
+    localStorage.removeItem('selectedCourse');
     setUser(null);
     setToken(null);
+    setSelectedSubject(null);
+    setSelectedGradeLevel(null);
+    setSelectedCourse(null);
   };
 
   const setUserProfile = (updates: Partial<User>) => {
@@ -109,6 +180,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   };
 
+  const handleSetSelectedSubject = (subject: SelectedSubject | null) => {
+    setSelectedSubject(subject);
+    if (subject) {
+      localStorage.setItem('selectedSubject', JSON.stringify(subject));
+    } else {
+      localStorage.removeItem('selectedSubject');
+    }
+  };
+
+  const handleSetSelectedGradeLevel = (gradeLevel: SelectedGradeLevel | null) => {
+    setSelectedGradeLevel(gradeLevel);
+    if (gradeLevel) {
+      localStorage.setItem('selectedGradeLevel', JSON.stringify(gradeLevel));
+    } else {
+      localStorage.removeItem('selectedGradeLevel');
+    }
+  };
+
+  const handleSetSelectedCourse = (course: SelectedCourse | null) => {
+    setSelectedCourse(course);
+    if (course) {
+      localStorage.setItem('selectedCourse', JSON.stringify(course));
+    } else {
+      localStorage.removeItem('selectedCourse');
+    }
+  };
+
+  const refreshUserState = () => {
+    // Refresh user state from localStorage (useful after OTP verification)
+    const token = localStorage.getItem('accessToken');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData));
+        setToken(token);
+      } catch (error) {
+        console.error('Error refreshing user state:', error);
+        // Clear invalid data
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        setUser(null);
+        setToken(null);
+      }
+    }
+  };
+
   const value: AuthContextType = {
     user,
     login,
@@ -117,6 +236,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     token,
     setUserProfile,
+    refreshUserState,
+    selectedSubject,
+    setSelectedSubject: handleSetSelectedSubject,
+    selectedGradeLevel,
+    setSelectedGradeLevel: handleSetSelectedGradeLevel,
+    selectedCourse,
+    setSelectedCourse: handleSetSelectedCourse,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

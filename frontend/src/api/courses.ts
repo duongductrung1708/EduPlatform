@@ -56,6 +56,14 @@ export const coursesApi = {
     const res = await apiClient.get(`/api/courses/${id}`);
     return res.data;
   },
+  async update(id: string, payload: { title?: string; description?: string; category?: string; level?: string; tags?: string[]; visibility?: string; status?: string }): Promise<CourseItem> {
+    const res = await apiClient.patch(`/api/courses/${id}`, payload);
+    return res.data;
+  },
+  async delete(id: string): Promise<{ message: string }> {
+    const res = await apiClient.delete(`/api/courses/${id}`);
+    return res.data;
+  },
   async createPublic(payload: {
     title: string;
     slug: string;
@@ -102,14 +110,6 @@ export const coursesApi = {
     const res = await apiClient.post(`/api/courses/${courseId}/rate`, { rating, review });
     return res.data;
   },
-  async getEnrollments(courseId: string): Promise<any[]> {
-    const res = await apiClient.get(`/api/courses/${courseId}/enrollments`);
-    return res.data;
-  },
-  async removeStudent(courseId: string, studentId: string): Promise<{ message: string }> {
-    const res = await apiClient.delete(`/api/courses/${courseId}/enrollments/${studentId}`);
-    return res.data;
-  },
   async getMyEnrolled(): Promise<CourseItem[]> {
     try {
       const res = await apiClient.get('/api/courses/my-enrolled');
@@ -128,6 +128,44 @@ export const coursesApi = {
       const res = await this.listPublic(1, 100);
       return res.items || [];
     }
+  },
+  async getMyCourses(): Promise<CourseItem[]> {
+    try {
+      const res = await apiClient.get('/api/courses/my-courses');
+      return res.data.courses || [];
+    } catch (error) {
+      return [];
+    }
+  },
+  async updateModule(courseId: string, moduleId: string, payload: { title?: string; description?: string; order?: number; estimatedDuration?: number; isPublished?: boolean }): Promise<any> {
+    const res = await apiClient.patch(`/api/courses/${courseId}/modules/${moduleId}`, payload);
+    return res.data;
+  },
+  async deleteModule(courseId: string, moduleId: string): Promise<{ message: string }> {
+    const res = await apiClient.delete(`/api/courses/${courseId}/modules/${moduleId}`);
+    return res.data;
+  },
+  async updateLesson(moduleId: string, lessonId: string, payload: { title?: string; description?: string; type?: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: any; estimatedDuration?: number; isPublished?: boolean }): Promise<any> {
+    const res = await apiClient.patch(`/api/courses/modules/${moduleId}/lessons/${lessonId}`, payload);
+    return res.data;
+  },
+  async deleteLesson(moduleId: string, lessonId: string): Promise<{ message: string }> {
+    const res = await apiClient.delete(`/api/courses/remove-lesson/${lessonId}`, {
+      data: { moduleId }
+    });
+    return res.data;
+  },
+  async getEnrollments(courseId: string): Promise<{ students: any[] }> {
+    const res = await apiClient.get(`/api/courses/${courseId}/enrollments`);
+    return res.data || { students: [] };
+  },
+  async addStudent(courseId: string, studentEmail: string): Promise<any> {
+    const res = await apiClient.post(`/api/courses/${courseId}/enrollments`, { studentEmail });
+    return res.data;
+  },
+  async removeStudent(courseId: string, studentId: string): Promise<{ message: string }> {
+    const res = await apiClient.delete(`/api/courses/${courseId}/enrollments/${studentId}`);
+    return res.data;
   },
 };
 

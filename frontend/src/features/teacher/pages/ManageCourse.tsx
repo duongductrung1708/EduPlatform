@@ -84,7 +84,7 @@ export default function ManageCourse() {
         setModules(mods);
         setEnrollments(enrollmentsData);
       } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải thông tin khóa học');
+        setError(e?.response?.data?.message || 'Không thể tải thông tin môn học');
       } finally {
         setLoading(false);
       }
@@ -185,7 +185,7 @@ export default function ManageCourse() {
   };
 
   const handleRemoveStudent = async (studentId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi khóa học?')) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi môn học?')) return;
     try {
       setLoading(true);
       setError(null);
@@ -236,7 +236,7 @@ export default function ManageCourse() {
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <CircularProgress size={60} />
         <Typography variant="h6" sx={{ mt: 2 }}>
-          Đang tải thông tin khóa học...
+          Đang tải thông tin môn học...
         </Typography>
       </Box>
     );
@@ -275,7 +275,7 @@ export default function ManageCourse() {
             <Chip label={course.category || 'Chưa phân loại'} color="info" size="small" />
             <Chip label={course.level || 'Mọi cấp độ'} color="success" size="small" />
             <Chip label={course.visibility === 'public' ? 'Công khai' : 'Riêng tư'} color={course.visibility === 'public' ? 'primary' : 'default'} size="small" />
-            <Chip label={`${enrollments.length} học sinh`} color="secondary" size="small" />
+            <Chip label={`${Math.max(0, enrollments.length)} học sinh`} color="secondary" size="small" />
           </Stack>
         )}
 
@@ -398,7 +398,7 @@ export default function ManageCourse() {
                 Chưa có module nào
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Tạo module đầu tiên để bắt đầu xây dựng nội dung khóa học
+                Tạo module đầu tiên để bắt đầu xây dựng nội dung môn học
               </Typography>
               <Button
                 variant="outlined"
@@ -662,7 +662,7 @@ export default function ManageCourse() {
                   Chưa có học sinh nào đăng ký
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Học sinh sẽ xuất hiện ở đây khi họ đăng ký khóa học
+                  Học sinh sẽ xuất hiện ở đây khi họ đăng ký môn học
                 </Typography>
               </Box>
             ) : (

@@ -106,7 +106,7 @@ export class AdminService {
 
       usersByRole.forEach((role) => {
         if (roleStats.hasOwnProperty(role._id)) {
-          roleStats[role._id] = role.count;
+          roleStats[role._id as keyof typeof roleStats] = role.count;
         }
       });
 
@@ -406,8 +406,8 @@ export class AdminService {
             type: 'user_registered',
             user: user.name || 'Unknown',
             description: `Đăng ký tài khoản ${user.role || 'user'}`,
-            timestamp: this.getTimeAgo(user.createdAt),
-            createdAt: user.createdAt,
+            timestamp: this.getTimeAgo((user as any).createdAt),
+            createdAt: (user as any).createdAt,
           });
         });
       } catch (error) {
@@ -430,8 +430,8 @@ export class AdminService {
             type: 'course_created',
             user: (course.createdBy as any)?.name || 'Unknown',
             description: `Tạo khóa học "${course.title || 'Untitled'}"`,
-            timestamp: this.getTimeAgo(course.createdAt),
-            createdAt: course.createdAt,
+            timestamp: this.getTimeAgo((course as any).createdAt),
+            createdAt: (course as any).createdAt,
           });
         });
       } catch (error) {
@@ -1035,8 +1035,8 @@ export class AdminService {
           studentCount,
           maxStudents: max,
           fillRate,
-          courseTitle: classroom.courseId?.title || 'N/A',
-          createdAt: classroom.createdAt
+          courseTitle: (classroom.courseId as any)?.title || 'N/A',
+          createdAt: (classroom as any).createdAt
         };
       });
 

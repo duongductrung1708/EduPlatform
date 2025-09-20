@@ -74,7 +74,7 @@ export class LessonsService {
 
     // Check if user has access to the classroom (support legacy fields)
     const classroom = await this.classroomModel.findOne({
-      _id: lesson.classroomId,
+      _id: (lesson as any).classroomId,
       $or: [
         { teacherIds: new Types.ObjectId(userId) },
         { assistantIds: new Types.ObjectId(userId) },
@@ -100,7 +100,7 @@ export class LessonsService {
 
     // Check if user is teacher/assistant of the classroom (support legacy fields)
     const classroom = await this.classroomModel.findOne({
-      _id: lesson.classroomId,
+      _id: (lesson as any).classroomId,
       $or: [
         { teacherIds: new Types.ObjectId(userId) },
         { assistantIds: new Types.ObjectId(userId) },
@@ -128,7 +128,7 @@ export class LessonsService {
 
     // Check if user is teacher/assistant of the classroom (support legacy fields)
     const classroom = await this.classroomModel.findOne({
-      _id: lesson.classroomId,
+      _id: (lesson as any).classroomId,
       $or: [
         { teacherIds: new Types.ObjectId(userId) },
         { assistantIds: new Types.ObjectId(userId) },

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
 import { CurrentUser } from '../../decorators/current-user.decorator';
 import { CoursesService } from './courses.service';
@@ -42,6 +43,16 @@ export class CoursesController {
       tagArray,
       visibility,
     );
+  }
+
+  @Get('my-courses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get courses created by current teacher (teacher/admin only)' })
+  @ApiResponse({ status: 200, description: 'List of teacher courses' })
+  async getMyCourses(@CurrentUser() user: any) {
+    return this.coursesService.getMyCourses(user.id);
   }
 
   @Get(':id')
@@ -104,6 +115,7 @@ export class CoursesController {
       'public',
     );
   }
+
 
   // Enrollment endpoints
   @Post(':id/enroll')
@@ -242,5 +254,15 @@ export class CoursesController {
     @CurrentUser() user: any,
   ) {
     return this.coursesService.removeStudentFromCourse(courseId, studentId, user.id);
+  }
+
+  @Post('fix-enrollment-counts')
+  @UseGuards(JwtAuthGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fix enrollment counts for all courses (admin only)' })
+  @ApiResponse({ status: 200, description: 'Enrollment counts fixed successfully' })
+  async fixEnrollmentCounts(@CurrentUser() user: any) {
+    return this.coursesService.fixEnrollmentCounts();
   }
 }

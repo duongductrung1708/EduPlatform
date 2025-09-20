@@ -99,7 +99,7 @@ export default function StudentCourses() {
           📚 Môn học của tôi
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Khám phá các lớp học và khóa học thú vị
+          Khám phá các lớp học và môn học thú vị
         </Typography>
       </Box>
       
@@ -267,7 +267,7 @@ export default function StudentCourses() {
       <TabPanel value={tabValue} index={1}>
         <Box sx={{ mb: 3 }}>
           <TextField
-            placeholder="Tìm kiếm khóa học..."
+            placeholder="Tìm kiếm môn học..."
             size="medium"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -355,7 +355,7 @@ export default function StudentCourses() {
                         }
                       }}
                     >
-                      Xem khóa học
+                      Xem môn học
                     </Button>
                   </CardContent>
                 </CardActionArea>
@@ -378,10 +378,10 @@ export default function StudentCourses() {
                   🔍
                 </Typography>
                 <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
-                  Không tìm thấy khóa học nào
+                  Không tìm thấy môn học nào
                 </Typography>
                 <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                  Hãy thử tìm kiếm với từ khóa khác hoặc khám phá các khóa học khác.
+                  Hãy thử tìm kiếm với từ khóa khác hoặc khám phá các môn học khác.
                 </Typography>
               </Paper>
             </Grid>

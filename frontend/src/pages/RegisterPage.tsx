@@ -13,14 +13,17 @@ import {
   MenuItem,
   InputAdornment,
   IconButton,
+  Alert,
 } from '@mui/material';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorAlert from '../components/ErrorAlert';
+import OtpVerificationDialog from '../components/OtpVerificationDialog';
 
 export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -32,6 +35,8 @@ export const RegisterPage: React.FC = () => {
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -53,12 +58,37 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await register(email, name, password, role);
-      navigate('/dashboard');
+      const result = await register(email, name, password, role);
+      
+      // Check if registration requires OTP verification
+      if (result.requiresVerification) {
+        setRegistrationSuccess(true);
+        setOtpDialogOpen(true);
+      } else {
+        // Direct login (fallback for admin users)
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpVerificationSuccess = (authData: any) => {
+    // OTP verification successful, user is now logged in
+    // AuthContext will automatically detect the stored tokens and update user state
+    navigate('/dashboard');
+  };
+
+  const handleOtpDialogClose = () => {
+    setOtpDialogOpen(false);
+    // Reset form if user cancels OTP verification
+    if (!registrationSuccess) {
+      setEmail('');
+      setName('');
+      setPassword('');
+      setConfirmPassword('');
     }
   };
 
@@ -91,6 +121,18 @@ export const RegisterPage: React.FC = () => {
               showDetails={true}
               onClose={() => setError('')}
             />
+          )}
+
+          {registrationSuccess && (
+            <Alert 
+              severity="success" 
+              sx={{ mb: 2, borderRadius: 2 }}
+              icon={<CheckCircleIcon />}
+            >
+              <Typography variant="body2">
+                <strong>Đăng ký thành công!</strong> Vui lòng kiểm tra email để xác thực tài khoản.
+              </Typography>
+            </Alert>
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
@@ -206,9 +248,9 @@ export const RegisterPage: React.FC = () => {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2, py: 1.2, fontWeight: 600 }}
-              disabled={loading}
+              disabled={loading || registrationSuccess}
             >
-              {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+              {loading ? 'Đang đăng ký...' : registrationSuccess ? 'Đã gửi email xác thực' : 'Đăng ký'}
             </Button>
             <Box textAlign="center">
               <Link to="/auth/login" style={{ textDecoration: 'none' }}>
@@ -220,6 +262,14 @@ export const RegisterPage: React.FC = () => {
           </Box>
         </Paper>
       </Container>
+
+      {/* OTP Verification Dialog */}
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onClose={handleOtpDialogClose}
+        email={email}
+        onVerificationSuccess={handleOtpVerificationSuccess}
+      />
     </Box>
   );
 };

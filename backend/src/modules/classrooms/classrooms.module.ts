@@ -7,6 +7,7 @@ import { Course, CourseSchema } from '../../models/course.model';
 import { User, UserSchema } from '../../models/user.model';
 import { Assignment, AssignmentSchema } from '../../models/assignment.model';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
       { name: Assignment.name, schema: AssignmentSchema },
     ]),
     RealtimeModule,
+    EmailModule,
   ],
   controllers: [ClassroomsController],
   providers: [ClassroomsService],

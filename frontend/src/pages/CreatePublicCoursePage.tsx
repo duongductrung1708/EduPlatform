@@ -32,7 +32,7 @@ export default function CreatePublicCoursePage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Tạo khóa học công khai</Typography>
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Tạo môn học công khai</Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
           <TextField fullWidth label="Tiêu đề" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -58,7 +58,7 @@ export default function CreatePublicCoursePage() {
         </Grid>
       </Grid>
       <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={handleSubmit} disabled={!title || !description || !category || !level}>Tạo khóa học</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={!title || !description || !category || !level}>Tạo môn học</Button>
         <Button variant="text" onClick={() => navigate(-1)}>Hủy</Button>
       </Stack>
     </Box>

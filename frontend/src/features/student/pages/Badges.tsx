@@ -140,7 +140,7 @@ export default function StudentBadges() {
               {badges.filter(b => b.badge.criteria.kind === 'course_completion').length}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Hoàn thành khóa học
+              Hoàn thành môn học
             </Typography>
           </Paper>
         </Grid>
@@ -231,7 +231,7 @@ export default function StudentBadges() {
                     <Box sx={{ mb: 2 }}>
                       <Divider sx={{ mb: 1 }} />
                       <Typography variant="caption" color="text.secondary">
-                        Khóa học: {badgeData.course.title}
+                        Môn học: {badgeData.course.title}
                       </Typography>
                     </Box>
                   )}
@@ -264,7 +264,7 @@ export default function StudentBadges() {
             Chưa có huy hiệu nào
           </Typography>
           <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-            Hãy hoàn thành các khóa học và bài tập để nhận được huy hiệu đầu tiên!
+            Hãy hoàn thành các môn học và bài tập để nhận được huy hiệu đầu tiên!
           </Typography>
         </Paper>
       )}

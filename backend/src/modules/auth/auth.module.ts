@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User, UserSchema } from '../../models/user.model';
+import { OtpModule } from '../otp/otp.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { User, UserSchema } from '../../models/user.model';
       secret: process.env.JWT_SECRET || 'change_me',
       signOptions: { expiresIn: process.env.JWT_EXPIRES || '15m' },
     }),
+    OtpModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

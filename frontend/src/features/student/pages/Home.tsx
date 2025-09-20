@@ -33,6 +33,8 @@ import { coursesApi, CourseItem } from '../../../api/courses';
 import { useNavigate } from 'react-router-dom';
 import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import ClassSelectionDialog from '../../../components/ClassSelectionDialog';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -63,6 +65,7 @@ function TabPanel(props: TabPanelProps) {
 export default function StudentHome() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const { user, selectedSubject, setSelectedSubject, selectedGradeLevel, setSelectedGradeLevel, selectedCourse, setSelectedCourse } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const [enrolledCourses, setEnrolledCourses] = useState<CourseItem[]>([]);
@@ -72,10 +75,11 @@ export default function StudentHome() {
   
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
+  const [showClassSelection, setShowClassSelection] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -88,20 +92,22 @@ export default function StudentHome() {
         
         // Load enrolled courses
         const enrolledRes = await coursesApi.getMyEnrolled();
+        console.log('📚 Loaded enrolled courses:', enrolledRes);
         setEnrolledCourses(enrolledRes || []);
         
         // Load public courses
         const publicRes = await coursesApi.getPublic();
+        console.log('📊 Loaded public courses:', publicRes);
         setPublicCourses(publicRes || []);
         setFilteredPublicCourses(publicRes || []);
         
         // Extract unique subjects and levels
-        const subjects = [...new Set(publicRes?.map(course => course.category).filter(Boolean) || [])];
-        const levels = [...new Set(publicRes?.map(course => course.level).filter(Boolean) || [])];
+        const subjects = [...new Set(publicRes?.map(course => course.category).filter(Boolean) || [])] as string[];
+        const levels = [...new Set(publicRes?.map(course => course.level).filter(Boolean) || [])] as string[];
         setAvailableSubjects(subjects);
         setAvailableLevels(levels);
       } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải dữ liệu khóa học');
+        setError(e?.response?.data?.message || 'Không thể tải dữ liệu môn học');
       } finally {
         setLoading(false);
       }
@@ -110,48 +116,149 @@ export default function StudentHome() {
     loadData();
   }, []);
 
+  // Hiển thị dialog chọn lớp nếu học sinh chưa chọn đầy đủ
+  useEffect(() => {
+    if (user?.role === 'student' && (!selectedSubject || !selectedGradeLevel) && !loading) {
+      setShowClassSelection(true);
+    }
+  }, [user, selectedSubject, selectedGradeLevel, loading]);
+
   // Filter and search effect
   useEffect(() => {
     let filtered = publicCourses;
-
+    
+    console.log('🔍 Filter Debug:', {
+      totalCourses: publicCourses.length,
+      selectedSubject: selectedSubject?.name,
+      selectedGradeLevel: selectedGradeLevel?.name,
+      selectedSubjectFilter,
+      selectedLevel,
+      searchTerm
+    });
+    
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(course =>
+      filtered = filtered.filter(course => 
         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
+      console.log('📝 After search filter:', filtered.length);
     }
-
-    // Apply subject filter
+    
+    // Apply subject filter - ưu tiên môn học đã chọn
     if (selectedSubject) {
-      filtered = filtered.filter(course => course.category === selectedSubject);
+      // Chỉ hiển thị môn học đã chọn
+      filtered = filtered.filter(course => {
+        const match = course.category === selectedSubject.name;
+        console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubject.name} = ${match}`);
+        return match;
+      });
+      console.log('📚 After subject filter (selected):', filtered.length);
+    } else if (selectedSubjectFilter) {
+      // Chỉ áp dụng subject filter khi không có selectedSubject
+      filtered = filtered.filter(course => {
+        const match = course.category === selectedSubjectFilter;
+        console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubjectFilter} = ${match}`);
+        return match;
+      });
+      console.log('📚 After subject filter (manual):', filtered.length);
     }
-
-    // Apply level filter
-    if (selectedLevel) {
-      filtered = filtered.filter(course => course.level === selectedLevel);
+    
+    // Apply grade level filter - ưu tiên cấp lớp đã chọn
+    if (selectedGradeLevel) {
+      // Lọc môn học theo level phù hợp với cấp lớp
+      const gradeLevelMap: { [key: string]: string } = {
+        'grade-1': 'Lớp 1',
+        'grade-2': 'Lớp 2', 
+        'grade-3': 'Lớp 3',
+        'grade-4': 'Lớp 4',
+        'grade-5': 'Lớp 5'
+      };
+      
+      const targetLevel = gradeLevelMap[selectedGradeLevel.id];
+      if (targetLevel) {
+        // Chỉ hiển thị môn học của cấp lớp đã chọn
+        filtered = filtered.filter(course => {
+          const match = course.level === targetLevel;
+          console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${targetLevel} = ${match}`);
+          return match;
+        });
+        console.log('🎓 After level filter (selected):', filtered.length);
+      }
+    } else if (selectedLevel) {
+      // Chỉ áp dụng level filter khi không có selectedGradeLevel
+      filtered = filtered.filter(course => {
+        const match = course.level === selectedLevel;
+        console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${selectedLevel} = ${match}`);
+        return match;
+      });
+      console.log('🎓 After level filter (manual):', filtered.length);
     }
-
+    
+    console.log('✅ Final filtered courses:', filtered.length);
     setFilteredPublicCourses(filtered);
-  }, [publicCourses, searchTerm, selectedSubject, selectedLevel]);
+  }, [publicCourses, searchTerm, selectedSubjectFilter, selectedLevel, selectedGradeLevel, selectedSubject]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
   const handleSubjectChange = (event: any) => {
-    setSelectedSubject(event.target.value);
+    setSelectedSubjectFilter(event.target.value);
     setSelectedLevel(''); // Reset level when subject changes
+    // Không xóa selectedSubject và selectedGradeLevel - giữ lựa chọn ban đầu
   };
 
   const handleLevelChange = (event: any) => {
-    setSelectedLevel(event.target.value);
+    const newLevel = event.target.value;
+    setSelectedLevel(newLevel);
+    
+    // Không xóa selectedSubject và selectedGradeLevel - giữ lựa chọn ban đầu
   };
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedSubject('');
+    setSelectedSubjectFilter('');
     setSelectedLevel('');
+    // Không xóa selectedSubject và selectedGradeLevel - giữ lựa chọn ban đầu
+  };
+
+  const handleSelectGrade = (gradeLevel: any, subject?: any) => {
+    if (subject) {
+      setSelectedSubject(subject);
+    }
+    setSelectedGradeLevel(gradeLevel);
+    setShowClassSelection(false);
+    
+    // Tự động set selectedLevel để đồng bộ với filter dropdown
+    const gradeLevelMap: { [key: string]: string } = {
+      'grade-1': 'Lớp 1',
+      'grade-2': 'Lớp 2', 
+      'grade-3': 'Lớp 3',
+      'grade-4': 'Lớp 4',
+      'grade-5': 'Lớp 5'
+    };
+    
+    const targetLevel = gradeLevelMap[gradeLevel.id];
+    if (targetLevel) {
+      setSelectedLevel(targetLevel);
+    }
+    
+    // Clear search và subject để hiển thị tất cả môn học của cấp lớp
+    setSearchTerm('');
+    setSelectedSubjectFilter('');
+  };
+
+  const handleChangeClass = () => {
+    setShowClassSelection(true);
+    // Reset selectedLevel khi thay đổi cấp lớp
+    setSelectedLevel('');
+    // Clear selectedSubject và selectedGradeLevel để cho phép chọn lại
+    setSelectedSubject(null);
+    setSelectedGradeLevel(null);
+    // Clear search và subject để hiển thị tất cả môn học
+    setSearchTerm('');
+    setSelectedSubjectFilter('');
   };
 
   if (loading) {
@@ -217,9 +324,90 @@ export default function StudentHome() {
         >
           🎉 Chào mừng bạn! 🎉
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500 }}>
+        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, mb: 2 }}>
           Hãy khám phá và học tập thật vui nhé!
         </Typography>
+        
+        {/* Selected Subject and Grade Level Info */}
+        {(selectedSubject || selectedGradeLevel) && (
+          <Box sx={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: 2,
+            p: 2,
+            borderRadius: 3,
+            background: darkMode 
+              ? 'rgba(255, 123, 123, 0.1)'
+              : 'rgba(239, 91, 91, 0.05)',
+            border: darkMode 
+              ? '1px solid rgba(255, 123, 123, 0.2)'
+              : '1px solid rgba(239, 91, 91, 0.1)'
+          }}>
+            {selectedSubject && (
+              <Avatar sx={{ 
+                bgcolor: selectedSubject.color,
+                width: 48,
+                height: 48,
+                fontSize: '1.5rem'
+              }}>
+                {selectedSubject.icon}
+              </Avatar>
+            )}
+            {selectedGradeLevel && !selectedSubject && (
+              <Avatar sx={{ 
+                bgcolor: selectedGradeLevel.color,
+                width: 48,
+                height: 48,
+                fontSize: '1.5rem'
+              }}>
+                {selectedGradeLevel.icon}
+              </Avatar>
+            )}
+            <Box sx={{ textAlign: 'left' }}>
+              {selectedSubject && (
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: darkMode ? '#e0e0e0' : '#333333',
+                  mb: 0.5
+                }}>
+                  {selectedSubject.name}
+                </Typography>
+              )}
+              {selectedGradeLevel && (
+                <Typography variant="body1" sx={{ 
+                  fontWeight: 500, 
+                  color: darkMode ? '#e0e0e0' : '#333333',
+                  mb: 0.5
+                }}>
+                  🎓 {selectedGradeLevel.name}
+                </Typography>
+              )}
+              {selectedSubject && (
+                <Typography variant="body2" sx={{ 
+                  color: darkMode ? '#b0b0b0' : '#777777',
+                  mb: 1
+                }}>
+                  {selectedSubject.description}
+                </Typography>
+              )}
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleChangeClass}
+              sx={{
+                borderColor: '#EF5B5B',
+                color: '#EF5B5B',
+                '&:hover': {
+                  borderColor: '#D94A4A',
+                  backgroundColor: 'rgba(239, 91, 91, 0.1)'
+                }
+              }}
+            >
+              Đổi lựa chọn
+            </Button>
+          </Box>
+        )}
       </Box>
 
       {/* Quick Actions */}
@@ -414,10 +602,10 @@ export default function StudentHome() {
             <Box sx={{ textAlign: 'center', py: 6 }}>
               <SchoolIcon sx={{ fontSize: 80, color: '#EF5B5B', mb: 2 }} />
               <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
-                Chưa tham gia khóa học nào
+                Chưa tham gia môn học nào
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                Hãy khám phá các khóa học công khai để bắt đầu học tập!
+                Hãy khám phá các môn học công khai để bắt đầu học tập!
               </Typography>
               <Button
                 variant="contained"
@@ -436,7 +624,7 @@ export default function StudentHome() {
                   transition: 'all 0.3s ease'
                 }}
               >
-                Xem khóa học công khai
+                Xem môn học công khai
               </Button>
                   </Box>
           )}
@@ -494,9 +682,10 @@ export default function StudentHome() {
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: '#EF5B5B' }}>Môn học</InputLabel>
                   <Select
-                    value={selectedSubject}
+                    value={selectedSubject ? selectedSubject.name : selectedSubjectFilter}
                     onChange={handleSubjectChange}
                     label="Môn học"
+                    disabled={!!selectedSubject}
                     sx={{
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: '#EF5B5B',
@@ -521,10 +710,10 @@ export default function StudentHome() {
               
               {/* Level Filter */}
               <Grid item xs={12} md={3}>
-                <FormControl fullWidth disabled={!selectedSubject}>
+                <FormControl fullWidth disabled={!!selectedGradeLevel}>
                   <InputLabel sx={{ color: '#EF5B5B' }}>Lớp</InputLabel>
                   <Select
-                    value={selectedLevel}
+                    value={selectedGradeLevel ? selectedGradeLevel.name : selectedLevel}
                     onChange={handleLevelChange}
                     label="Lớp"
                     sx={{
@@ -542,7 +731,7 @@ export default function StudentHome() {
                     <MenuItem value="">Tất cả lớp</MenuItem>
                     {availableLevels
                       .filter(level => !selectedSubject || publicCourses.some(course => 
-                        course.category === selectedSubject && course.level === level
+                        course.category === selectedSubject.name && course.level === level
                       ))
                       .map((level) => (
                         <MenuItem key={level} value={level}>
@@ -558,6 +747,7 @@ export default function StudentHome() {
                 <Button
                   variant="outlined"
                   onClick={clearFilters}
+                  disabled={!selectedSubjectFilter && !selectedLevel}
                   sx={{
                     borderColor: '#EF5B5B',
                     color: '#EF5B5B',
@@ -565,6 +755,10 @@ export default function StudentHome() {
                       borderColor: '#D94A4A',
                       backgroundColor: 'rgba(239, 91, 91, 0.1)',
                     },
+                    '&:disabled': {
+                      borderColor: '#ccc',
+                      color: '#666'
+                    }
                   }}
                 >
                   Xóa bộ lọc
@@ -572,10 +766,27 @@ export default function StudentHome() {
               </Grid>
             </Grid>
             
-            {/* Results count */}
-            <Typography variant="body2" sx={{ mt: 2, color: '#777777' }}>
-              Hiển thị {filteredPublicCourses.length} / {publicCourses.length} môn học
-            </Typography>
+            {/* Results count and filter info */}
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ color: '#777777', mb: 1 }}>
+                Hiển thị {filteredPublicCourses.length} / {publicCourses.length} môn học
+              </Typography>
+              {(selectedSubject || selectedGradeLevel) && (
+                <Typography variant="body2" sx={{ 
+                  color: '#EF5B5B', 
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <span>🔒</span>
+                  Đang lọc theo lựa chọn ban đầu: 
+                  {selectedSubject && <span>{selectedSubject.name}</span>}
+                  {selectedSubject && selectedGradeLevel && <span> • </span>}
+                  {selectedGradeLevel && <span>{selectedGradeLevel.name}</span>}
+                </Typography>
+              )}
+            </Box>
           </Box>
           
           {filteredPublicCourses.length > 0 ? (
@@ -649,7 +860,7 @@ export default function StudentHome() {
                           }
                         }}
                       >
-                        Xem khóa học
+                        Xem môn học
                       </Button>
                 </CardContent>
             </Card>
@@ -697,6 +908,14 @@ export default function StudentHome() {
           )}
         </TabPanel>
       </Paper>
+
+      {/* Class Selection Dialog */}
+      <ClassSelectionDialog
+        open={showClassSelection}
+        onClose={() => setShowClassSelection(false)}
+        onSelectClass={handleSelectGrade}
+        userId={user?.id || ''}
+      />
     </Box>
   );
 }

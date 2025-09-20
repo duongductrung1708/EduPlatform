@@ -273,8 +273,8 @@ export default function MyClassrooms() {
           </Typography>
           <Box display="flex" gap={2}>
             <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>Lọc theo khóa học</InputLabel>
-              <Select label="Lọc theo khóa học" value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}>
+              <InputLabel>Lọc theo môn học</InputLabel>
+              <Select label="Lọc theo môn học" value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}>
                 <MenuItem value="">Tất cả</MenuItem>
                 {courses.map(c => (
                   <MenuItem key={c._id} value={c._id}>{c.title}</MenuItem>
@@ -358,7 +358,7 @@ export default function MyClassrooms() {
                   )}
                   <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ color: '#777777', fontWeight: 500 }}>
-                      {((c as any).studentsCount ?? (c.studentIds || []).length)} học sinh
+                      {Math.max(0, (c as any).studentsCount ?? (c.studentIds || []).length)} học sinh
                     </Typography>
                     <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14, border: '2px solid white' } }}>
                       <Avatar sx={{ bgcolor: '#EF5B5B' }}>H</Avatar>

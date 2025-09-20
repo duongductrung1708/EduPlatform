@@ -14,7 +14,7 @@ export class CreateCourseDto {
 
   @ApiProperty({ example: 'Khóa học Tiếng Việt cho lớp 1' })
   @IsString()
-  @MinLength(10)
+  @MinLength(3)
   description!: string;
 
   @ApiProperty({ example: 'Tiểu học', enum: ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'] })
@@ -46,10 +46,6 @@ export class CreateCourseDto {
   @ApiProperty({ example: 'private', enum: ['public', 'private'] })
   @IsEnum(['public', 'private'])
   visibility!: string;
-
-  @ApiProperty({ example: '60f7a1c2d2a3f2b1c8e4f9a0', description: 'Teacher user id (role=teacher)' })
-  @IsMongoId()
-  teacherId!: string;
 }
 
 export class UpdateCourseDto {
@@ -64,6 +60,23 @@ export class UpdateCourseDto {
   @IsString()
   @MinLength(10)
   description?: string;
+
+  @ApiProperty({ example: 'Tiểu học', enum: ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'], required: false })
+  @IsOptional()
+  @IsString()
+  @IsIn(['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'])
+  category?: string;
+
+  @ApiProperty({ example: 'Lớp 1', enum: ['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'], required: false })
+  @IsOptional()
+  @IsString()
+  @IsIn(['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'])
+  level?: string;
+
+  @ApiProperty({ example: 'published', enum: ['draft', 'published', 'archived'], required: false })
+  @IsOptional()
+  @IsEnum(['draft', 'published', 'archived'])
+  status?: string;
 
   @ApiProperty({ example: 'https://example.com/thumbnail.jpg', required: false })
   @IsOptional()

@@ -2,7 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Put } from '@n
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../../decorators/public.decorator';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto, AuthResponseDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, RefreshTokenDto, AuthResponseDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyOtpDto, ResendOtpDto } from './dto/auth.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { CurrentUser } from '../../decorators/current-user.decorator';
 
@@ -99,5 +99,46 @@ export class AuthController {
   @ApiOperation({ summary: 'Đặt lại mật khẩu bằng token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Xác thực tài khoản bằng OTP' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Xác thực thành công', 
+    type: AuthResponseDto 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Dữ liệu đầu vào không hợp lệ (email, OTP)' 
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Mã OTP không đúng hoặc đã hết hạn' 
+  })
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Public()
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Gửi lại mã OTP' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Đã gửi lại mã OTP thành công' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Email không hợp lệ hoặc tài khoản đã được xác thực' 
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Không tìm thấy tài khoản với email này' 
+  })
+  async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
+    return this.authService.resendOtp(resendOtpDto.email);
   }
 }

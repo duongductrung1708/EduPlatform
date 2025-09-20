@@ -16,6 +16,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorAlert from '../components/ErrorAlert';
+import OtpVerificationDialog from '../components/OtpVerificationDialog';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,6 +24,8 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -39,10 +42,30 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại');
+      const errorMessage = err.message || 'Đăng nhập thất bại';
+      
+      // Check if error is about unverified account
+      if (errorMessage.includes('chưa được xác thực') || errorMessage.includes('chưa được kích hoạt')) {
+        setPendingEmail(email);
+        setOtpDialogOpen(true);
+        setError('Tài khoản chưa được xác thực. Vui lòng nhập mã OTP để kích hoạt tài khoản.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOtpVerificationSuccess = (authData: any) => {
+    // OTP verification successful, user is now logged in
+    // AuthContext will automatically detect the stored tokens and update user state
+    navigate(from, { replace: true });
+  };
+
+  const handleOtpDialogClose = () => {
+    setOtpDialogOpen(false);
+    setPendingEmail('');
   };
 
   return (
@@ -152,6 +175,14 @@ export const LoginPage: React.FC = () => {
           </Box>
         </Paper>
       </Container>
+
+      {/* OTP Verification Dialog */}
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onClose={handleOtpDialogClose}
+        email={pendingEmail}
+        onVerificationSuccess={handleOtpVerificationSuccess}
+      />
     </Box>
   );
 };

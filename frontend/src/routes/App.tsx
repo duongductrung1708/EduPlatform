@@ -16,6 +16,8 @@ import StudentLayout from '../components/StudentLayout';
 import TeacherOverview from '../features/teacher/pages/Overview';
 import MyClassrooms from '../features/teacher/pages/MyClassrooms';
 import MyCourses from '../features/teacher/pages/MyCourses';
+import CourseManage from '../features/teacher/pages/CourseManage';
+import CourseStudents from '../features/teacher/pages/CourseStudents';
 import ClassLessons from '../features/teacher/pages/ClassLessons';
 import ClassAssignments from '../features/teacher/pages/ClassAssignments';
 import ManageCourse from '../features/teacher/pages/ManageCourse';
@@ -32,6 +34,7 @@ import ResetPasswordPage from '../pages/ResetPasswordPage';
 import SubmitAssignmentPage from '../pages/SubmitAssignmentPage';
 import GradeSubmissionsPage from '../pages/GradeSubmissionsPage';
 import CourseDetailPage from '../pages/CourseDetailPage';
+import CourseInvitationPage from '../pages/CourseInvitationPage';
 import StudentClassroomDetailPage from '../pages/StudentClassroomDetailPage';
 import PublicCoursesPage from '../pages/PublicCoursesPage';
 import CreatePublicCoursePage from '../pages/CreatePublicCoursePage';
@@ -101,6 +104,26 @@ export default function App() {
           <ProtectedRoute requiredRole="teacher">
             <TeacherLayout>
               <MyCourses />
+            </TeacherLayout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/teacher/courses/:courseId/manage" 
+        element={
+          <ProtectedRoute requiredRole="teacher">
+            <TeacherLayout>
+              <CourseManage />
+            </TeacherLayout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/teacher/courses/:courseId/students" 
+        element={
+          <ProtectedRoute requiredRole="teacher">
+            <TeacherLayout>
+              <CourseStudents />
             </TeacherLayout>
           </ProtectedRoute>
         } 
@@ -295,6 +318,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CourseDetailPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/invitations/course/:id" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <CourseInvitationPage />
           </ProtectedRoute>
         } 
       />

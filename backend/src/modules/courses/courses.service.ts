@@ -8,6 +8,8 @@ import { CourseEnrollment, CourseEnrollmentDocument } from '../../models/course-
 import { Lesson, LessonDocument } from '../../models/lesson.model';
 import { Module as CourseModule, ModuleDocument } from '../../models/module.model';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { EmailService } from '../email/email.service';
+import { User, UserDocument } from '../../models/user.model';
 
 @Injectable()
 export class CoursesService {
@@ -17,7 +19,9 @@ export class CoursesService {
     @InjectModel(CourseEnrollment.name) private enrollmentModel: Model<CourseEnrollmentDocument>,
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
     @InjectModel(CourseModule.name) private moduleModel: Model<ModuleDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private realtimeGateway: RealtimeGateway,
+    private emailService: EmailService,
   ) {}
 
   async create(createCourseDto: CreateCourseDto, createdBy: string): Promise<CourseDocument> {
@@ -59,6 +63,79 @@ export class CoursesService {
     return moduleDoc.save();
   }
 
+  async updateModule(courseId: string, moduleId: string, userId: string, payload: {
+    title?: string;
+    description?: string;
+    order?: number;
+    estimatedDuration?: number;
+    isPublished?: boolean;
+  }) {
+    const course = await this.courseModel.findById(courseId);
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
+
+    // Try to find module by ID first
+    const module = await this.moduleModel.findById(moduleId);
+    
+    if (!module) {
+      throw new NotFoundException('Module not found');
+    }
+    
+    // Check if module belongs to the course
+    if (String(module.courseId) !== String(courseId)) {
+      throw new NotFoundException('Module does not belong to this course');
+    }
+
+    Object.assign(module, payload);
+    return module.save();
+  }
+
+  async deleteModule(courseId: string, moduleId: string, userId: string) {
+    console.log('🔍 deleteModule called with:', { courseId, moduleId, userId });
+    
+    const course = await this.courseModel.findById(courseId);
+    console.log('📚 Found course:', course ? 'Yes' : 'No');
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
+
+    // Check if module exists at all
+    const moduleExists = await this.moduleModel.findById(moduleId);
+    console.log('📋 Module exists:', moduleExists ? 'Yes' : 'No');
+    if (moduleExists) {
+      console.log('📋 Module details:', {
+        _id: moduleExists._id,
+        title: moduleExists.title,
+        courseId: moduleExists.courseId
+      });
+    }
+    if (!moduleExists) {
+      console.log('📋 Module not found in database');
+      throw new NotFoundException('Module not found');
+    }
+
+    // Check if module belongs to this course
+    const module = await this.moduleModel.findOne({ 
+      _id: new Types.ObjectId(moduleId), 
+      courseId: new Types.ObjectId(courseId) 
+    });
+    console.log('📋 Found module in course:', module ? 'Yes' : 'No', module ? `Title: ${module.title}` : '');
+    if (!module) {
+      console.log('📋 Module exists but belongs to different course');
+      console.log('📋 Expected courseId:', courseId);
+      console.log('📋 Actual courseId:', moduleExists.courseId);
+      throw new NotFoundException('Module not found in this course');
+    }
+
+    // Delete all lessons in this module first
+    const deletedLessons = await this.lessonModel.deleteMany({ moduleId: new Types.ObjectId(moduleId) });
+    console.log('🗑️ Deleted lessons count:', deletedLessons.deletedCount);
+    
+    // Delete the module
+    const deletedModule = await this.moduleModel.findByIdAndDelete(moduleId);
+    console.log('🗑️ Deleted module:', deletedModule ? 'Yes' : 'No');
+    return { message: 'Module and all its lessons deleted successfully' };
+  }
+
   // Lessons under a module
   async listLessonsByModule(moduleId: string) {
     return this.lessonModel
@@ -96,6 +173,82 @@ export class CoursesService {
     return lesson.save();
   }
 
+  async updateLesson(moduleId: string, lessonId: string, userId: string, payload: {
+    title?: string;
+    description?: string;
+    type?: 'document' | 'video' | 'interactive' | 'quiz' | 'assignment';
+    order?: number;
+    content?: any;
+    estimatedDuration?: number;
+    isPublished?: boolean;
+  }) {
+    const moduleDoc = await this.moduleModel.findById(moduleId);
+    if (!moduleDoc) throw new NotFoundException('Module not found');
+    const course = await this.courseModel.findById(moduleDoc.courseId);
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
+
+    // Try to find lesson by ID first
+    const lesson = await this.lessonModel.findById(lessonId);
+    
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+    
+    // Check if lesson belongs to the module
+    if (String(lesson.moduleId) !== String(moduleId)) {
+      throw new NotFoundException('Lesson does not belong to this module');
+    }
+
+    Object.assign(lesson, payload);
+    return lesson.save();
+  }
+
+  async deleteLesson(moduleId: string, lessonId: string, userId: string) {
+    console.log('🔍 deleteLesson called with:', { moduleId, lessonId, userId });
+    
+    const moduleDoc = await this.moduleModel.findById(moduleId);
+    console.log('📋 Found module:', moduleDoc ? 'Yes' : 'No');
+    if (!moduleDoc) throw new NotFoundException('Module not found');
+    
+    const course = await this.courseModel.findById(moduleDoc.courseId);
+    console.log('📚 Found course:', course ? 'Yes' : 'No');
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
+
+    // Check if lesson exists at all
+    const lessonExists = await this.lessonModel.findById(lessonId);
+    console.log('📄 Lesson exists:', lessonExists ? 'Yes' : 'No');
+    if (lessonExists) {
+      console.log('📄 Lesson details:', {
+        _id: lessonExists._id,
+        title: lessonExists.title,
+        moduleId: lessonExists.moduleId
+      });
+    }
+    if (!lessonExists) {
+      console.log('📄 Lesson not found in database');
+      throw new NotFoundException('Lesson not found');
+    }
+
+    // Check if lesson belongs to this module
+    const lesson = await this.lessonModel.findOne({ 
+      _id: new Types.ObjectId(lessonId), 
+      moduleId: new Types.ObjectId(moduleId) 
+    });
+    console.log('📄 Found lesson in module:', lesson ? 'Yes' : 'No', lesson ? `Title: ${lesson.title}` : '');
+    if (!lesson) {
+      console.log('📄 Lesson exists but belongs to different module');
+      console.log('📄 Expected moduleId:', moduleId);
+      console.log('📄 Actual moduleId:', lessonExists.moduleId);
+      throw new NotFoundException('Lesson not found in this module');
+    }
+
+    const deletedLesson = await this.lessonModel.findByIdAndDelete(lessonId);
+    console.log('🗑️ Deleted lesson:', deletedLesson ? 'Yes' : 'No');
+    return { message: 'Lesson deleted successfully' };
+  }
+
   async findAll(page = 1, limit = 10, search?: string, tags?: string[], visibility?: string) {
     const query: any = {};
     
@@ -121,6 +274,19 @@ export class CoursesService {
       this.courseModel.countDocuments(query),
     ]);
 
+    // Update enrollment counts for all courses
+    for (const course of courses) {
+      const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
+        courseId: course._id,
+        isActive: true
+      });
+      
+      if (course.enrollmentCount !== actualEnrollmentCount) {
+        course.enrollmentCount = actualEnrollmentCount;
+        await course.save();
+      }
+    }
+
     return {
       courses,
       total,
@@ -135,6 +301,19 @@ export class CoursesService {
     if (!course) {
       throw new NotFoundException('Course not found');
     }
+    
+    // Calculate actual enrollment count
+    const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
+      courseId: course._id,
+      isActive: true
+    });
+    
+    // Update course with correct count if different
+    if (course.enrollmentCount !== actualEnrollmentCount) {
+      course.enrollmentCount = actualEnrollmentCount;
+      await course.save();
+    }
+    
     return course;
   }
 
@@ -143,6 +322,19 @@ export class CoursesService {
     if (!course) {
       throw new NotFoundException('Course not found');
     }
+    
+    // Calculate actual enrollment count
+    const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
+      courseId: course._id,
+      isActive: true
+    });
+    
+    // Update course with correct count if different
+    if (course.enrollmentCount !== actualEnrollmentCount) {
+      course.enrollmentCount = actualEnrollmentCount;
+      await course.save();
+    }
+    
     return course;
   }
 
@@ -238,6 +430,27 @@ export class CoursesService {
     // increment enrollment count
     await this.courseModel.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
 
+    // Get student and teacher info for email
+    const student = await this.userModel.findById(studentId);
+    const teacher = await this.userModel.findById(course.createdBy);
+
+    // Send invitation email
+    if (student && teacher) {
+      try {
+        await this.emailService.sendCourseInvitationEmail(
+          student.email,
+          student.name,
+          course.title,
+          teacher.name,
+          courseId
+        );
+        console.log(`Course invitation email sent to ${student.email}`);
+      } catch (error) {
+        console.error('Failed to send course invitation email:', error);
+        // Don't throw error, enrollment should still succeed
+      }
+    }
+
     // Emit real-time event
     const populatedEnrollment = await this.enrollmentModel
       .findById(enrollment._id)
@@ -259,6 +472,59 @@ export class CoursesService {
     console.log('Found enrollment:', enrollment);
     if (!enrollment) return { enrolled: false, progress: 0 };
     return { enrolled: true, progress: enrollment.progress?.percentage ?? 0 };
+  }
+
+  async getMyEnrolled(studentId: string) {
+    console.log('Getting enrolled courses for student:', studentId);
+    
+    // Find all active enrollments for the student
+    const enrollments = await this.enrollmentModel
+      .find({ 
+        studentId: new Types.ObjectId(studentId),
+        isActive: true 
+      })
+      .populate('courseId')
+      .lean();
+
+    console.log('Found enrollments:', enrollments.length);
+    
+    // Extract courses from enrollments
+    const courses = enrollments
+      .map(enrollment => enrollment.courseId)
+      .filter(course => course && (course as any).status === 'published'); // Only published courses
+
+    console.log('Filtered published courses:', courses.length);
+    
+    return { courses };
+  }
+
+  async getMyCourses(teacherId: string) {
+    console.log('Getting courses created by teacher:', teacherId);
+    
+    const courses = await this.courseModel
+      .find({ createdBy: new Types.ObjectId(teacherId) })
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    console.log('Found courses:', courses.length);
+    
+    // Update enrollment counts for all courses
+    for (const course of courses) {
+      const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
+        courseId: course._id,
+        isActive: true
+      });
+      
+      if (course.enrollmentCount !== actualEnrollmentCount) {
+        await this.courseModel.findByIdAndUpdate(course._id, { 
+          $set: { enrollmentCount: actualEnrollmentCount } 
+        });
+        course.enrollmentCount = actualEnrollmentCount;
+      }
+    }
+    
+    return { courses };
   }
 
   // Ratings
@@ -331,10 +597,111 @@ export class CoursesService {
       student: enrollment.studentId,
       enrolledAt: enrollment.enrolledAt,
       progress: enrollment.progress?.percentage || 0,
-      lastAccessedAt: enrollment.lastAccessedAt,
+      lastAccessedAt: (enrollment as any).lastAccessedAt,
       rating: enrollment.rating,
       review: enrollment.review,
     }));
+  }
+
+  async addStudentToCourse(courseId: string, studentEmail: string, userId: string) {
+    console.log('🔍 addStudentToCourse called with:', { courseId, studentEmail, userId });
+    
+    const course = await this.courseModel.findById(courseId);
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
+
+    // Debug: Check all users with similar email
+    const allUsers = await this.userModel.find({ 
+      email: { $regex: studentEmail, $options: 'i' } 
+    });
+    console.log('🔍 Users with similar email:', allUsers.map(u => ({ 
+      id: u._id, 
+      email: u.email, 
+      name: u.name, 
+      role: u.role 
+    })));
+
+    // Find student by email (case insensitive)
+    const student = await this.userModel.findOne({ 
+      email: { $regex: `^${studentEmail}$`, $options: 'i' }, 
+      role: 'student' 
+    });
+    
+    console.log('🔍 Found student:', student ? {
+      id: student._id,
+      email: student.email,
+      name: student.name,
+      role: student.role
+    } : 'null');
+
+    if (!student) {
+      // Try to find any user with this email (regardless of role)
+      const anyUser = await this.userModel.findOne({ 
+        email: { $regex: `^${studentEmail}$`, $options: 'i' } 
+      });
+      
+      if (anyUser) {
+        throw new NotFoundException(`User found but has role '${anyUser.role}', not 'student'`);
+      } else {
+        throw new NotFoundException('Student not found with this email');
+      }
+    }
+
+    // Check if already enrolled
+    const existingEnrollment = await this.enrollmentModel.findOne({
+      courseId: new Types.ObjectId(courseId),
+      studentId: new Types.ObjectId(student._id),
+    });
+
+    if (existingEnrollment) {
+      if (existingEnrollment.isActive) {
+        throw new ConflictException('Student is already enrolled in this course');
+      } else {
+        // Reactivate existing enrollment
+        existingEnrollment.isActive = true;
+        await existingEnrollment.save();
+        return { message: 'Student re-enrolled successfully', enrollment: existingEnrollment };
+      }
+    }
+
+    // Create new enrollment
+    const enrollment = await this.enrollmentModel.create({
+      courseId: new Types.ObjectId(courseId),
+      studentId: new Types.ObjectId(student._id),
+    });
+
+    // Increment enrollment count
+    await this.courseModel.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
+
+    // Get teacher info for email
+    const teacher = await this.userModel.findById(userId);
+
+    // Send invitation email
+    if (teacher) {
+      try {
+        await this.emailService.sendCourseInvitationEmail(
+          student.email,
+          student.name,
+          course.title,
+          teacher.name,
+          courseId
+        );
+        console.log(`Course invitation email sent to ${student.email}`);
+      } catch (error) {
+        console.error('Failed to send course invitation email:', error);
+        // Don't throw error, enrollment should still succeed
+      }
+    }
+
+    // Emit real-time event
+    const populatedEnrollment = await this.enrollmentModel
+      .findById(enrollment._id)
+      .populate('studentId', 'name email avatar')
+      .lean();
+    
+    this.realtimeGateway.emitEnrollmentAdded(courseId, populatedEnrollment);
+
+    return { message: 'Student enrolled successfully', enrollment: populatedEnrollment };
   }
 
   async removeStudentFromCourse(courseId: string, studentId: string, userId: string) {
@@ -360,5 +727,50 @@ export class CoursesService {
     this.realtimeGateway.emitEnrollmentRemoved(courseId, studentId);
 
     return { message: 'Student removed from course successfully' };
+  }
+
+  async fixEnrollmentCounts(): Promise<any> {
+    console.log('🔧 Fixing enrollment counts for all courses...');
+    
+    const courses = await this.courseModel.find({});
+    const results = [];
+
+    for (const course of courses) {
+      console.log(`📚 Processing course: ${course.title} (${course._id})`);
+      
+      // Count active enrollments for this course
+      const activeEnrollmentsCount = await this.enrollmentModel.countDocuments({
+        courseId: course._id,
+        isActive: true
+      });
+
+      console.log(`  Current enrollmentCount in DB: ${course.enrollmentCount || 0}`);
+      console.log(`  Actual active enrollments: ${activeEnrollmentsCount}`);
+
+      // Update the course with correct count
+      if (course.enrollmentCount !== activeEnrollmentsCount) {
+        await this.courseModel.findByIdAndUpdate(
+          course._id,
+          { $set: { enrollmentCount: activeEnrollmentsCount } }
+        );
+        console.log(`  ✅ Updated enrollmentCount from ${course.enrollmentCount || 0} to ${activeEnrollmentsCount}`);
+        results.push({
+          courseId: course._id,
+          courseTitle: course.title,
+          oldCount: course.enrollmentCount || 0,
+          newCount: activeEnrollmentsCount
+        });
+      } else {
+        console.log(`  ✅ Count is already correct`);
+      }
+    }
+
+    console.log('🎉 All enrollment counts have been fixed!');
+    return {
+      message: 'Enrollment counts fixed successfully',
+      results: results,
+      totalCourses: courses.length,
+      fixedCourses: results.length
+    };
   }
 }
