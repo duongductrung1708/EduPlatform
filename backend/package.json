@@ -14,7 +14,10 @@
     "test:e2e": "jest --config ./jest-e2e.json",
     "test:watch": "jest --watch",
     "seed:public-courses": "ts-node src/scripts/seed-public-courses.ts",
-    "reseed:public-courses": "ts-node src/scripts/reseed-public-courses.ts"
+    "reseed:public-courses": "ts-node src/scripts/reseed-public-courses.ts",
+    "check:mongodb": "node scripts/check-mongodb.js",
+    "start:mongodb": "node scripts/start-mongodb.js",
+    "test:atlas": "node scripts/test-atlas.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
