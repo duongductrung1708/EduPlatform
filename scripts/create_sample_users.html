@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Tài Khoản Mẫu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            text-align: center;
+        }
+        .user-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .user-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .user-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .user-info span {
+            background: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .loading {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Tạo Tài Khoản Mẫu - EduPlatform</h1>
+        
+        <div id="status"></div>
+        
+        <div class="user-card">
+            <h3>👨‍🏫 Giáo Viên 1</h3>
+            <div class="user-info">
+                <span><strong>Email:</strong> teacher1@example.com</span>
+                <span><strong>Password:</strong> password123</span>
+                <span><strong>Role:</strong> teacher</span>
+                <span><strong>Tên:</strong> Nguyễn Văn Giáo Viên</span>
+            </div>
+            <button onclick="createUser('teacher1')">Tạo Tài Khoản</button>
+        </div>
+
+        <div class="user-card">
+            <h3>👩‍🎓 Học Sinh 1</h3>
+            <div class="user-info">
+                <span><strong>Email:</strong> student1@example.com</span>
+                <span><strong>Password:</strong> password123</span>
+                <span><strong>Role:</strong> student</span>
+                <span><strong>Tên:</strong> Trần Thị Học Sinh</span>
+            </div>
+            <button onclick="createUser('student1')">Tạo Tài Khoản</button>
+        </div>
+
+        <div class="user-card">
+            <h3>👨‍👩‍👧‍👦 Phụ Huynh 1</h3>
+            <div class="user-info">
+                <span><strong>Email:</strong> parent1@example.com</span>
+                <span><strong>Password:</strong> password123</span>
+                <span><strong>Role:</strong> parent</span>
+                <span><strong>Tên:</strong> Lê Văn Phụ Huynh</span>
+            </div>
+            <button onclick="createUser('parent1')">Tạo Tài Khoản</button>
+        </div>
+
+        <div class="user-card">
+            <h3>👩‍🏫 Giáo Viên 2</h3>
+            <div class="user-info">
+                <span><strong>Email:</strong> teacher2@example.com</span>
+                <span><strong>Password:</strong> password123</span>
+                <span><strong>Role:</strong> teacher</span>
+                <span><strong>Tên:</strong> Phạm Thị Giáo Viên 2</span>
+            </div>
+            <button onclick="createUser('teacher2')">Tạo Tài Khoản</button>
+        </div>
+
+        <div class="user-card">
+            <h3>👦 Học Sinh 2</h3>
+            <div class="user-info">
+                <span><strong>Email:</strong> student2@example.com</span>
+                <span><strong>Password:</strong> password123</span>
+                <span><strong>Role:</strong> student</span>
+                <span><strong>Tên:</strong> Hoàng Văn Học Sinh 2</span>
+            </div>
+            <button onclick="createUser('student2')">Tạo Tài Khoản</button>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="createAllUsers()" style="background: #4caf50; font-size: 16px; padding: 15px 30px;">
+                🚀 Tạo Tất Cả Tài Khoản
+            </button>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+            <h3>📋 Hướng dẫn sử dụng:</h3>
+            <ol>
+                <li>Đảm bảo backend đang chạy trên <code>http://localhost:3000</code></li>
+                <li>Click "Tạo Tài Khoản" cho từng user hoặc "Tạo Tất Cả Tài Khoản"</li>
+                <li>Sau khi tạo xong, bạn có thể đăng nhập với email/password tương ứng</li>
+                <li>Admin dashboard sẽ hiển thị thống kê mới với các user vừa tạo</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        
+        const users = {
+            teacher1: {
+                name: 'Nguyễn Văn Giáo Viên',
+                email: 'teacher1@example.com',
+                password: 'password123',
+                role: 'teacher',
+                phone: '0123456789',
+                address: 'Hà Nội, Việt Nam',
+                gender: 'male'
+            },
+            student1: {
+                name: 'Trần Thị Học Sinh',
+                email: 'student1@example.com',
+                password: 'password123',
+                role: 'student',
+                phone: '0987654321',
+                address: 'TP.HCM, Việt Nam',
+                gender: 'female'
+            },
+            parent1: {
+                name: 'Lê Văn Phụ Huynh',
+                email: 'parent1@example.com',
+                password: 'password123',
+                role: 'parent',
+                phone: '0369852147',
+                address: 'Đà Nẵng, Việt Nam',
+                gender: 'male'
+            },
+            teacher2: {
+                name: 'Phạm Thị Giáo Viên 2',
+                email: 'teacher2@example.com',
+                password: 'password123',
+                role: 'teacher',
+                phone: '0147258369',
+                address: 'Cần Thơ, Việt Nam',
+                gender: 'female'
+            },
+            student2: {
+                name: 'Hoàng Văn Học Sinh 2',
+                email: 'student2@example.com',
+                password: 'password123',
+                role: 'student',
+                phone: '0258741963',
+                address: 'Hải Phòng, Việt Nam',
+                gender: 'male'
+            }
+        };
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        async function createUser(userKey) {
+            const user = users[userKey];
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.textContent = 'Đang tạo...';
+            button.className = 'loading';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(user)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(`✅ Tạo tài khoản ${user.email} thành công!`, 'success');
+                    button.textContent = '✅ Đã tạo';
+                    button.style.background = '#4caf50';
+                } else {
+                    showStatus(`❌ Lỗi tạo tài khoản ${user.email}: ${result.message}`, 'error');
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            } catch (error) {
+                showStatus(`❌ Lỗi kết nối: ${error.message}`, 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function createAllUsers() {
+            showStatus('🚀 Đang tạo tất cả tài khoản...', 'loading');
+            
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const [userKey, user] of Object.entries(users)) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/auth/register`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(user)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                        console.log(`✅ Created ${user.email}`);
+                    } else {
+                        errorCount++;
+                        console.log(`❌ Failed to create ${user.email}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.log(`❌ Error creating ${user.email}:`, error);
+                }
+            }
+
+            showStatus(`🎉 Hoàn thành! Tạo thành công: ${successCount}, Lỗi: ${errorCount}`, 
+                      errorCount === 0 ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>

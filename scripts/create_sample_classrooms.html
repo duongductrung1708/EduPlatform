@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Lớp Học Mẫu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            text-align: center;
+        }
+        .classroom-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .classroom-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .classroom-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .classroom-info span {
+            background: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .loading {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏫 Tạo Lớp Học Mẫu - EduPlatform</h1>
+        
+        <div id="status"></div>
+        
+        <div class="classroom-card">
+            <h3>📚 Lớp JavaScript Cơ Bản - K1</h3>
+            <div class="classroom-info">
+                <span><strong>Khóa học:</strong> Lập Trình JavaScript Cơ Bản</span>
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> active</span>
+                <span><strong>Số học sinh tối đa:</strong> 30</span>
+            </div>
+            <button onclick="createClassroom('js-k1')">Tạo Lớp Học</button>
+        </div>
+
+        <div class="classroom-card">
+            <h3>⚛️ Lớp React Nâng Cao - R1</h3>
+            <div class="classroom-info">
+                <span><strong>Khóa học:</strong> React.js Nâng Cao</span>
+                <span><strong>Giảng viên:</strong> teacher2@example.com</span>
+                <span><strong>Trạng thái:</strong> active</span>
+                <span><strong>Số học sinh tối đa:</strong> 25</span>
+            </div>
+            <button onclick="createClassroom('react-r1')">Tạo Lớp Học</button>
+        </div>
+
+        <div class="classroom-card">
+            <h3>🎨 Lớp UI/UX Design - D1</h3>
+            <div class="classroom-info">
+                <span><strong>Khóa học:</strong> Thiết Kế UI/UX</span>
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> active</span>
+                <span><strong>Số học sinh tối đa:</strong> 20</span>
+            </div>
+            <button onclick="createClassroom('ui-d1')">Tạo Lớp Học</button>
+        </div>
+
+        <div class="classroom-card">
+            <h3>🗄️ Lớp MySQL Database - DB1</h3>
+            <div class="classroom-info">
+                <span><strong>Khóa học:</strong> Cơ Sở Dữ Liệu MySQL</span>
+                <span><strong>Giảng viên:</strong> teacher2@example.com</span>
+                <span><strong>Trạng thái:</strong> active</span>
+                <span><strong>Số học sinh tối đa:</strong> 35</span>
+            </div>
+            <button onclick="createClassroom('mysql-db1')">Tạo Lớp Học</button>
+        </div>
+
+        <div class="classroom-card">
+            <h3>🚀 Lớp Docker DevOps - DV1</h3>
+            <div class="classroom-info">
+                <span><strong>Khóa học:</strong> DevOps với Docker</span>
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> inactive</span>
+                <span><strong>Số học sinh tối đa:</strong> 15</span>
+            </div>
+            <button onclick="createClassroom('docker-dv1')">Tạo Lớp Học</button>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="createAllClassrooms()" style="background: #4caf50; font-size: 16px; padding: 15px 30px;">
+                🚀 Tạo Tất Cả Lớp Học
+            </button>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+            <h3>📋 Hướng dẫn sử dụng:</h3>
+            <ol>
+                <li>Đảm bảo backend đang chạy trên <code>http://localhost:3000</code></li>
+                <li>Đảm bảo đã có tài khoản teacher và courses trước</li>
+                <li>Click "Tạo Lớp Học" cho từng classroom hoặc "Tạo Tất Cả Lớp Học"</li>
+                <li>Sau khi tạo xong, vào Admin Dashboard → Classrooms để xem</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        
+        const classrooms = {
+            'js-k1': {
+                name: 'Lớp JavaScript Cơ Bản - K1',
+                description: 'Lớp học JavaScript cơ bản dành cho người mới bắt đầu. Học từ cú pháp cơ bản đến các khái niệm nâng cao.',
+                status: 'active',
+                maxStudents: 30,
+                courseTitle: 'Lập Trình JavaScript Cơ Bản',
+                teacherEmail: 'teacher1@example.com'
+            },
+            'react-r1': {
+                name: 'Lớp React Nâng Cao - R1',
+                description: 'Lớp học React.js nâng cao, tập trung vào các kỹ thuật tối ưu hóa và xây dựng ứng dụng phức tạp.',
+                status: 'active',
+                maxStudents: 25,
+                courseTitle: 'React.js Nâng Cao',
+                teacherEmail: 'teacher2@example.com'
+            },
+            'ui-d1': {
+                name: 'Lớp UI/UX Design - D1',
+                description: 'Lớp học thiết kế giao diện và trải nghiệm người dùng. Học các nguyên tắc thiết kế và sử dụng công cụ.',
+                status: 'active',
+                maxStudents: 20,
+                courseTitle: 'Thiết Kế UI/UX',
+                teacherEmail: 'teacher1@example.com'
+            },
+            'mysql-db1': {
+                name: 'Lớp MySQL Database - DB1',
+                description: 'Lớp học cơ sở dữ liệu MySQL từ cơ bản đến nâng cao. Học thiết kế database và tối ưu hóa.',
+                status: 'active',
+                maxStudents: 35,
+                courseTitle: 'Cơ Sở Dữ Liệu MySQL',
+                teacherEmail: 'teacher2@example.com'
+            },
+            'docker-dv1': {
+                name: 'Lớp Docker DevOps - DV1',
+                description: 'Lớp học Docker và containerization. Học cách triển khai ứng dụng với Docker và các công cụ DevOps.',
+                status: 'inactive',
+                maxStudents: 15,
+                courseTitle: 'DevOps với Docker',
+                teacherEmail: 'teacher1@example.com'
+            }
+        };
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        async function getCourseId(title) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/courses?search=${encodeURIComponent(title)}`);
+                const data = await response.json();
+                if (data.courses && data.courses.length > 0) {
+                    return data.courses[0]._id;
+                }
+                throw new Error('Không tìm thấy khóa học');
+            } catch (error) {
+                console.error('Error getting course:', error);
+                throw error;
+            }
+        }
+
+        async function getTeacherId(email) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users?search=${email}&role=teacher`);
+                const data = await response.json();
+                if (data.users && data.users.length > 0) {
+                    return data.users[0]._id;
+                }
+                throw new Error('Không tìm thấy giảng viên');
+            } catch (error) {
+                console.error('Error getting teacher:', error);
+                throw error;
+            }
+        }
+
+        function generateInviteCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        async function createClassroom(classroomKey) {
+            const classroom = classrooms[classroomKey];
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.textContent = 'Đang tạo...';
+            button.className = 'loading';
+
+            try {
+                // Get course and teacher IDs
+                const [courseId, teacherId] = await Promise.all([
+                    getCourseId(classroom.courseTitle),
+                    getTeacherId(classroom.teacherEmail)
+                ]);
+                
+                const classroomData = {
+                    name: classroom.name,
+                    description: classroom.description,
+                    status: classroom.status,
+                    maxStudents: classroom.maxStudents,
+                    inviteCode: generateInviteCode(),
+                    courseId: courseId,
+                    teacherId: teacherId,
+                    students: []
+                };
+
+                const response = await fetch(`${API_BASE}/api/classrooms`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                    },
+                    body: JSON.stringify(classroomData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(`✅ Tạo lớp học "${classroom.name}" thành công! Mã mời: ${classroomData.inviteCode}`, 'success');
+                    button.textContent = '✅ Đã tạo';
+                    button.style.background = '#4caf50';
+                } else {
+                    showStatus(`❌ Lỗi tạo lớp học "${classroom.name}": ${result.message}`, 'error');
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            } catch (error) {
+                showStatus(`❌ Lỗi kết nối: ${error.message}`, 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function createAllClassrooms() {
+            showStatus('🚀 Đang tạo tất cả lớp học...', 'loading');
+            
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const [classroomKey, classroom] of Object.entries(classrooms)) {
+                try {
+                    const [courseId, teacherId] = await Promise.all([
+                        getCourseId(classroom.courseTitle),
+                        getTeacherId(classroom.teacherEmail)
+                    ]);
+                    
+                    const classroomData = {
+                        name: classroom.name,
+                        description: classroom.description,
+                        status: classroom.status,
+                        maxStudents: classroom.maxStudents,
+                        inviteCode: generateInviteCode(),
+                        courseId: courseId,
+                        teacherId: teacherId,
+                        students: []
+                    };
+
+                    const response = await fetch(`${API_BASE}/api/classrooms`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                        },
+                        body: JSON.stringify(classroomData)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                        console.log(`✅ Created ${classroom.name}`);
+                    } else {
+                        errorCount++;
+                        console.log(`❌ Failed to create ${classroom.name}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.log(`❌ Error creating ${classroom.name}:`, error);
+                }
+            }
+
+            showStatus(`🎉 Hoàn thành! Tạo thành công: ${successCount}, Lỗi: ${errorCount}`, 
+                      errorCount === 0 ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>

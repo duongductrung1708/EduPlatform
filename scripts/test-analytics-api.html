@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Analytics API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background-color: #0056b3; }
+        .button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .data-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Analytics API với Dữ liệu Thực</h1>
+    
+    <div class="container">
+        <h2>🔐 Authentication</h2>
+        <input type="text" id="email" placeholder="Email" value="admin@example.com" style="padding: 8px; margin: 5px; width: 200px;">
+        <input type="password" id="password" placeholder="Password" value="password123" style="padding: 8px; margin: 5px; width: 200px;">
+        <button id="loginBtn" class="button">Login</button>
+        <div id="authStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Analytics Data</h2>
+        <button id="testAnalytics" class="button" disabled>Test Analytics API</button>
+        <button id="testDashboard" class="button" disabled>Test Dashboard Stats</button>
+        <button id="testUsers" class="button" disabled>Test Users API</button>
+        <button id="testCourses" class="button" disabled>Test Courses API</button>
+        <button id="testClassrooms" class="button" disabled>Test Classrooms API</button>
+        
+        <div id="analyticsResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>📈 Real-time Statistics</h2>
+        <div id="statsDisplay" class="stats-grid"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const baseURL = 'http://localhost:3000/api';
+
+        // DOM elements
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const authStatus = document.getElementById('authStatus');
+        const testAnalytics = document.getElementById('testAnalytics');
+        const testDashboard = document.getElementById('testDashboard');
+        const testUsers = document.getElementById('testUsers');
+        const testCourses = document.getElementById('testCourses');
+        const testClassrooms = document.getElementById('testClassrooms');
+        const analyticsResults = document.getElementById('analyticsResults');
+        const statsDisplay = document.getElementById('statsDisplay');
+
+        // Login function
+        async function login() {
+            try {
+                const response = await fetch(`${baseURL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: emailInput.value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.accessToken;
+                    authStatus.innerHTML = '<div class="success">✅ Login thành công!</div>';
+                    testAnalytics.disabled = false;
+                    testDashboard.disabled = false;
+                    testUsers.disabled = false;
+                    testCourses.disabled = false;
+                    testClassrooms.disabled = false;
+                } else {
+                    authStatus.innerHTML = `<div class="error">❌ Login thất bại: ${data.message}</div>`;
+                }
+            } catch (error) {
+                authStatus.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Analytics API
+        async function testAnalyticsAPI() {
+            try {
+                const response = await fetch(`${baseURL}/admin/analytics`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    analyticsResults.innerHTML = `
+                        <div class="success">✅ Analytics API thành công!</div>
+                        <div class="data-display">
+                            <h3>User Growth Data:</h3>
+                            <pre>${JSON.stringify(data.userGrowth, null, 2)}</pre>
+                            
+                            <h3>Course Performance:</h3>
+                            <pre>${JSON.stringify(data.coursePerformance, null, 2)}</pre>
+                            
+                            <h3>Classroom Activity:</h3>
+                            <pre>${JSON.stringify(data.classroomActivity, null, 2)}</pre>
+                            
+                            <h3>System Metrics:</h3>
+                            <pre>${JSON.stringify(data.systemMetrics, null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Display stats
+                    displayStats(data);
+                } else {
+                    analyticsResults.innerHTML = `<div class="error">❌ Analytics API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                analyticsResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Dashboard Stats API
+        async function testDashboardAPI() {
+            try {
+                const response = await fetch(`${baseURL}/admin/dashboard/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    analyticsResults.innerHTML = `
+                        <div class="success">✅ Dashboard Stats API thành công!</div>
+                        <div class="data-display">
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    analyticsResults.innerHTML = `<div class="error">❌ Dashboard Stats API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                analyticsResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Users API
+        async function testUsersAPI() {
+            try {
+                const response = await fetch(`${baseURL}/admin/users?page=1&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    analyticsResults.innerHTML = `
+                        <div class="success">✅ Users API thành công!</div>
+                        <div class="data-display">
+                            <h3>Users Data (${data.pagination.total} total):</h3>
+                            <pre>${JSON.stringify(data.users, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    analyticsResults.innerHTML = `<div class="error">❌ Users API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                analyticsResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Courses API
+        async function testCoursesAPI() {
+            try {
+                const response = await fetch(`${baseURL}/admin/courses?page=1&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    analyticsResults.innerHTML = `
+                        <div class="success">✅ Courses API thành công!</div>
+                        <div class="data-display">
+                            <h3>Courses Data (${data.pagination.total} total):</h3>
+                            <pre>${JSON.stringify(data.courses, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    analyticsResults.innerHTML = `<div class="error">❌ Courses API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                analyticsResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Classrooms API
+        async function testClassroomsAPI() {
+            try {
+                const response = await fetch(`${baseURL}/admin/classrooms?page=1&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    analyticsResults.innerHTML = `
+                        <div class="success">✅ Classrooms API thành công!</div>
+                        <div class="data-display">
+                            <h3>Classrooms Data (${data.pagination.total} total):</h3>
+                            <pre>${JSON.stringify(data.classrooms, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    analyticsResults.innerHTML = `<div class="error">❌ Classrooms API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                analyticsResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Display statistics
+        function displayStats(data) {
+            const stats = [
+                { label: 'Total Users', value: data.systemMetrics?.dailyActiveUsers || 0 },
+                { label: 'Weekly Active', value: data.systemMetrics?.weeklyActiveUsers || 0 },
+                { label: 'User Growth', value: data.userGrowth?.length || 0 },
+                { label: 'Top Courses', value: data.coursePerformance?.length || 0 },
+                { label: 'Active Classrooms', value: data.classroomActivity?.length || 0 },
+                { label: 'System Uptime', value: data.systemMetrics?.systemHealth?.uptime || 'N/A' }
+            ];
+
+            statsDisplay.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-number">${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // Event listeners
+        loginBtn.addEventListener('click', login);
+        testAnalytics.addEventListener('click', testAnalyticsAPI);
+        testDashboard.addEventListener('click', testDashboardAPI);
+        testUsers.addEventListener('click', testUsersAPI);
+        testCourses.addEventListener('click', testCoursesAPI);
+        testClassrooms.addEventListener('click', testClassroomsAPI);
+
+        // Initial message
+        analyticsResults.innerHTML = '<div class="success">🚀 Sẵn sàng test API với dữ liệu thực từ database!</div>';
+    </script>
+</body>
+</html>

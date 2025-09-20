@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Khóa Học Mẫu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            text-align: center;
+        }
+        .course-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .course-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .course-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .course-info span {
+            background: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .loading {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Tạo Khóa Học Mẫu - EduPlatform</h1>
+        
+        <div id="status"></div>
+        
+        <div class="course-card">
+            <h3>🎯 Lập Trình JavaScript Cơ Bản</h3>
+            <div class="course-info">
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> published</span>
+                <span><strong>Danh mục:</strong> Programming</span>
+                <span><strong>Cấp độ:</strong> Beginner</span>
+            </div>
+            <button onclick="createCourse('js-basic')">Tạo Khóa Học</button>
+        </div>
+
+        <div class="course-card">
+            <h3>⚛️ React.js Nâng Cao</h3>
+            <div class="course-info">
+                <span><strong>Giảng viên:</strong> teacher2@example.com</span>
+                <span><strong>Trạng thái:</strong> published</span>
+                <span><strong>Danh mục:</strong> Web Development</span>
+                <span><strong>Cấp độ:</strong> Advanced</span>
+            </div>
+            <button onclick="createCourse('react-advanced')">Tạo Khóa Học</button>
+        </div>
+
+        <div class="course-card">
+            <h3>🎨 Thiết Kế UI/UX</h3>
+            <div class="course-info">
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> draft</span>
+                <span><strong>Danh mục:</strong> Design</span>
+                <span><strong>Cấp độ:</strong> Intermediate</span>
+            </div>
+            <button onclick="createCourse('ui-ux')">Tạo Khóa Học</button>
+        </div>
+
+        <div class="course-card">
+            <h3>🗄️ Cơ Sở Dữ Liệu MySQL</h3>
+            <div class="course-info">
+                <span><strong>Giảng viên:</strong> teacher2@example.com</span>
+                <span><strong>Trạng thái:</strong> published</span>
+                <span><strong>Danh mục:</strong> Database</span>
+                <span><strong>Cấp độ:</strong> Beginner</span>
+            </div>
+            <button onclick="createCourse('mysql')">Tạo Khóa Học</button>
+        </div>
+
+        <div class="course-card">
+            <h3>🚀 DevOps với Docker</h3>
+            <div class="course-info">
+                <span><strong>Giảng viên:</strong> teacher1@example.com</span>
+                <span><strong>Trạng thái:</strong> draft</span>
+                <span><strong>Danh mục:</strong> DevOps</span>
+                <span><strong>Cấp độ:</strong> Advanced</span>
+            </div>
+            <button onclick="createCourse('docker')">Tạo Khóa Học</button>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="createAllCourses()" style="background: #4caf50; font-size: 16px; padding: 15px 30px;">
+                🚀 Tạo Tất Cả Khóa Học
+            </button>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+            <h3>📋 Hướng dẫn sử dụng:</h3>
+            <ol>
+                <li>Đảm bảo backend đang chạy trên <code>http://localhost:3000</code></li>
+                <li>Đảm bảo đã có tài khoản teacher (teacher1@example.com, teacher2@example.com)</li>
+                <li>Click "Tạo Khóa Học" cho từng course hoặc "Tạo Tất Cả Khóa Học"</li>
+                <li>Sau khi tạo xong, vào Admin Dashboard → Courses để xem</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        
+        const courses = {
+            'js-basic': {
+                title: 'Lập Trình JavaScript Cơ Bản',
+                description: 'Khóa học JavaScript từ cơ bản đến nâng cao, phù hợp cho người mới bắt đầu. Học cách sử dụng JavaScript để tạo ra các ứng dụng web tương tác.',
+                status: 'published',
+                category: 'Programming',
+                level: 'Beginner',
+                duration: 40,
+                price: 299000,
+                instructorEmail: 'teacher1@example.com'
+            },
+            'react-advanced': {
+                title: 'React.js Nâng Cao',
+                description: 'Khóa học React.js nâng cao, học các kỹ thuật tối ưu hóa, state management, và xây dựng ứng dụng React phức tạp.',
+                status: 'published',
+                category: 'Web Development',
+                level: 'Advanced',
+                duration: 60,
+                price: 599000,
+                instructorEmail: 'teacher2@example.com'
+            },
+            'ui-ux': {
+                title: 'Thiết Kế UI/UX',
+                description: 'Khóa học thiết kế giao diện người dùng và trải nghiệm người dùng. Học các nguyên tắc thiết kế, công cụ và quy trình thiết kế.',
+                status: 'draft',
+                category: 'Design',
+                level: 'Intermediate',
+                duration: 50,
+                price: 399000,
+                instructorEmail: 'teacher1@example.com'
+            },
+            'mysql': {
+                title: 'Cơ Sở Dữ Liệu MySQL',
+                description: 'Khóa học MySQL từ cơ bản, học cách thiết kế database, viết query, và tối ưu hóa hiệu suất.',
+                status: 'published',
+                category: 'Database',
+                level: 'Beginner',
+                duration: 35,
+                price: 249000,
+                instructorEmail: 'teacher2@example.com'
+            },
+            'docker': {
+                title: 'DevOps với Docker',
+                description: 'Khóa học Docker và containerization, học cách triển khai ứng dụng với Docker, Docker Compose và các công cụ DevOps.',
+                status: 'draft',
+                category: 'DevOps',
+                level: 'Advanced',
+                duration: 45,
+                price: 499000,
+                instructorEmail: 'teacher1@example.com'
+            }
+        };
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        async function getInstructorId(email) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users?search=${email}&role=teacher`);
+                const data = await response.json();
+                if (data.users && data.users.length > 0) {
+                    return data.users[0]._id;
+                }
+                throw new Error('Không tìm thấy giảng viên');
+            } catch (error) {
+                console.error('Error getting instructor:', error);
+                throw error;
+            }
+        }
+
+        async function createCourse(courseKey) {
+            const course = courses[courseKey];
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.textContent = 'Đang tạo...';
+            button.className = 'loading';
+
+            try {
+                // Get instructor ID
+                const instructorId = await getInstructorId(course.instructorEmail);
+                
+                const courseData = {
+                    ...course,
+                    instructorId: instructorId
+                };
+                delete courseData.instructorEmail;
+
+                const response = await fetch(`${API_BASE}/api/courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                    },
+                    body: JSON.stringify(courseData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(`✅ Tạo khóa học "${course.title}" thành công!`, 'success');
+                    button.textContent = '✅ Đã tạo';
+                    button.style.background = '#4caf50';
+                } else {
+                    showStatus(`❌ Lỗi tạo khóa học "${course.title}": ${result.message}`, 'error');
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            } catch (error) {
+                showStatus(`❌ Lỗi kết nối: ${error.message}`, 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function createAllCourses() {
+            showStatus('🚀 Đang tạo tất cả khóa học...', 'loading');
+            
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const [courseKey, course] of Object.entries(courses)) {
+                try {
+                    const instructorId = await getInstructorId(course.instructorEmail);
+                    
+                    const courseData = {
+                        ...course,
+                        instructorId: instructorId
+                    };
+                    delete courseData.instructorEmail;
+
+                    const response = await fetch(`${API_BASE}/api/courses`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                        },
+                        body: JSON.stringify(courseData)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                        console.log(`✅ Created ${course.title}`);
+                    } else {
+                        errorCount++;
+                        console.log(`❌ Failed to create ${course.title}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.log(`❌ Error creating ${course.title}:`, error);
+                }
+            }
+
+            showStatus(`🎉 Hoàn thành! Tạo thành công: ${successCount}, Lỗi: ${errorCount}`, 
+                      errorCount === 0 ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>

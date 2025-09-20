@@ -1,0 +1,16 @@
+{
+  "users": [
+    {"email":"admin@edu.local","name":"Site Admin","role":"admin","password":"Password123!"},
+    {"email":"alice@teacher.local","name":"Alice Teacher","role":"teacher","password":"Password123!"},
+    {"email":"thuy@teacher.local","name":"Thuy Teacher","role":"teacher","password":"Password123!"},
+    {"email":"john@student.local","name":"John Student","role":"student","password":"Password123!"},
+    {"email":"jane@student.local","name":"Jane Student","role":"student","password":"Password123!"},
+    {"email":"mom@parent.local","name":"Mom Parent","role":"parent","password":"Password123!"}
+  ],
+  "courses": [
+    {"title":"Tiếng Việt lớp 1","slug":"tieng-viet-1","description":"Khóa học Tiếng Việt cho lớp 1","createdBy":"alice@teacher.local"}
+  ],
+  "classes": [
+    {"title":"TV1 - Sáng","courseSlug":"tieng-viet-1","teacherEmails":["alice@teacher.local"], "inviteCode":"TV1-ABC"}
+  ]
+}

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Activity API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background-color: #0056b3; }
+        .button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .data-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .activity-item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+        }
+        .activity-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .type-user_registered { background-color: #d4edda; color: #155724; }
+        .type-course_created { background-color: #d1ecf1; color: #0c5460; }
+        .type-classroom_joined { background-color: #fff3cd; color: #856404; }
+        .type-assignment_submitted { background-color: #f8d7da; color: #721c24; }
+        .activity-description {
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .activity-meta {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Activity API</h1>
+    
+    <div class="container">
+        <h2>🔐 Authentication</h2>
+        <input type="text" id="email" placeholder="Email" value="admin@example.com" style="padding: 8px; margin: 5px; width: 200px;">
+        <input type="password" id="password" placeholder="Password" value="password123" style="padding: 8px; margin: 5px; width: 200px;">
+        <button id="loginBtn" class="button">Login</button>
+        <div id="authStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Activity API Tests</h2>
+        <button id="testActivity" class="button" disabled>Test Get Recent Activity</button>
+        <button id="testActivityLimit5" class="button" disabled>Test Activity (Limit 5)</button>
+        <button id="testActivityLimit20" class="button" disabled>Test Activity (Limit 20)</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>📈 Activity Data Analysis</h2>
+        <div id="activityAnalysis"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let activities = [];
+        const baseURL = 'http://localhost:3000/api';
+
+        // DOM elements
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const authStatus = document.getElementById('authStatus');
+        const testActivity = document.getElementById('testActivity');
+        const testActivityLimit5 = document.getElementById('testActivityLimit5');
+        const testActivityLimit20 = document.getElementById('testActivityLimit20');
+        const testResults = document.getElementById('testResults');
+        const activityAnalysis = document.getElementById('activityAnalysis');
+
+        // Login function
+        async function login() {
+            try {
+                const response = await fetch(`${baseURL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: emailInput.value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.accessToken;
+                    authStatus.innerHTML = '<div class="success">✅ Login thành công!</div>';
+                    testActivity.disabled = false;
+                    testActivityLimit5.disabled = false;
+                    testActivityLimit20.disabled = false;
+                } else {
+                    authStatus.innerHTML = `<div class="error">❌ Login thất bại: ${data.message}</div>`;
+                }
+            } catch (error) {
+                authStatus.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Get Recent Activity
+        async function testGetRecentActivity(limit = 10) {
+            try {
+                const response = await fetch(`${baseURL}/admin/dashboard/activity?limit=${limit}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    activities = data;
+                    testResults.innerHTML = `
+                        <div class="success">✅ Get Recent Activity API thành công! (Limit: ${limit})</div>
+                        <div class="data-display">
+                            <h3>Activities Data (${data.length} items):</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    analyzeActivities();
+                } else {
+                    testResults.innerHTML = `<div class="error">❌ Get Recent Activity API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                testResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Analyze activities data
+        function analyzeActivities() {
+            if (activities.length === 0) {
+                activityAnalysis.innerHTML = '<div class="warning">⚠️ Không có dữ liệu activity</div>';
+                return;
+            }
+
+            const analysis = {
+                totalActivities: activities.length,
+                typeCounts: {},
+                userCounts: {},
+                hasCreatedAt: 0,
+                missingCreatedAt: 0,
+                hasTimestamp: 0,
+                missingTimestamp: 0
+            };
+
+            activities.forEach(activity => {
+                // Type analysis
+                analysis.typeCounts[activity.type] = (analysis.typeCounts[activity.type] || 0) + 1;
+                
+                // User analysis
+                if (activity.user) {
+                    analysis.userCounts[activity.user] = (analysis.userCounts[activity.user] || 0) + 1;
+                }
+                
+                // CreatedAt analysis
+                if (activity.createdAt) {
+                    analysis.hasCreatedAt++;
+                } else {
+                    analysis.missingCreatedAt++;
+                }
+                
+                // Timestamp analysis
+                if (activity.timestamp) {
+                    analysis.hasTimestamp++;
+                } else {
+                    analysis.missingTimestamp++;
+                }
+            });
+
+            activityAnalysis.innerHTML = `
+                <div class="success">📊 Activity Data Analysis</div>
+                <div class="data-display">
+                    <h3>Summary:</h3>
+                    <p><strong>Total Activities:</strong> ${analysis.totalActivities}</p>
+                    <p><strong>Has CreatedAt:</strong> ${analysis.hasCreatedAt}</p>
+                    <p><strong>Missing CreatedAt:</strong> ${analysis.missingCreatedAt}</p>
+                    <p><strong>Has Timestamp:</strong> ${analysis.hasTimestamp}</p>
+                    <p><strong>Missing Timestamp:</strong> ${analysis.missingTimestamp}</p>
+                    
+                    <h3>Type Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.typeCounts, null, 2)}</pre>
+                    
+                    <h3>User Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.userCounts, null, 2)}</pre>
+                </div>
+                
+                <h3>Activity List:</h3>
+                ${activities.map(activity => `
+                    <div class="activity-item">
+                        <div>
+                            <span class="activity-type type-${activity.type}">${activity.type}</span>
+                            <span class="activity-meta">ID: ${activity.id}</span>
+                        </div>
+                        <div class="activity-description">${activity.description}</div>
+                        <div class="activity-meta">
+                            <strong>User:</strong> ${activity.user || 'Unknown'} | 
+                            <strong>Timestamp:</strong> ${activity.timestamp || 'N/A'} | 
+                            <strong>Created:</strong> ${activity.createdAt ? new Date(activity.createdAt).toLocaleString('vi-VN') : 'N/A'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Event listeners
+        loginBtn.addEventListener('click', login);
+        testActivity.addEventListener('click', () => testGetRecentActivity(10));
+        testActivityLimit5.addEventListener('click', () => testGetRecentActivity(5));
+        testActivityLimit20.addEventListener('click', () => testGetRecentActivity(20));
+
+        // Initial message
+        testResults.innerHTML = '<div class="info">🚀 Sẵn sàng test Activity API!</div>';
+    </script>
+</body>
+</html>

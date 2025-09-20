@@ -1,0 +1,176 @@
+{
+  "info": {
+    "name": "EduPlatform API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"name\": \"John\",\n  \"password\": \"Password123!\",\n  \"role\": \"student\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api","users","me"] }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api","users","me"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Updated\",\n  \"organization\": \"My School\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "item": [
+        {
+          "name": "List Courses",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/courses?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api","courses"], "query": [
+              { "key": "page", "value": "1" },
+              { "key": "limit", "value": "10" }
+            ]}
+          }
+        },
+        {
+          "name": "Create Course",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/courses", "host": ["{{baseUrl}}"], "path": ["api","courses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Math Grade 1\",\n  \"slug\": \"math-grade-1\",\n  \"description\": \"Basic math for grade 1 students\",\n  \"visibility\": \"public\",\n  \"tags\": [\"math\", \"grade-1\"]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Classrooms",
+      "item": [
+        {
+          "name": "List My Classrooms",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/classes", "host": ["{{baseUrl}}"], "path": ["api","classes"] }
+          }
+        },
+        {
+          "name": "Create Classroom",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/classes", "host": ["{{baseUrl}}"], "path": ["api","classes"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Math Class A\",\n  \"courseId\": \"{{courseId}}\",\n  \"startDate\": \"2024-01-01T00:00:00.000Z\",\n  \"endDate\": \"2024-12-31T23:59:59.000Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Join Classroom",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/classes/join", "host": ["{{baseUrl}}"], "path": ["api","classes","join"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteCode\": \"TV1-ABC\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/uploads/file", "host": ["{{baseUrl}}"], "path": ["api","uploads","file"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "courseId", "value": "" }
+  ]
+}

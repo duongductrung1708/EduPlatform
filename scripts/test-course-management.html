@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Course Management API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background-color: #0056b3; }
+        .button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .data-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .course-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+        }
+        .course-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .course-meta {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-published { background-color: #d4edda; color: #155724; }
+        .status-draft { background-color: #fff3cd; color: #856404; }
+        .status-archived { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Course Management API</h1>
+    
+    <div class="container">
+        <h2>🔐 Authentication</h2>
+        <input type="text" id="email" placeholder="Email" value="admin@example.com" style="padding: 8px; margin: 5px; width: 200px;">
+        <input type="password" id="password" placeholder="Password" value="password123" style="padding: 8px; margin: 5px; width: 200px;">
+        <button id="loginBtn" class="button">Login</button>
+        <div id="authStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>📚 Course Management Tests</h2>
+        <button id="testCourses" class="button" disabled>Test Get All Courses</button>
+        <button id="testCourseStatus" class="button" disabled>Test Update Course Status</button>
+        <button id="testCourseSearch" class="button" disabled>Test Course Search</button>
+        <button id="testCourseFilter" class="button" disabled>Test Course Filter</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Course Data Analysis</h2>
+        <div id="courseAnalysis"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let courses = [];
+        const baseURL = 'http://localhost:3000/api';
+
+        // DOM elements
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const authStatus = document.getElementById('authStatus');
+        const testCourses = document.getElementById('testCourses');
+        const testCourseStatus = document.getElementById('testCourseStatus');
+        const testCourseSearch = document.getElementById('testCourseSearch');
+        const testCourseFilter = document.getElementById('testCourseFilter');
+        const testResults = document.getElementById('testResults');
+        const courseAnalysis = document.getElementById('courseAnalysis');
+
+        // Login function
+        async function login() {
+            try {
+                const response = await fetch(`${baseURL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: emailInput.value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.accessToken;
+                    authStatus.innerHTML = '<div class="success">✅ Login thành công!</div>';
+                    testCourses.disabled = false;
+                    testCourseStatus.disabled = false;
+                    testCourseSearch.disabled = false;
+                    testCourseFilter.disabled = false;
+                } else {
+                    authStatus.innerHTML = `<div class="error">❌ Login thất bại: ${data.message}</div>`;
+                }
+            } catch (error) {
+                authStatus.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Get All Courses
+        async function testGetAllCourses() {
+            try {
+                const response = await fetch(`${baseURL}/admin/courses?page=1&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    courses = data.courses;
+                    testResults.innerHTML = `
+                        <div class="success">✅ Get All Courses API thành công!</div>
+                        <div class="data-display">
+                            <h3>Courses Data (${data.pagination.total} total):</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    analyzeCourses();
+                } else {
+                    testResults.innerHTML = `<div class="error">❌ Get All Courses API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                testResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Update Course Status
+        async function testUpdateCourseStatus() {
+            if (courses.length === 0) {
+                testResults.innerHTML = '<div class="warning">⚠️ Vui lòng load courses trước</div>';
+                return;
+            }
+
+            const course = courses[0];
+            const newStatus = course.status === 'published' ? 'draft' : 'published';
+
+            try {
+                const response = await fetch(`${baseURL}/admin/courses/${course._id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testResults.innerHTML = `
+                        <div class="success">✅ Update Course Status API thành công!</div>
+                        <div class="data-display">
+                            <h3>Updated Course:</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    // Refresh courses
+                    testGetAllCourses();
+                } else {
+                    testResults.innerHTML = `<div class="error">❌ Update Course Status API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                testResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Course Search
+        async function testCourseSearch() {
+            try {
+                const response = await fetch(`${baseURL}/admin/courses?page=1&limit=10&search=toán`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testResults.innerHTML = `
+                        <div class="success">✅ Course Search API thành công!</div>
+                        <div class="data-display">
+                            <h3>Search Results for "toán" (${data.pagination.total} found):</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    testResults.innerHTML = `<div class="error">❌ Course Search API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                testResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Test Course Filter
+        async function testCourseFilter() {
+            try {
+                const response = await fetch(`${baseURL}/admin/courses?page=1&limit=10&status=published`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testResults.innerHTML = `
+                        <div class="success">✅ Course Filter API thành công!</div>
+                        <div class="data-display">
+                            <h3>Filtered Results (status=published) (${data.pagination.total} found):</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    testResults.innerHTML = `<div class="error">❌ Course Filter API lỗi: ${data.message}</div>`;
+                }
+            } catch (error) {
+                testResults.innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        // Analyze courses data
+        function analyzeCourses() {
+            if (courses.length === 0) return;
+
+            const analysis = {
+                totalCourses: courses.length,
+                statusCounts: {},
+                categoryCounts: {},
+                levelCounts: {},
+                instructorCounts: {},
+                hasCreatedBy: 0,
+                missingCreatedBy: 0
+            };
+
+            courses.forEach(course => {
+                // Status analysis
+                analysis.statusCounts[course.status] = (analysis.statusCounts[course.status] || 0) + 1;
+                
+                // Category analysis
+                if (course.category) {
+                    analysis.categoryCounts[course.category] = (analysis.categoryCounts[course.category] || 0) + 1;
+                }
+                
+                // Level analysis
+                if (course.level) {
+                    analysis.levelCounts[course.level] = (analysis.levelCounts[course.level] || 0) + 1;
+                }
+                
+                // Instructor analysis
+                if (course.createdBy && course.createdBy._id) {
+                    analysis.hasCreatedBy++;
+                    const instructorName = course.createdBy.name || 'Unknown';
+                    analysis.instructorCounts[instructorName] = (analysis.instructorCounts[instructorName] || 0) + 1;
+                } else {
+                    analysis.missingCreatedBy++;
+                }
+            });
+
+            courseAnalysis.innerHTML = `
+                <div class="success">📊 Course Data Analysis</div>
+                <div class="data-display">
+                    <h3>Summary:</h3>
+                    <p><strong>Total Courses:</strong> ${analysis.totalCourses}</p>
+                    <p><strong>Has CreatedBy:</strong> ${analysis.hasCreatedBy}</p>
+                    <p><strong>Missing CreatedBy:</strong> ${analysis.missingCreatedBy}</p>
+                    
+                    <h3>Status Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.statusCounts, null, 2)}</pre>
+                    
+                    <h3>Category Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.categoryCounts, null, 2)}</pre>
+                    
+                    <h3>Level Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.levelCounts, null, 2)}</pre>
+                    
+                    <h3>Instructor Distribution:</h3>
+                    <pre>${JSON.stringify(analysis.instructorCounts, null, 2)}</pre>
+                </div>
+                
+                <h3>Course List:</h3>
+                ${courses.map(course => `
+                    <div class="course-card">
+                        <div class="course-title">
+                            ${course.title}
+                            <span class="status-badge status-${course.status}">${course.status}</span>
+                        </div>
+                        <div class="course-meta">
+                            <strong>Category:</strong> ${course.category || 'N/A'} | 
+                            <strong>Level:</strong> ${course.level || 'N/A'} | 
+                            <strong>Instructor:</strong> ${course.createdBy?.name || 'Unknown'} (${course.createdBy?.email || 'No email'})
+                        </div>
+                        <div class="course-meta">
+                            <strong>Created:</strong> ${new Date(course.createdAt).toLocaleDateString('vi-VN')} | 
+                            <strong>Updated:</strong> ${new Date(course.updatedAt).toLocaleDateString('vi-VN')}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Event listeners
+        loginBtn.addEventListener('click', login);
+        testCourses.addEventListener('click', testGetAllCourses);
+        testCourseStatus.addEventListener('click', testUpdateCourseStatus);
+        testCourseSearch.addEventListener('click', testCourseSearch);
+        testCourseFilter.addEventListener('click', testCourseFilter);
+
+        // Initial message
+        testResults.innerHTML = '<div class="info">🚀 Sẵn sàng test Course Management API!</div>';
+    </script>
+</body>
+</html>

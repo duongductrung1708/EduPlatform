@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentication Error Messages</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background-color: #0056b3; }
+        .button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .test-case {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .test-description {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .error-details {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Authentication Error Messages</h1>
+    
+    <div class="container">
+        <h2>📋 Test Cases</h2>
+        <p>Test các thông báo lỗi chi tiết cho authentication</p>
+    </div>
+
+    <!-- Login Tests -->
+    <div class="container">
+        <h2>🔐 Login Error Tests</h2>
+        
+        <div class="test-case">
+            <div class="test-title">Test 1: Email không tồn tại</div>
+            <div class="test-description">Thử đăng nhập với email không có trong hệ thống</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail1" value="nonexistent@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword1" value="password123">
+            </div>
+            <button class="button" onclick="testLogin('loginEmail1', 'loginPassword1', 'loginResult1')">Test Login</button>
+            <div id="loginResult1"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 2: Mật khẩu sai</div>
+            <div class="test-description">Thử đăng nhập với mật khẩu không đúng</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail2" value="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword2" value="wrongpassword">
+            </div>
+            <button class="button" onclick="testLogin('loginEmail2', 'loginPassword2', 'loginResult2')">Test Login</button>
+            <div id="loginResult2"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 3: Email không đúng định dạng</div>
+            <div class="test-description">Thử đăng nhập với email không hợp lệ</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail3" value="invalid-email">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword3" value="password123">
+            </div>
+            <button class="button" onclick="testLogin('loginEmail3', 'loginPassword3', 'loginResult3')">Test Login</button>
+            <div id="loginResult3"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 4: Email trống</div>
+            <div class="test-description">Thử đăng nhập với email để trống</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail4" value="">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword4" value="password123">
+            </div>
+            <button class="button" onclick="testLogin('loginEmail4', 'loginPassword4', 'loginResult4')">Test Login</button>
+            <div id="loginResult4"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 5: Mật khẩu trống</div>
+            <div class="test-description">Thử đăng nhập với mật khẩu để trống</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail5" value="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword5" value="">
+            </div>
+            <button class="button" onclick="testLogin('loginEmail5', 'loginPassword5', 'loginResult5')">Test Login</button>
+            <div id="loginResult5"></div>
+        </div>
+    </div>
+
+    <!-- Register Tests -->
+    <div class="container">
+        <h2>📝 Register Error Tests</h2>
+        
+        <div class="test-case">
+            <div class="test-title">Test 6: Email đã tồn tại</div>
+            <div class="test-description">Thử đăng ký với email đã có trong hệ thống</div>
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="regName1" value="Test User">
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="regEmail1" value="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="regPassword1" value="password123">
+            </div>
+            <div class="form-group">
+                <label>Role:</label>
+                <select id="regRole1">
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="parent">Parent</option>
+                </select>
+            </div>
+            <button class="button" onclick="testRegister('regName1', 'regEmail1', 'regPassword1', 'regRole1', 'regResult1')">Test Register</button>
+            <div id="regResult1"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 7: Mật khẩu quá ngắn</div>
+            <div class="test-description">Thử đăng ký với mật khẩu dưới 8 ký tự</div>
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="regName2" value="Test User">
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="regEmail2" value="newuser@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="regPassword2" value="123">
+            </div>
+            <div class="form-group">
+                <label>Role:</label>
+                <select id="regRole2">
+                    <option value="student">Student</option>
+                </select>
+            </div>
+            <button class="button" onclick="testRegister('regName2', 'regEmail2', 'regPassword2', 'regRole2', 'regResult2')">Test Register</button>
+            <div id="regResult2"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 8: Tên quá ngắn</div>
+            <div class="test-description">Thử đăng ký với tên dưới 2 ký tự</div>
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="regName3" value="A">
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="regEmail3" value="newuser2@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="regPassword3" value="password123">
+            </div>
+            <div class="form-group">
+                <label>Role:</label>
+                <select id="regRole3">
+                    <option value="student">Student</option>
+                </select>
+            </div>
+            <button class="button" onclick="testRegister('regName3', 'regEmail3', 'regPassword3', 'regRole3', 'regResult3')">Test Register</button>
+            <div id="regResult3"></div>
+        </div>
+
+        <div class="test-case">
+            <div class="test-title">Test 9: Email không đúng định dạng</div>
+            <div class="test-description">Thử đăng ký với email không hợp lệ</div>
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="regName4" value="Test User">
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="regEmail4" value="invalid-email-format">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="regPassword4" value="password123">
+            </div>
+            <div class="form-group">
+                <label>Role:</label>
+                <select id="regRole4">
+                    <option value="student">Student</option>
+                </select>
+            </div>
+            <button class="button" onclick="testRegister('regName4', 'regEmail4', 'regPassword4', 'regRole4', 'regResult4')">Test Register</button>
+            <div id="regResult4"></div>
+        </div>
+    </div>
+
+    <!-- Success Test -->
+    <div class="container">
+        <h2>✅ Success Test</h2>
+        
+        <div class="test-case">
+            <div class="test-title">Test 10: Đăng nhập thành công</div>
+            <div class="test-description">Thử đăng nhập với thông tin đúng</div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmailSuccess" value="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPasswordSuccess" value="password123">
+            </div>
+            <button class="button" onclick="testLogin('loginEmailSuccess', 'loginPasswordSuccess', 'loginResultSuccess')">Test Login</button>
+            <div id="loginResultSuccess"></div>
+        </div>
+    </div>
+
+    <script>
+        const baseURL = 'http://localhost:3000/api';
+
+        async function testLogin(emailId, passwordId, resultId) {
+            const email = document.getElementById(emailId).value;
+            const password = document.getElementById(passwordId).value;
+            const resultDiv = document.getElementById(resultId);
+
+            resultDiv.innerHTML = '<div class="info">Đang test...</div>';
+
+            try {
+                const response = await fetch(`${baseURL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Đăng nhập thành công!<br>
+                            <strong>User:</strong> ${data.user.name} (${data.user.email})<br>
+                            <strong>Role:</strong> ${data.user.role}<br>
+                            <strong>Token:</strong> ${data.accessToken.substring(0, 20)}...
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ Đăng nhập thất bại<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || 'Unknown error'}<br>
+                            <div class="error-details">
+                                ${JSON.stringify(data, null, 2)}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Lỗi kết nối<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testRegister(nameId, emailId, passwordId, roleId, resultId) {
+            const name = document.getElementById(nameId).value;
+            const email = document.getElementById(emailId).value;
+            const password = document.getElementById(passwordId).value;
+            const role = document.getElementById(roleId).value;
+            const resultDiv = document.getElementById(resultId);
+
+            resultDiv.innerHTML = '<div class="info">Đang test...</div>';
+
+            try {
+                const response = await fetch(`${baseURL}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, password, role })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Đăng ký thành công!<br>
+                            <strong>User:</strong> ${data.user.name} (${data.user.email})<br>
+                            <strong>Role:</strong> ${data.user.role}<br>
+                            <strong>Token:</strong> ${data.accessToken.substring(0, 20)}...
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ Đăng ký thất bại<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || 'Unknown error'}<br>
+                            <div class="error-details">
+                                ${JSON.stringify(data, null, 2)}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Lỗi kết nối<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Initial message
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Sẵn sàng test authentication error messages!');
+        });
+    </script>
+</body>
+</html>

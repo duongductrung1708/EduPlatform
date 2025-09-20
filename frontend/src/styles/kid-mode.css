@@ -1,0 +1,7 @@
+body.kid-mode {
+  font-size: 18px;
+}
+body.kid-mode button {
+  min-height: 56px;
+  border-radius: 16px;
+}
