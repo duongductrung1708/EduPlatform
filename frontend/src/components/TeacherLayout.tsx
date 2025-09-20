@@ -235,7 +235,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           '& .MuiDrawer-paper': { 
             width: drawerWidth, 
             boxSizing: 'border-box', 
-            borderRight: 0, 
             background: 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
             boxShadow: '2px 0 20px rgba(239, 91, 91, 0.1)',
             borderRight: '1px solid rgba(239, 91, 91, 0.1)'
