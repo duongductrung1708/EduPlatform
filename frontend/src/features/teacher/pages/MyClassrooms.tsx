@@ -11,6 +11,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { coursesApi } from '../../../api/courses';
 import { useSocket } from '../../../hooks/useSocket';
 import { useTheme } from '../../../contexts/ThemeContext';
+import Pagination from '../../../components/Pagination';
 
 export default function MyClassrooms() {
   const navigate = useNavigate();
@@ -19,9 +20,16 @@ export default function MyClassrooms() {
   const [items, setItems] = useState<ClassroomItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [open, setOpen] = useState<boolean>(false);
   const [title, setTitle] = useState<string>('');
   const [creating, setCreating] = useState<boolean>(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState<boolean>(false);
   const [manageLoading, setManageLoading] = useState<boolean>(false);
@@ -44,10 +52,19 @@ export default function MyClassrooms() {
     try {
       setLoading(true);
       setError(null);
-      const res = await classesApi.listMy(1, 24);
+      const res = await classesApi.listMy(currentPage, itemsPerPage);
       setItems(res.items);
+      setTotalItems(res.total || 0);
+      setTotalPages(Math.ceil((res.total || 0) / itemsPerPage));
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tải danh sách lớp');
+      // Handle 401 gracefully - user might not be authenticated
+      if (e.response?.status === 401) {
+        setItems([]);
+        setTotalItems(0);
+        setTotalPages(0);
+      } else {
+        setError(e?.response?.data?.message || 'Không thể tải danh sách lớp');
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +78,7 @@ export default function MyClassrooms() {
         setCourses(list.items || []);
       } catch {}
     })();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   // Real-time updates for classroom student changes
   useEffect(() => {
@@ -122,10 +139,13 @@ export default function MyClassrooms() {
   };
 
   const createClassWithCourse = async () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setDialogError('Vui lòng nhập tên lớp');
+      return;
+    }
     try {
       setCreating(true);
-      setError(null);
+      setDialogError(null);
       const payload: any = { title: title.trim() };
       if (selectedCourseId) payload.courseId = selectedCourseId;
       await classesApi.create(payload);
@@ -133,9 +153,10 @@ export default function MyClassrooms() {
       setOpen(false);
       setTitle('');
       setSelectedCourseId('');
+      setDialogError(null);
       fetchClasses();
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tạo lớp');
+      setDialogError(e?.response?.data?.message || 'Không thể tạo lớp');
     } finally {
       setCreating(false);
     }
@@ -501,6 +522,11 @@ export default function MyClassrooms() {
             Tạo lớp mới
           </DialogTitle>
           <DialogContent sx={{ p: 3 }}>
+            {dialogError && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDialogError(null)}>
+                {dialogError}
+              </Alert>
+            )}
             <TextField 
               autoFocus 
               margin="dense" 
@@ -524,7 +550,10 @@ export default function MyClassrooms() {
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
             <Button 
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                setDialogError(null);
+              }}
               sx={{
                 color: '#777777',
                 borderColor: '#AED6E6',
@@ -715,6 +744,20 @@ export default function MyClassrooms() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Pagination */}
+      {items.length > 0 && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemsPerPageOptions={[6, 12, 24, 48]}
+          disabled={loading}
+        />
+      )}
     </Box>
   );
 }

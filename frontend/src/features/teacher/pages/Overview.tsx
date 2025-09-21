@@ -41,7 +41,13 @@ export default function TeacherOverview() {
         const assignments = classrooms.reduce((sum, c: any) => sum + (c.assignmentsCount || 0), 0);
         setStats({ classrooms: classrooms.length, students, assignments });
         setRecentClasses(classrooms.slice(0, 5));
-      } catch {}
+      } catch (error: any) {
+        // Handle 401 gracefully - user might not be authenticated
+        if (error.response?.status === 401) {
+          setStats({ classrooms: 0, students: 0, assignments: 0 });
+          setRecentClasses([]);
+        }
+      }
     })();
   }, []);
 

@@ -34,6 +34,7 @@ import { courseInvitationsApi } from '../../../api/course-invitations';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ConfirmDialog from '../../../components/ConfirmDialog';
+import Pagination from '../../../components/Pagination';
 import BackButton from '../../../components/BackButton';
 import Breadcrumb from '../../../components/Breadcrumb';
 
@@ -57,10 +58,17 @@ export default function CourseStudents() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  
   // Add student dialog states
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
   const [studentEmail, setStudentEmail] = useState('');
   const [emailError, setEmailError] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [studentToRemove, setStudentToRemove] = useState<Student | null>(null);
   const [addingStudent, setAddingStudent] = useState(false);
@@ -69,7 +77,7 @@ export default function CourseStudents() {
     if (courseId) {
       loadCourseData();
     }
-  }, [courseId]);
+  }, [courseId, currentPage, itemsPerPage]);
 
   const loadCourseData = async () => {
     try {
@@ -89,24 +97,48 @@ export default function CourseStudents() {
       
       setCourse(courseRes);
       
+      // Debug: Log the enrollments response
+      console.log('📊 Enrollments response:', enrollmentsRes);
+      
       // Handle different response formats
       let students = [];
       if (Array.isArray(enrollmentsRes)) {
         // If enrollmentsRes is an array of enrollments
-        students = enrollmentsRes.map(enrollment => ({
-          _id: enrollment.student?._id || enrollment.studentId,
-          name: enrollment.student?.name || 'Chưa có tên',
-          email: enrollment.student?.email || 'Chưa có email',
-          role: 'student',
-          enrolledAt: enrollment.enrolledAt,
-          progress: enrollment.progress || 0
-        }));
+        students = enrollmentsRes.map(enrollment => {
+          console.log('📝 Processing enrollment:', enrollment);
+          
+          // Extract student data from different possible structures
+          const studentData = enrollment.student || enrollment.studentId || {};
+          const studentId = studentData._id || enrollment.studentId || enrollment._id;
+          const studentName = studentData.name || 'Chưa có tên';
+          const studentEmail = studentData.email || 'Chưa có email';
+          
+          console.log('👤 Extracted student data:', { studentId, studentName, studentEmail });
+          
+          return {
+            _id: studentId,
+            name: studentName,
+            email: studentEmail,
+            role: 'student',
+            enrolledAt: enrollment.enrolledAt,
+            progress: enrollment.progress || 0
+          };
+        });
       } else if (enrollmentsRes?.students) {
         // If enrollmentsRes has a students property
         students = enrollmentsRes.students;
       }
       
-      setStudents(students);
+      console.log('👥 Final students array:', students);
+      
+      // Apply pagination to students
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedStudents = students.slice(startIndex, endIndex);
+      
+      setStudents(paginatedStudents);
+      setTotalItems(students.length);
+      setTotalPages(Math.ceil(students.length / itemsPerPage));
     } catch (err) {
       console.error('Error loading course data:', err);
       setError('Không thể tải dữ liệu môn học');
@@ -117,18 +149,18 @@ export default function CourseStudents() {
 
   const handleAddStudent = async () => {
     if (!studentEmail.trim()) {
-      setError('Vui lòng nhập email học sinh');
+      setDialogError('Vui lòng nhập email học sinh');
       return;
     }
 
     if (emailError) {
-      setError('Email không hợp lệ. Vui lòng nhập email đúng định dạng.');
+      setDialogError('Email không hợp lệ. Vui lòng nhập email đúng định dạng.');
       return;
     }
 
     try {
       setAddingStudent(true);
-      setError(null);
+      setDialogError(null);
       
       // console.log('Sending invitation to student with email:', studentEmail, 'for course:', courseId);
       await courseInvitationsApi.createInvitation({
@@ -139,8 +171,11 @@ export default function CourseStudents() {
       setAddStudentDialogOpen(false);
       setStudentEmail('');
       setEmailError(false);
+      setDialogError(null);
       setSuccess('Lời mời đã được gửi thành công! Học sinh sẽ nhận được email và cần xác nhận để tham gia.');
-      loadCourseData();
+      
+      // Force refresh the student list
+      await loadCourseData();
     } catch (err: any) {
       console.error('Error adding student:', err);
       console.error('Error details:', {
@@ -160,7 +195,7 @@ export default function CourseStudents() {
         errorMessage = 'Học sinh đã có lời mời chờ xử lý hoặc đã tham gia môn học này rồi.';
       }
       
-      setError(errorMessage);
+      setDialogError(errorMessage);
     } finally {
       setAddingStudent(false);
     }
@@ -175,13 +210,19 @@ export default function CourseStudents() {
     if (!studentToRemove) return;
 
     try {
+      setLoading(true);
       await coursesApi.removeStudent(courseId!, studentToRemove._id);
       setConfirmDialogOpen(false);
       setStudentToRemove(null);
-      loadCourseData();
+      setSuccess('Đã xóa học sinh thành công');
+      
+      // Force refresh the student list
+      await loadCourseData();
     } catch (err: any) {
       console.error('Error removing student:', err);
       setError(err.response?.data?.message || 'Không thể xóa học sinh');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -335,7 +376,7 @@ export default function CourseStudents() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <EmailIcon fontSize="small" color="action" />
                           <Typography variant="body2">
-                            {student.email}
+                            {student.email || 'Chưa có email'}
                           </Typography>
                         </Box>
                       </TableCell>
@@ -391,6 +432,11 @@ export default function CourseStudents() {
             <Alert severity="info">
               Nhập email của học sinh để gửi lời mời tham gia môn học. Học sinh sẽ nhận được email và cần xác nhận để tham gia.
             </Alert>
+            {dialogError && (
+              <Alert severity="error" onClose={() => setDialogError(null)}>
+                {dialogError}
+              </Alert>
+            )}
             <TextField
               label="Email học sinh"
               type="email"
@@ -416,7 +462,7 @@ export default function CourseStudents() {
               setAddStudentDialogOpen(false);
               setStudentEmail('');
               setEmailError(false);
-              setError(null);
+              setDialogError(null);
             }} 
             disabled={addingStudent}
           >
@@ -450,6 +496,20 @@ export default function CourseStudents() {
         cancelText="Hủy"
         type="delete"
       />
+
+      {/* Pagination */}
+      {students.length > 0 && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemsPerPageOptions={[5, 10, 20, 50]}
+          disabled={loading}
+        />
+      )}
     </Box>
   );
 }

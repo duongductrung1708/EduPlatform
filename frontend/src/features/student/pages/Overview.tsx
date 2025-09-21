@@ -51,8 +51,18 @@ export default function StudentOverview() {
           notifications: 0 
         });
         setRecentClasses(classes.slice(0, 3));
-      } catch (error) {
-        console.error('Failed to load overview data:', error);
+      } catch (error: any) {
+        // Handle 401 gracefully - user might not be authenticated
+        if (error.response?.status === 401) {
+          setStats({ 
+            enrolledClasses: 0, 
+            pendingAssignments: 0,
+            notifications: 0 
+          });
+          setRecentClasses([]);
+        } else {
+          console.error('Failed to load overview data:', error);
+        }
       } finally {
         setLoading(false);
       }

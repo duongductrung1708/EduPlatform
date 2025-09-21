@@ -23,6 +23,7 @@ import { classesApi } from '../../../api/admin';
 import { useNavigate } from 'react-router-dom';
 import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton';
 import { useTheme } from '../../../contexts/ThemeContext';
+import Pagination from '../../../components/Pagination';
 
 export default function StudentClassrooms() {
   const navigate = useNavigate();
@@ -30,6 +31,12 @@ export default function StudentClassrooms() {
   const [loading, setLoading] = useState(true);
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     const loadClassrooms = async () => {
@@ -40,17 +47,26 @@ export default function StudentClassrooms() {
         // Simulate loading delay for better UX
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        const res = await classesApi.listMy(1, 50);
+        const res = await classesApi.listMy(currentPage, itemsPerPage);
         setClassrooms(res.items || []);
+        setTotalItems(res.total || 0);
+        setTotalPages(Math.ceil((res.total || 0) / itemsPerPage));
       } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải danh sách lớp học');
+        // Handle 401 gracefully - user might not be authenticated
+        if (e.response?.status === 401) {
+          setClassrooms([]);
+          setTotalItems(0);
+          setTotalPages(0);
+        } else {
+          setError(e?.response?.data?.message || 'Không thể tải danh sách lớp học');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadClassrooms();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   if (loading) {
     return (
@@ -283,6 +299,20 @@ export default function StudentClassrooms() {
             Tham gia lớp học
           </Button>
         </Paper>
+      )}
+
+      {/* Pagination */}
+      {classrooms.length > 0 && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemsPerPageOptions={[6, 12, 24, 48]}
+          disabled={loading}
+        />
       )}
     </Box>
   );

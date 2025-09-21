@@ -35,6 +35,7 @@ import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import ClassSelectionDialog from '../../../components/ClassSelectionDialog';
+import Pagination from '../../../components/Pagination';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -73,6 +74,12 @@ export default function StudentHome() {
   const [filteredPublicCourses, setFilteredPublicCourses] = useState<CourseItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   
+  // Pagination states for public courses
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('');
@@ -94,14 +101,17 @@ export default function StudentHome() {
         const enrolledRes = await coursesApi.getMyEnrolled();
         setEnrolledCourses(enrolledRes || []);
         
-        // Load public courses
-        const publicRes = await coursesApi.getPublic();
-        setPublicCourses(publicRes || []);
-        setFilteredPublicCourses(publicRes || []);
+        // Load public courses with pagination
+        const publicRes = await coursesApi.listPublic(currentPage, itemsPerPage);
+        setPublicCourses(publicRes.items || []);
+        setFilteredPublicCourses(publicRes.items || []);
+        setTotalItems(publicRes.total || 0);
+        setTotalPages(Math.ceil((publicRes.total || 0) / itemsPerPage));
         
-        // Extract unique subjects and levels
-        const subjects = [...new Set(publicRes?.map(course => course.category).filter(Boolean) || [])] as string[];
-        const levels = [...new Set(publicRes?.map(course => course.level).filter(Boolean) || [])] as string[];
+        // Extract unique subjects and levels from all courses (for filters)
+        const allCoursesRes = await coursesApi.getPublic();
+        const subjects = [...new Set(allCoursesRes?.map(course => course.category).filter(Boolean) || [])] as string[];
+        const levels = [...new Set(allCoursesRes?.map(course => course.level).filter(Boolean) || [])] as string[];
         setAvailableSubjects(subjects);
         setAvailableLevels(levels);
       } catch (e: any) {
@@ -112,7 +122,7 @@ export default function StudentHome() {
     };
 
     loadData();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   // Hiển thị dialog chọn lớp nếu học sinh chưa chọn đầy đủ
   useEffect(() => {
@@ -897,6 +907,20 @@ export default function StudentHome() {
           )}
         </TabPanel>
       </Paper>
+
+      {/* Pagination for Public Courses Tab */}
+      {tabValue === 1 && filteredPublicCourses.length > 0 && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemsPerPageOptions={[6, 12, 24, 48]}
+          disabled={loading}
+        />
+      )}
 
       {/* Class Selection Dialog */}
       <ClassSelectionDialog
