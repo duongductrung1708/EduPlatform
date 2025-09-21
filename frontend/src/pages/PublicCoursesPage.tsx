@@ -401,14 +401,14 @@ export default function PublicCoursesPage() {
                           <Stack direction="row" spacing={1} alignItems="center">
                             <PeopleIcon fontSize="small" color="action" />
                             <Typography variant="caption" color="text.secondary">
-                              {course.enrolledCount || 0} học viên
+                              {course.enrollmentCount || 0} học sinh
                             </Typography>
                           </Stack>
                           
                           <Stack direction="row" spacing={0.5} alignItems="center">
                             <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
                             <Typography variant="caption" color="text.secondary">
-                              {course.rating || 0}
+                              {course.averageRating || 0}
                             </Typography>
                           </Stack>
                         </Stack>

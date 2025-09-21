@@ -47,6 +47,11 @@ export default function MyClassrooms() {
   const [searchingStudent, setSearchingStudent] = useState<boolean>(false);
   const [addingStudent, setAddingStudent] = useState<boolean>(false);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
+  
+  // Delete classroom states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [classroomToDelete, setClassroomToDelete] = useState<ClassroomItem | null>(null);
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   const fetchClasses = async () => {
     try {
@@ -277,6 +282,34 @@ export default function MyClassrooms() {
     }
   };
 
+  // Delete classroom functions
+  const openDeleteDialog = (classroom: ClassroomItem) => {
+    setClassroomToDelete(classroom);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteClassroom = async () => {
+    if (!classroomToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await classesApi.delete(classroomToDelete._id);
+      setSuccess('Đã xóa lớp học thành công');
+      setDeleteDialogOpen(false);
+      setClassroomToDelete(null);
+      fetchClasses(); // Refresh the list
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Không thể xóa lớp học');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const cancelDeleteClassroom = () => {
+    setDeleteDialogOpen(false);
+    setClassroomToDelete(null);
+  };
+
   return (
     <Box>
         <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 4 }}>
@@ -497,6 +530,27 @@ export default function MyClassrooms() {
                     }}
                   >
                     Sao chép
+                  </Button>
+                  <Button 
+                    size="small" 
+                    variant="outlined"
+                    startIcon={<DeleteIcon />} 
+                    onClick={() => openDeleteDialog(c)}
+                    sx={{ 
+                      minWidth: 'auto', 
+                      px: 2,
+                      py: 1,
+                      borderRadius: 2,
+                      borderColor: '#FF6B6B',
+                      color: '#FF6B6B',
+                      '&:hover': {
+                        borderColor: '#FF5252',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        color: '#FF5252'
+                      }
+                    }}
+                  >
+                    Xóa
                   </Button>
                 </Box>
               </Box>
@@ -741,6 +795,64 @@ export default function MyClassrooms() {
             onClick={addStudent}
           >
             {addingStudent ? 'Đang thêm...' : 'Thêm học sinh'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Classroom Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={cancelDeleteClassroom} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          color: '#FF6B6B',
+          fontWeight: 'bold'
+        }}>
+          <DeleteIcon />
+          Xác nhận xóa lớp học
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Bạn có chắc chắn muốn xóa lớp học <strong>"{classroomToDelete?.title || classroomToDelete?.name}"</strong>?
+          </Typography>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến lớp học này sẽ bị xóa vĩnh viễn, bao gồm:
+            </Typography>
+            <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+              <li>Danh sách học sinh trong lớp</li>
+              <li>Bài giảng và nội dung học tập</li>
+              <li>Bài tập và bài nộp</li>
+              <li>Điểm số và tiến độ học tập</li>
+              <li>Tất cả dữ liệu khác liên quan</li>
+            </ul>
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Vui lòng nhập tên lớp học để xác nhận: <strong>{classroomToDelete?.title || classroomToDelete?.name}</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={cancelDeleteClassroom}
+            variant="outlined"
+            disabled={deleting}
+          >
+            Hủy
+          </Button>
+          <Button 
+            onClick={confirmDeleteClassroom}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+            disabled={deleting}
+            sx={{
+              background: 'linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #FF5252 0%, #F44336 100%)',
+              }
+            }}
+          >
+            {deleting ? 'Đang xóa...' : 'Xóa lớp học'}
           </Button>
         </DialogActions>
       </Dialog>
