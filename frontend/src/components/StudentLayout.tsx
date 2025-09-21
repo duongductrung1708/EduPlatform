@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import Logo from './Logo';
 import { useNavigate, useLocation } from 'react-router-dom';
+import VirtualAssistant from './VirtualAssistant';
 
 const drawerWidth = 260;
 
@@ -243,6 +244,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </Drawer>
       </Box>
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, mt: 8, bgcolor: theme.palette.background.default }}>{children}</Box>
+      
+      {/* Virtual Assistant */}
+      <VirtualAssistant />
     </Box>
   );
 }

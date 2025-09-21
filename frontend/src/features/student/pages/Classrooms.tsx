@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton';
 import { useTheme } from '../../../contexts/ThemeContext';
 import Pagination from '../../../components/Pagination';
+import SearchFilterBar from '../../../components/SearchFilterBar';
 
 export default function StudentClassrooms() {
   const navigate = useNavigate();
@@ -37,6 +38,8 @@ export default function StudentClassrooms() {
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('');
 
   useEffect(() => {
     const loadClassrooms = async () => {
@@ -67,6 +70,57 @@ export default function StudentClassrooms() {
 
     loadClassrooms();
   }, [currentPage, itemsPerPage]);
+
+  // Search and filter handlers
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleFilterChange = (filterKey: string, value: string) => {
+    // Add filter logic here if needed
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+  };
+
+  const handleClearAll = () => {
+    setSearchTerm('');
+    setSortBy('');
+  };
+
+  // Filter and sort classrooms
+  const filteredAndSortedClassrooms = classrooms
+    .filter(classroom => {
+      // Search filter
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const titleMatch = (classroom.title || classroom.name || '').toLowerCase().includes(searchLower);
+        const courseMatch = (classroom.courseId?.title || '').toLowerCase().includes(searchLower);
+        if (!titleMatch && !courseMatch) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (!sortBy) return 0;
+
+      switch (sortBy) {
+        case 'name-asc':
+          return ((a.title || a.name || '').localeCompare(b.title || b.name || ''));
+        case 'name-desc':
+          return ((b.title || b.name || '').localeCompare(a.title || a.name || ''));
+        case 'students-asc':
+          return ((a.studentsCount || 0) - (b.studentsCount || 0));
+        case 'students-desc':
+          return ((b.studentsCount || 0) - (a.studentsCount || 0));
+        case 'joined-asc':
+          return new Date(a.joinedAt || 0).getTime() - new Date(b.joinedAt || 0).getTime();
+        case 'joined-desc':
+          return new Date(b.joinedAt || 0).getTime() - new Date(a.joinedAt || 0).getTime();
+        default:
+          return 0;
+      }
+    });
 
   if (loading) {
     return (
@@ -178,8 +232,28 @@ export default function StudentClassrooms() {
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, textAlign: 'center' }}>
             Danh sách lớp học
           </Typography>
+
+          {/* Search and Filter Bar */}
+          <SearchFilterBar
+            searchValue={searchTerm}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder="Tìm kiếm lớp học..."
+            sortOptions={[
+              { value: 'name-asc', label: 'Tên A-Z' },
+              { value: 'name-desc', label: 'Tên Z-A' },
+              { value: 'students-asc', label: 'Số học sinh ít nhất' },
+              { value: 'students-desc', label: 'Số học sinh nhiều nhất' },
+              { value: 'joined-asc', label: 'Tham gia cũ nhất' },
+              { value: 'joined-desc', label: 'Tham gia mới nhất' }
+            ]}
+            sortValue={sortBy}
+            onSortChange={handleSortChange}
+            onClearAll={handleClearAll}
+            sx={{ mb: 3 }}
+          />
+
           <Grid container spacing={3}>
-            {classrooms.map((c) => (
+            {filteredAndSortedClassrooms.map((c) => (
               <Grid item xs={12} sm={6} md={4} key={c._id}>
                 <Card 
                   sx={{ 

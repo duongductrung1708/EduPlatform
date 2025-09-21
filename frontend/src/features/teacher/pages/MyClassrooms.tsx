@@ -12,6 +12,7 @@ import { coursesApi } from '../../../api/courses';
 import { useSocket } from '../../../hooks/useSocket';
 import { useTheme } from '../../../contexts/ThemeContext';
 import Pagination from '../../../components/Pagination';
+import SearchFilterBar from '../../../components/SearchFilterBar';
 
 export default function MyClassrooms() {
   const navigate = useNavigate();
@@ -41,6 +42,8 @@ export default function MyClassrooms() {
   const [courses, setCourses] = useState<Array<{ _id: string; title: string }>>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [courseFilter, setCourseFilter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('');
   const [addStudentOpen, setAddStudentOpen] = useState<boolean>(false);
   const [studentEmail, setStudentEmail] = useState<string>('');
   const [foundStudent, setFoundStudent] = useState<any>(null);
@@ -310,6 +313,67 @@ export default function MyClassrooms() {
     setClassroomToDelete(null);
   };
 
+  // Search and filter handlers
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleFilterChange = (filterKey: string, value: string) => {
+    if (filterKey === 'course') {
+      setCourseFilter(value);
+    }
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+  };
+
+  const handleClearAll = () => {
+    setSearchTerm('');
+    setCourseFilter('');
+    setSortBy('');
+  };
+
+  // Filter and sort items
+  const filteredAndSortedItems = items
+    .filter(item => {
+      // Search filter
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const titleMatch = (item.title || (item as any).name || '').toLowerCase().includes(searchLower);
+        const courseMatch = courses.find(c => c._id === (item as any).courseId)?.title.toLowerCase().includes(searchLower);
+        if (!titleMatch && !courseMatch) return false;
+      }
+
+      // Course filter
+      if (courseFilter) {
+        const itemCourseId = (item as any).courseId?._id || (item as any).courseId;
+        if (itemCourseId !== courseFilter) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (!sortBy) return 0;
+
+      switch (sortBy) {
+        case 'name-asc':
+          return ((a.title || (a as any).name || '').localeCompare(b.title || (b as any).name || ''));
+        case 'name-desc':
+          return ((b.title || (b as any).name || '').localeCompare(a.title || (a as any).name || ''));
+        case 'students-asc':
+          return ((a as any).studentsCount || 0) - ((b as any).studentsCount || 0);
+        case 'students-desc':
+          return ((b as any).studentsCount || 0) - ((a as any).studentsCount || 0);
+        case 'created-asc':
+          return new Date((a as any).createdAt || 0).getTime() - new Date((b as any).createdAt || 0).getTime();
+        case 'created-desc':
+          return new Date((b as any).createdAt || 0).getTime() - new Date((a as any).createdAt || 0).getTime();
+        default:
+          return 0;
+      }
+    });
+
   return (
     <Box>
         <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 4 }}>
@@ -356,15 +420,38 @@ export default function MyClassrooms() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
 
+      {/* Search and Filter Bar */}
+      <SearchFilterBar
+        searchValue={searchTerm}
+        onSearchChange={handleSearchChange}
+        searchPlaceholder="Tìm kiếm lớp học..."
+        filters={{
+          course: {
+            value: courseFilter,
+            label: 'Môn học',
+            options: courses.map(course => ({
+              value: course._id,
+              label: course.title
+            }))
+          }
+        }}
+        onFilterChange={handleFilterChange}
+        sortOptions={[
+          { value: 'name-asc', label: 'Tên A-Z' },
+          { value: 'name-desc', label: 'Tên Z-A' },
+          { value: 'students-asc', label: 'Số học sinh ít nhất' },
+          { value: 'students-desc', label: 'Số học sinh nhiều nhất' },
+          { value: 'created-asc', label: 'Tạo mới nhất' },
+          { value: 'created-desc', label: 'Tạo cũ nhất' }
+        ]}
+        sortValue={sortBy}
+        onSortChange={handleSortChange}
+        onClearAll={handleClearAll}
+        sx={{ mb: 3 }}
+      />
+
       <Grid container spacing={2}>
-        {items
-          .filter(c => !courseFilter || (c as any).courseId === courseFilter || (c as any).courseId?._id === courseFilter)
-          .filter(c => {
-            const q = new URLSearchParams(window.location.search).get('q')?.toLowerCase().trim();
-            if (!q) return true;
-            return (c.title || (c as any).name || '').toLowerCase().includes(q);
-          })
-          .map((c) => (
+        {filteredAndSortedItems.map((c) => (
             <Grid item xs={12} sm={6} lg={4} key={c._id}>
               <Card sx={{ 
                 borderRadius: 4, 

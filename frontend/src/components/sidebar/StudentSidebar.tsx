@@ -1,8 +1,9 @@
-import React from 'react';
-import { Box, List, ListItemButton, ListItemIcon, ListItemText, Toolbar } from '@mui/material';
-import { Home, School, AssignmentTurnedIn, EmojiEvents, TrendingUp, Class } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Box, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Divider } from '@mui/material';
+import { Home, School, AssignmentTurnedIn, EmojiEvents, TrendingUp, Class, HelpOutline } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
+import HelpGuide from '../HelpGuide';
 
 const items = [
   { to: '/student', icon: <Home />, label: 'Trang chủ' },
@@ -15,6 +16,8 @@ const items = [
 export default function StudentSidebar() {
   const location = useLocation();
   const { darkMode } = useTheme();
+  const [helpOpen, setHelpOpen] = useState(false);
+  
   const isSelected = (to: string) => {
     if (to === '/student') {
       return (
@@ -101,7 +104,60 @@ export default function StudentSidebar() {
             />
           </ListItemButton>
         ))}
+        
+        {/* Help Guide Section */}
+        <Divider sx={{ my: 2, borderColor: 'rgba(239, 91, 91, 0.1)' }} />
+        <ListItemButton
+          onClick={() => setHelpOpen(true)}
+          sx={{
+            mb: 1,
+            borderRadius: 3,
+            py: 1.5,
+            px: 2,
+            transition: 'all 0.3s ease',
+            backgroundColor: 'rgba(239, 91, 91, 0.05)',
+            border: '1px solid rgba(239, 91, 91, 0.1)',
+            '&:hover': {
+              backgroundColor: 'rgba(239, 91, 91, 0.1)',
+              border: '1px solid rgba(239, 91, 91, 0.2)',
+              '& .MuiListItemIcon-root': { 
+                color: '#EF5B5B',
+                transform: 'scale(1.1)'
+              },
+              '& .MuiListItemText-primary': { 
+                color: '#EF5B5B',
+                fontWeight: 600
+              }
+            }
+          }}
+        >
+          <ListItemIcon sx={{ 
+            minWidth: 44,
+            transition: 'all 0.3s ease',
+            color: '#EF5B5B'
+          }}>
+            <HelpOutline />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Hướng dẫn sử dụng" 
+            sx={{
+              '& .MuiListItemText-primary': {
+                fontWeight: 500,
+                fontSize: '0.95rem',
+                color: '#EF5B5B',
+                transition: 'all 0.3s ease'
+              }
+            }}
+          />
+        </ListItemButton>
       </List>
+      
+      {/* Help Guide Dialog */}
+      <HelpGuide 
+        open={helpOpen} 
+        onClose={() => setHelpOpen(false)} 
+        userRole="student" 
+      />
     </Box>
   );
 }
