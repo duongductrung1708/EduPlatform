@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Box, TextField, Grid, Button, MenuItem, Typography, Stack } from '@mui/material';
 import { coursesApi } from '../api/courses';
 import { useNavigate } from 'react-router-dom';
+import BackButton from '../components/BackButton';
+import Breadcrumb from '../components/Breadcrumb';
 
 const categories = ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'];
 const levels = ['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'];
@@ -32,6 +34,19 @@ export default function CreatePublicCoursePage() {
 
   return (
     <Box>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Giáo viên', path: '/teacher' },
+          { label: 'Môn học', path: '/teacher/courses' },
+          { label: 'Tạo môn học công khai', current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/teacher/courses" />
+      
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Tạo môn học công khai</Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>

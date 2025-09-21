@@ -47,7 +47,7 @@ export class CoursesService {
       .lean();
   }
 
-  async createModule(courseId: string, userId: string, payload: { title: string; description: string; order?: number; estimatedDuration?: number; isPublished?: boolean; }) {
+  async createModule(courseId: string, userId: string, payload: { title: string; description: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean; }) {
     const course = await this.courseModel.findById(courseId);
     if (!course) throw new NotFoundException('Course not found');
     if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
@@ -57,6 +57,7 @@ export class CoursesService {
       description: payload.description,
       courseId: new Types.ObjectId(courseId),
       order: payload.order ?? 0,
+      volume: payload.volume,
       estimatedDuration: payload.estimatedDuration,
       isPublished: payload.isPublished ?? true,
     });
@@ -67,6 +68,7 @@ export class CoursesService {
     title?: string;
     description?: string;
     order?: number;
+    volume?: string;
     estimatedDuration?: number;
     isPublished?: boolean;
   }) {
@@ -91,10 +93,8 @@ export class CoursesService {
   }
 
   async deleteModule(courseId: string, moduleId: string, userId: string) {
-    console.log('🔍 deleteModule called with:', { courseId, moduleId, userId });
     
     const course = await this.courseModel.findById(courseId);
-    console.log('📚 Found course:', course ? 'Yes' : 'No');
     if (!course) throw new NotFoundException('Course not found');
     if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
 
@@ -205,20 +205,16 @@ export class CoursesService {
   }
 
   async deleteLesson(moduleId: string, lessonId: string, userId: string) {
-    console.log('🔍 deleteLesson called with:', { moduleId, lessonId, userId });
     
     const moduleDoc = await this.moduleModel.findById(moduleId);
-    console.log('📋 Found module:', moduleDoc ? 'Yes' : 'No');
     if (!moduleDoc) throw new NotFoundException('Module not found');
     
     const course = await this.courseModel.findById(moduleDoc.courseId);
-    console.log('📚 Found course:', course ? 'Yes' : 'No');
     if (!course) throw new NotFoundException('Course not found');
     if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
 
     // Check if lesson exists at all
     const lessonExists = await this.lessonModel.findById(lessonId);
-    console.log('📄 Lesson exists:', lessonExists ? 'Yes' : 'No');
     if (lessonExists) {
       console.log('📄 Lesson details:', {
         _id: lessonExists._id,
@@ -403,7 +399,6 @@ export class CoursesService {
 
   // Enrollment
   async enrollInCourse(courseId: string, studentId: string) {
-    console.log('Enrolling student:', studentId, 'in course:', courseId);
     const course = await this.courseModel.findById(courseId);
     if (!course) throw new NotFoundException('Course not found');
 
@@ -604,7 +599,6 @@ export class CoursesService {
   }
 
   async addStudentToCourse(courseId: string, studentEmail: string, userId: string) {
-    console.log('🔍 addStudentToCourse called with:', { courseId, studentEmail, userId });
     
     const course = await this.courseModel.findById(courseId);
     if (!course) throw new NotFoundException('Course not found');
@@ -730,7 +724,6 @@ export class CoursesService {
   }
 
   async fixEnrollmentCounts(): Promise<any> {
-    console.log('🔧 Fixing enrollment counts for all courses...');
     
     const courses = await this.courseModel.find({});
     const results = [];
@@ -740,7 +733,7 @@ export class CoursesService {
       
       // Count active enrollments for this course
       const activeEnrollmentsCount = await this.enrollmentModel.countDocuments({
-        courseId: course._id,
+        courseId: new Types.ObjectId(course._id.toString()),
         isActive: true
       });
 
@@ -750,7 +743,7 @@ export class CoursesService {
       // Update the course with correct count
       if (course.enrollmentCount !== activeEnrollmentsCount) {
         await this.courseModel.findByIdAndUpdate(
-          course._id,
+          course._id.toString(),
           { $set: { enrollmentCount: activeEnrollmentsCount } }
         );
         console.log(`  ✅ Updated enrollmentCount from ${course.enrollmentCount || 0} to ${activeEnrollmentsCount}`);

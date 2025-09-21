@@ -21,6 +21,8 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useAuth } from '../contexts/AuthContext';
 import { courseInvitationsApi } from '../api/course-invitations';
+import BackButton from '../components/BackButton';
+import Breadcrumb from '../components/Breadcrumb';
 
 interface CourseInvitation {
   _id: string;
@@ -169,6 +171,17 @@ export default function CourseInvitationPage() {
       background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
       p: 3
     }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Lời mời môn học', current: true }
+        ]}
+        sx={{ color: 'white' }}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/dashboard" sx={{ color: 'white' }} />
       <Box sx={{ maxWidth: 800, mx: 'auto' }}>
         <Paper elevation={8} sx={{ borderRadius: 4, overflow: 'hidden' }}>
           {/* Header */}

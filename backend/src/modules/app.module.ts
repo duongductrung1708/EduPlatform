@@ -11,6 +11,7 @@ import { AssignmentsModule } from './assignments/assignments.module';
 import { RolesGuard } from '../guards/roles.guard';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { UploadsModule } from './uploads/uploads.module';
+import { UploadModule } from './upload/upload.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { AdminModule } from './admin/admin.module';
 import { ProgressModule } from './progress/progress.module';
@@ -43,6 +44,7 @@ import { UserBadge, UserBadgeSchema } from '../models/user-badge.model';
     LessonsModule,
     AssignmentsModule,
     UploadsModule,
+    UploadModule,
     RealtimeModule,
     AdminModule,
     ProgressModule,

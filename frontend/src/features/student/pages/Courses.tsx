@@ -53,11 +53,11 @@ export default function StudentCourses() {
         await new Promise(resolve => setTimeout(resolve, 600));
         
         const [enrolledRes, publicRes] = await Promise.all([
-          classesApi.listMy(1, 100),
+          coursesApi.getMyEnrolled(),
           coursesApi.listPublic(1, 100)
         ]);
         
-        setEnrolledClasses(enrolledRes.items || []);
+        setEnrolledClasses(enrolledRes || []);
         setPublicCourses(publicRes.items);
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -159,7 +159,7 @@ export default function StudentCourses() {
                   }
                 }}
               >
-                <CardActionArea onClick={() => navigate(`/student/classrooms/${c._id}`)}>
+                <CardActionArea onClick={() => navigate(`/courses/${c._id}`)}>
                   <CardContent sx={{ p: 3, textAlign: 'center' }}>
                     <Avatar 
                       sx={{ 
@@ -177,21 +177,20 @@ export default function StudentCourses() {
                       {c.title}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40 }}>
-                      {c.teacherNames ? `Giáo viên: ${c.teacherNames}` : ''}
-                      {c.courseId?.title ? ` • ${c.courseId.title}` : ''}
+                      {c.description || 'Môn học thú vị'}
                     </Typography>
                     <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
                       <Chip 
                         size="small" 
                         icon={<People />}
-                        label={`${c.studentsCount || 0} bạn`} 
+                        label={`${c.enrollmentCount || 0} học sinh`} 
                         sx={{ borderColor: '#EF5B5B', color: '#EF5B5B' }}
                         variant="outlined" 
                       />
                       <Chip 
                         size="small" 
-                        icon={<Assignment />}
-                        label={`${c.assignmentsCount || 0} bài`} 
+                        icon={<AccessTime />}
+                        label={`${c.estimatedDuration || 0} phút`} 
                         sx={{ borderColor: '#AED6E6', color: '#AED6E6' }}
                         variant="outlined" 
                       />

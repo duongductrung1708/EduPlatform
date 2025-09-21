@@ -55,11 +55,14 @@ export class CoursesController {
     return this.coursesService.getMyCourses(user.id);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get course by ID' })
-  @ApiResponse({ status: 200, description: 'Course details', type: CourseResponseDto })
-  async findOne(@Param('id') id: string) {
-    return this.coursesService.findOne(id);
+  @Get('my-enrolled')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student', 'teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get courses enrolled by current user (student/teacher/admin)' })
+  @ApiResponse({ status: 200, description: 'List of enrolled courses' })
+  async getMyEnrolled(@CurrentUser() user: any) {
+    return this.coursesService.getMyEnrolled(user.id);
   }
 
   @Get('slug/:slug')
@@ -98,6 +101,12 @@ export class CoursesController {
   }
 
   // Public listing of courses
+  @Get('public')
+  @ApiOperation({ summary: 'List public published courses (no auth) - redirect to public/list' })
+  async getPublicCourses() {
+    return this.coursesService.findAll(1, 100, undefined, undefined, 'public');
+  }
+
   @Get('public/list')
   @ApiOperation({ summary: 'List public published courses (no auth)' })
   async listPublicCourses(
@@ -116,6 +125,12 @@ export class CoursesController {
     );
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get course by ID' })
+  @ApiResponse({ status: 200, description: 'Course details', type: CourseResponseDto })
+  async findOne(@Param('id') id: string) {
+    return this.coursesService.findOne(id);
+  }
 
   // Enrollment endpoints
   @Post(':id/enroll')
@@ -171,10 +186,23 @@ export class CoursesController {
   @ApiOperation({ summary: 'Create a module in a course (teacher/admin)' })
   async createModule(
     @Param('id') id: string,
-    @Body() body: { title: string; description: string; order?: number; estimatedDuration?: number; isPublished?: boolean },
+    @Body() body: { title: string; description: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean },
     @CurrentUser() user: any,
   ) {
     return this.coursesService.createModule(id, user.id, body);
+  }
+
+  @Patch('modules/:moduleId')
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a module (teacher/admin)' })
+  async updateModule(
+    @Param('moduleId') moduleId: string,
+    @Body() body: { title?: string; description?: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean },
+    @CurrentUser() user: any,
+  ) {
+    return this.coursesService.updateModule('', moduleId, user.id, body);
   }
 
   // Teacher content management: lessons by module
@@ -195,6 +223,20 @@ export class CoursesController {
     @CurrentUser() user: any,
   ) {
     return this.coursesService.createLessonUnderModule(moduleId, user.id, body);
+  }
+
+  @Patch('modules/:moduleId/lessons/:lessonId')
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a lesson under a module (teacher/admin)' })
+  async updateLesson(
+    @Param('moduleId') moduleId: string,
+    @Param('lessonId') lessonId: string,
+    @Body() body: { title?: string; description?: string; type?: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: any; estimatedDuration?: number; isPublished?: boolean },
+    @CurrentUser() user: any,
+  ) {
+    return this.coursesService.updateLesson(moduleId, lessonId, user.id, body);
   }
 
   // Materials endpoints

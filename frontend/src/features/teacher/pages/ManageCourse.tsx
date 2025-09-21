@@ -39,6 +39,9 @@ import {
 import { coursesApi } from '../../../api/courses';
 import { useSocket } from '../../../hooks/useSocket';
 import { useTheme } from '../../../contexts/ThemeContext';
+import FileUpload from '../../../components/FileUpload';
+import BackButton from '../../../components/BackButton';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function ManageCourse() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +63,7 @@ export default function ManageCourse() {
   const [moduleTitle, setModuleTitle] = useState('');
   const [moduleDescription, setModuleDescription] = useState('');
   const [moduleOrder, setModuleOrder] = useState<number>(0);
+  const [moduleVolume, setModuleVolume] = useState('');
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
 
   // Lesson form state
@@ -68,6 +72,7 @@ export default function ManageCourse() {
   const [lessonType, setLessonType] = useState<'document'|'video'|'interactive'|'quiz'|'assignment'>('document');
   const [lessonOrder, setLessonOrder] = useState<number>(0);
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
+  const [lessonFile, setLessonFile] = useState<{ url: string; fileName: string; fileType: string } | null>(null);
 
   useEffect(() => {
     if (!courseId) return;
@@ -145,12 +150,14 @@ export default function ManageCourse() {
         title: moduleTitle.trim(),
         description: moduleDescription.trim(),
         order: moduleOrder,
+        volume: moduleVolume.trim() || undefined,
       });
       const mods = await coursesApi.getModules(courseId);
       setModules(mods);
       setModuleTitle('');
       setModuleDescription('');
       setModuleOrder(0);
+      setModuleVolume('');
       setModuleDialogOpen(false);
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Không thể tạo module');
@@ -165,17 +172,28 @@ export default function ManageCourse() {
     try {
       setLoading(true);
       setError(null);
+      const content: any = {};
+      
+      // Add file content if lesson type is document and file is uploaded
+      if (lessonType === 'document' && lessonFile) {
+        content.fileUrl = lessonFile.url;
+        content.fileName = lessonFile.fileName;
+        content.fileType = lessonFile.fileType;
+      }
+      
       await coursesApi.createLesson(selectedModuleId, {
         title: lessonTitle.trim(),
         description: lessonDescription.trim(),
         type: lessonType,
         order: lessonOrder,
+        content,
       });
       const ls = await coursesApi.getLessons(selectedModuleId);
       setLessons(ls);
       setLessonTitle('');
       setLessonDescription('');
       setLessonOrder(0);
+      setLessonFile(null);
       setLessonDialogOpen(false);
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Không thể tạo bài học');
@@ -244,6 +262,19 @@ export default function ManageCourse() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Giáo viên', path: '/teacher' },
+          { label: 'Môn học', path: '/teacher/courses' },
+          { label: course?.title || 'Quản lý môn học', current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/teacher/courses" />
+      
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
@@ -368,6 +399,15 @@ export default function ManageCourse() {
                         <Box flex={1}>
                           <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
                             {module.order}. {module.title}
+                            {module.volume && (
+                              <Chip 
+                                label={module.volume} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined" 
+                                sx={{ ml: 1, fontSize: '0.75rem' }}
+                              />
+                            )}
                           </Typography>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                             {module.description}
@@ -465,6 +505,42 @@ export default function ManageCourse() {
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                               {lesson.description}
                             </Typography>
+                            {lesson.type === 'document' && lesson.content?.fileUrl && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <Chip 
+                                  icon={<FileIcon />}
+                                  label={lesson.content.fileName || 'Tài liệu đính kèm'} 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined"
+                                  clickable
+                                  onClick={() => window.open(lesson.content.fileUrl, '_blank')}
+                                  sx={{
+                                    '&:hover': {
+                                      backgroundColor: 'primary.main',
+                                      color: 'white',
+                                      transform: 'scale(1.05)',
+                                    },
+                                    transition: 'all 0.3s ease',
+                                    fontWeight: 500,
+                                    maxWidth: '200px',
+                                    '& .MuiChip-label': {
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    },
+                                  }}
+                                  title={lesson.content.fileName || 'Tài liệu đính kèm'}
+                                />
+                                <Chip 
+                                  label="Click để xem" 
+                                  size="small" 
+                                  color="success" 
+                                  variant="filled"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                              </Box>
+                            )}
                             <Chip 
                               label={lesson.type} 
                               size="small" 
@@ -541,6 +617,14 @@ export default function ManageCourse() {
               onChange={(e) => setModuleOrder(parseInt(e.target.value || '0', 10))} 
               fullWidth 
             />
+            <TextField 
+              label="Tập (Volume)" 
+              value={moduleVolume} 
+              onChange={(e) => setModuleVolume(e.target.value)} 
+              fullWidth 
+              placeholder="Ví dụ: Tập 1, Tập 2, Phần A, Phần B..."
+              helperText="Tùy chọn: Chia module thành các tập hoặc phần"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -597,6 +681,49 @@ export default function ManageCourse() {
               onChange={(e) => setLessonOrder(parseInt(e.target.value || '0', 10))} 
               fullWidth 
             />
+            
+            {/* File Upload for Document Type */}
+            {lessonType === 'document' && (
+              <Box sx={{ mt: 2 }}>
+                <Paper 
+                  elevation={1} 
+                  sx={{ 
+                    p: 2, 
+                    borderRadius: 2, 
+                    backgroundColor: 'primary.50',
+                    border: '1px solid',
+                    borderColor: 'primary.200',
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                    <FileIcon color="primary" />
+                    <Typography variant="h6" fontWeight={600} color="primary.main">
+                      Upload tài liệu
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Chọn file tài liệu để đính kèm với bài học. Hỗ trợ PDF, Word, Excel, PowerPoint và Text.
+                  </Typography>
+                  <FileUpload
+                    onFileUploaded={(fileData) => setLessonFile(fileData)}
+                    onFileRemoved={() => setLessonFile(null)}
+                    acceptedTypes={[
+                      'application/pdf',
+                      'application/msword',
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      'text/plain',
+                      'application/vnd.ms-excel',
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      'application/vnd.ms-powerpoint',
+                      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    ]}
+                    maxSize={20} // 20MB
+                    folder="lessons"
+                    disabled={loading}
+                  />
+                </Paper>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -604,7 +731,12 @@ export default function ManageCourse() {
           <Button 
             variant="contained" 
             onClick={handleCreateLesson} 
-            disabled={loading || !lessonTitle.trim() || !lessonDescription.trim()}
+            disabled={
+              loading || 
+              !lessonTitle.trim() || 
+              !lessonDescription.trim() ||
+              (lessonType === 'document' && !lessonFile)
+            }
             sx={{ borderRadius: 2 }}
           >
             {loading ? <CircularProgress size={20} /> : 'Thêm Bài học'}

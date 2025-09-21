@@ -5,6 +5,10 @@ import { classesApi } from '../api/admin';
 import { lessonsApi, LessonItem } from '../api/lessons';
 import { assignmentsApi, AssignmentItem } from '../api/assignments';
 import { useSocket } from '../hooks/useSocket';
+import BackButton from '../components/BackButton';
+import Breadcrumb from '../components/Breadcrumb';
+import DownloadIcon from '@mui/icons-material/Download';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 const StudentClassroomDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -74,6 +78,18 @@ const StudentClassroomDetailPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 3, mb: 4 }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Lớp học', path: '/dashboard' },
+          { label: info?.name || 'Chi tiết lớp học', current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/dashboard" />
+      
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Snackbar
         open={toast.open}
@@ -108,8 +124,32 @@ const StudentClassroomDetailPage: React.FC = () => {
                     {l.week !== undefined && <Typography variant="body2" color="text.secondary">Tuần: {l.week}</Typography>}
                     {l.attachments && l.attachments.length > 0 && (
                       <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          📎 Tài liệu đính kèm:
+                        </Typography>
                         {l.attachments.map((a, i) => (
-                          <Button key={i} size="small" component="a" href={a.url} target="_blank" rel="noreferrer">{a.name || 'Tải tệp'}</Button>
+                          <Button 
+                            key={i} 
+                            size="small" 
+                            component="a" 
+                            href={a.url} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            startIcon={<DownloadIcon />}
+                            sx={{
+                              color: '#4CAF50',
+                              borderColor: '#4CAF50',
+                              '&:hover': {
+                                borderColor: '#45a049',
+                                backgroundColor: 'rgba(76, 175, 80, 0.04)'
+                              },
+                              mr: 1,
+                              mb: 1
+                            }}
+                            variant="outlined"
+                          >
+                            {a.name || 'Tải tệp'}
+                          </Button>
                         ))}
                       </Box>
                     )}

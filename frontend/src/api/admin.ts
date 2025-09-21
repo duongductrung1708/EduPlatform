@@ -46,10 +46,10 @@ export interface TopCourse {
 export const adminApi = {
   // Dashboard stats
   getDashboardStats: async (): Promise<DashboardStats> => {
-    console.log('Admin API - Getting dashboard stats...');
+    // console.log('Admin API - Getting dashboard stats...');
     try {
       const response = await apiClient.get('/api/admin/dashboard/stats');
-      console.log('Admin API - Dashboard stats response:', response.data);
+      // console.log('Admin API - Dashboard stats response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Admin API - Dashboard stats error:', error);

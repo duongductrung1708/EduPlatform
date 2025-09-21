@@ -38,7 +38,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId }) => {
 
   useEffect(() => {
     const handleJoinedClassroom = (data: { classroomId: string }) => {
-      console.log('Joined classroom:', data.classroomId);
+      // console.log('Joined classroom:', data.classroomId);
     };
 
     const handleClassMessage = (data: Message) => {

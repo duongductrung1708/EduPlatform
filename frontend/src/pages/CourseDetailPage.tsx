@@ -36,17 +36,23 @@ import StarIcon from '@mui/icons-material/Star';
 import PeopleIcon from '@mui/icons-material/People';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HomeIcon from '@mui/icons-material/Home';
+import DownloadIcon from '@mui/icons-material/Download';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { coursesApi, CourseItem } from '../api/courses';
 import { progressApi } from '../api/progress';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SkeletonGrid } from '../components/LoadingSkeleton';
+import BackButton from '../components/BackButton';
+import Breadcrumb from '../components/Breadcrumb';
 
 interface Module {
   _id: string;
   title: string;
   description: string;
   order: number;
+  volume?: string;
   lessons: Lesson[];
 }
 
@@ -89,15 +95,14 @@ export default function CourseDetailPage() {
   }, [user, id]);
 
   const checkEnrollmentStatus = async () => {
-    if (!id || !user) return;
+    if (!id || !user) {
+      return;
+    }
     try {
-      console.log('Checking enrollment status for course:', id, 'user:', user._id);
       const enrollmentStatus = await coursesApi.checkEnrollment(id);
-      console.log('Enrollment status:', enrollmentStatus);
       setEnrolled(enrollmentStatus.enrolled);
       setProgress(enrollmentStatus.progress);
     } catch (error) {
-      console.log('Enrollment check failed:', error);
       setEnrolled(false);
       setProgress(0);
     }
@@ -132,7 +137,6 @@ export default function CourseDetailPage() {
           setEnrolled(enrollmentStatus.enrolled);
           setProgress(enrollmentStatus.progress);
         } catch (error) {
-          console.log('Enrollment check failed:', error);
           // If check fails, assume not enrolled
           setEnrolled(false);
           setProgress(0);
@@ -149,13 +153,10 @@ export default function CourseDetailPage() {
 
   const handleEnroll = async () => {
     try {
-      console.log('Enrolling in course:', id);
       await coursesApi.enroll(id!);
-      console.log('Enrollment successful');
       setEnrolled(true);
       // refresh enrollment status
       const status = await coursesApi.checkEnrollment(id!);
-      console.log('Updated enrollment status:', status);
       setProgress(status.progress);
     } catch (error) {
       console.error('Failed to enroll:', error);
@@ -185,6 +186,25 @@ export default function CourseDetailPage() {
     }
   };
 
+  const handleDownloadDocument = async (lesson: any) => {
+    try {
+      if (lesson.content?.fileUrl) {
+        // Create a temporary link to download the file
+        const link = document.createElement('a');
+        link.href = lesson.content.fileUrl;
+        link.download = lesson.content.fileName || `${lesson.title}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        console.error('No file URL available for download');
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -202,10 +222,21 @@ export default function CourseDetailPage() {
   }
 
   // Debug logging
-  console.log('CourseDetailPage render - user:', user, 'enrolled:', enrolled, 'progress:', progress);
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard', icon: <HomeIcon fontSize="small" /> },
+          { label: 'Môn học', path: '/dashboard', icon: <SchoolIcon fontSize="small" /> },
+          { label: course.title, current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/dashboard" />
+      
       {/* Course Header */}
       <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 3 }}>
         <Grid container spacing={3}>
@@ -407,6 +438,14 @@ export default function CourseDetailPage() {
                         <Typography variant="h6" fontWeight={600}>
                           {module.title}
                         </Typography>
+                        {module.volume && (
+                          <Chip 
+                            label={module.volume.startsWith('Tập') ? module.volume : `Tập ${module.volume}`} 
+                            size="small" 
+                            variant="outlined" 
+                            sx={{ borderColor: '#4CAF50', color: '#4CAF50' }}
+                          />
+                        )}
                         <Chip 
                           label={`${module.lessons.length} bài học`} 
                           size="small" 
@@ -432,7 +471,7 @@ export default function CourseDetailPage() {
                             <ListItemText
                               primary={lesson.title}
                               secondary={
-                                <Stack direction="row" spacing={1} alignItems="center">
+                                <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
                                   <Chip 
                                     label={getLessonTypeLabel(lesson.type)} 
                                     size="small" 
@@ -444,18 +483,74 @@ export default function CourseDetailPage() {
                                       {lesson.estimatedDuration} phút
                                     </Typography>
                                   )}
+                                  {lesson.type === 'document' && lesson.content?.fileName && (
+                                    <Chip 
+                                      icon={<AttachFileIcon />}
+                                      label={lesson.content.fileName}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ 
+                                        borderColor: '#4CAF50', 
+                                        color: '#4CAF50',
+                                        maxWidth: '200px',
+                                        '& .MuiChip-label': {
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap'
+                                        }
+                                      }}
+                                    />
+                                  )}
                                 </Stack>
                               }
+                              secondaryTypographyProps={{ component: 'div' }}
                             />
-                            {enrolled && (
+                            <Stack direction="row" spacing={1}>
+                              {lesson.type === 'document' && lesson.content?.fileUrl && (
+                                <Button
+                                  size="small"
+                                  startIcon={<DownloadIcon />}
+                                  onClick={() => handleDownloadDocument(lesson)}
+                                  sx={{
+                                    color: '#4CAF50',
+                                    borderColor: '#4CAF50',
+                                    '&:hover': {
+                                      borderColor: '#45a049',
+                                      backgroundColor: 'rgba(76, 175, 80, 0.04)'
+                                    }
+                                  }}
+                                  variant="outlined"
+                                >
+                                  Tải về
+                                </Button>
+                              )}
                               <Button
                                 size="small"
                                 startIcon={<PlayArrowIcon />}
-                                onClick={() => navigate(`/courses/${id}/lessons/${lesson._id}`)}
+                                onClick={() => {
+                                  if (!user) {
+                                    alert('Vui lòng đăng nhập để học bài này');
+                                    return;
+                                  }
+                                  if (!enrolled) {
+                                    alert('Vui lòng đăng ký môn học này để học bài');
+                                    return;
+                                  }
+                                  navigate(`/courses/${id}/lessons/${lesson._id}`);
+                                }}
+                                sx={{
+                                  color: enrolled ? '#EF5B5B' : '#999',
+                                  borderColor: enrolled ? '#EF5B5B' : '#999',
+                                  '&:hover': {
+                                    borderColor: enrolled ? '#FF7B7B' : '#999',
+                                    backgroundColor: enrolled ? 'rgba(239, 91, 91, 0.04)' : 'rgba(153, 153, 153, 0.04)'
+                                  }
+                                }}
+                                variant="outlined"
                               >
-                                Học
+                                {enrolled ? 'Học' : 'Cần đăng ký'}
                               </Button>
-                            )}
+                            </Stack>
                           </ListItem>
                         ))}
                       </List>

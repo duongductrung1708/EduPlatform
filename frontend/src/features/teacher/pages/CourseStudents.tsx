@@ -34,6 +34,8 @@ import { courseInvitationsApi } from '../../../api/course-invitations';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ConfirmDialog from '../../../components/ConfirmDialog';
+import BackButton from '../../../components/BackButton';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 interface Student {
   _id: string;
@@ -74,7 +76,7 @@ export default function CourseStudents() {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Loading course data for courseId:', courseId);
+      // console.log('🔄 Loading course data for courseId:', courseId);
       
       const [courseRes, enrollmentsRes] = await Promise.all([
         coursesApi.getById(courseId!),
@@ -128,7 +130,7 @@ export default function CourseStudents() {
       setAddingStudent(true);
       setError(null);
       
-      console.log('Sending invitation to student with email:', studentEmail, 'for course:', courseId);
+      // console.log('Sending invitation to student with email:', studentEmail, 'for course:', courseId);
       await courseInvitationsApi.createInvitation({
         courseId: courseId!,
         studentEmail: studentEmail,
@@ -208,6 +210,20 @@ export default function CourseStudents() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Giáo viên', path: '/teacher' },
+          { label: 'Môn học', path: '/teacher/courses' },
+          { label: course?.title || 'Quản lý môn học', path: `/teacher/courses/${courseId}/manage` },
+          { label: 'Học sinh', current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/teacher/courses" />
+      
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>

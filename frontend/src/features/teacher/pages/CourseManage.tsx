@@ -35,6 +35,9 @@ import { coursesApi } from '../../../api/courses';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ConfirmDialog from '../../../components/ConfirmDialog';
+import FileUpload from '../../../components/FileUpload';
+import BackButton from '../../../components/BackButton';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 interface Module {
   _id: string;
@@ -82,6 +85,7 @@ export default function CourseManage() {
     title: '',
     description: '',
     order: 0,
+    volume: '',
     estimatedDuration: 0,
     isPublished: true
   });
@@ -89,6 +93,7 @@ export default function CourseManage() {
   // Lesson dialog states
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [lessonFile, setLessonFile] = useState<{ url: string; fileName: string; fileType: string } | null>(null);
   
   // Course dialog states
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
@@ -125,32 +130,22 @@ export default function CourseManage() {
     }
   }, [courseId]);
 
-  // Debug effect to track course state changes
-  useEffect(() => {
-    console.log('🔄 Course state changed:', course);
-  }, [course]);
 
   const loadCourseData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Loading course data for courseId:', courseId);
-      
       const [courseRes, modulesRes] = await Promise.all([
         coursesApi.getById(courseId!),
         coursesApi.getModules(courseId!)
       ]);
-      
-      console.log('📚 Course data loaded:', courseRes);
-      console.log('📖 Modules data loaded:', modulesRes);
       
       if (!courseRes) {
         throw new Error('Course not found');
       }
       
       if (!modulesRes || modulesRes.length === 0) {
-        console.log('⚠️ No modules found, setting empty modules array');
         setModules([]);
         setCourse(courseRes);
         return;
@@ -158,15 +153,6 @@ export default function CourseManage() {
       
       // Force new object reference to ensure React re-renders
       setCourse({ ...courseRes });
-      console.log('✅ Course state updated:', courseRes.title);
-      console.log('🔍 Course object details:', {
-        id: courseRes._id,
-        title: courseRes.title,
-        description: courseRes.description,
-        category: courseRes.category,
-        level: courseRes.level,
-        status: courseRes.status
-      });
       
       // Load lessons for each module
       const modulesWithLessons = await Promise.all(
@@ -182,7 +168,6 @@ export default function CourseManage() {
       );
       
       setModules(modulesWithLessons);
-      console.log('✅ Modules with lessons updated:', modulesWithLessons.length, 'modules');
     } catch (err) {
       console.error('❌ Error loading course data:', err);
       setError('Không thể tải dữ liệu môn học');
@@ -293,6 +278,7 @@ export default function CourseManage() {
       title: '',
       description: '',
       order: 0,
+      volume: '',
       estimatedDuration: 0,
       isPublished: true
     });
@@ -305,8 +291,10 @@ export default function CourseManage() {
       type: 'document',
       order: 0,
       estimatedDuration: 0,
-      isPublished: true
+      isPublished: true,
+      content: {}
     });
+    setLessonFile(null);
   };
 
   const resetCourseForm = () => {
@@ -328,6 +316,7 @@ export default function CourseManage() {
         title: module.title,
         description: module.description,
         order: module.order,
+        volume: module.volume || '',
         estimatedDuration: module.estimatedDuration || 0,
         isPublished: module.isPublished
       });
@@ -348,10 +337,23 @@ export default function CourseManage() {
         type: lesson.type,
         order: lesson.order,
         estimatedDuration: lesson.estimatedDuration || 0,
-        isPublished: lesson.isPublished
+        isPublished: lesson.isPublished,
+        content: lesson.content || {}
       });
+      
+      // Set existing file if lesson has file content
+      if (lesson.type === 'document' && lesson.content?.fileUrl) {
+        setLessonFile({
+          url: lesson.content.fileUrl,
+          fileName: lesson.content.fileName || 'Tài liệu đính kèm',
+          fileType: lesson.content.fileType || 'application/pdf'
+        });
+      } else {
+        setLessonFile(null);
+      }
     } else {
       setEditingLesson(null);
+      setLessonFile(null);
       resetLessonForm();
     }
     setLessonDialogOpen(true);
@@ -404,13 +406,28 @@ export default function CourseManage() {
 
   const handleLessonSubmit = async () => {
     try {
+      const content: any = { ...lessonForm.content };
+      
+      // Add file content if lesson type is document and file is uploaded
+      if (lessonForm.type === 'document' && lessonFile) {
+        content.fileUrl = lessonFile.url;
+        content.fileName = lessonFile.fileName;
+        content.fileType = lessonFile.fileType;
+      }
+      
+      const lessonData = {
+        ...lessonForm,
+        content
+      };
+      
       if (editingLesson) {
-        await coursesApi.updateLesson(selectedModuleId, editingLesson._id, lessonForm);
+        await coursesApi.updateLesson(selectedModuleId, editingLesson._id, lessonData);
       } else {
-        await coursesApi.createLesson(selectedModuleId, lessonForm);
+        await coursesApi.createLesson(selectedModuleId, lessonData);
       }
       setLessonDialogOpen(false);
       setEditingLesson(null);
+      setLessonFile(null);
       resetLessonForm();
       loadCourseData();
     } catch (err) {
@@ -421,14 +438,11 @@ export default function CourseManage() {
   const handleCourseSubmit = async () => {
     try {
       if (editingCourse) {
-        console.log('🔄 Updating course with data:', courseForm);
         const updatedCourse = await coursesApi.update(courseId!, courseForm);
-        console.log('✅ Course updated successfully:', updatedCourse);
       }
       setCourseDialogOpen(false);
       setEditingCourse(null);
       resetCourseForm();
-      console.log('🔄 Reloading course data...');
       setRefreshKey(prev => prev + 1);
       loadCourseData();
     } catch (err) {
@@ -459,13 +473,22 @@ export default function CourseManage() {
     );
   }
 
-  // Debug log for course state
-  console.log('🎨 Rendering with course state:', course);
-  console.log('🎨 Course title in render:', course?.title);
-  console.log('🎨 Course description in render:', course?.description);
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Trang chủ', path: '/dashboard' },
+          { label: 'Giáo viên', path: '/teacher' },
+          { label: 'Môn học', path: '/teacher/courses' },
+          { label: course?.title || 'Quản lý môn học', current: true }
+        ]}
+      />
+      
+      {/* Back Button */}
+      <BackButton to="/teacher/courses" />
+      
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ flex: 1 }}>
@@ -544,7 +567,18 @@ export default function CourseManage() {
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6">{module.title}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                      <Typography variant="h6">{module.title}</Typography>
+                      {module.volume && (
+                        <Chip 
+                          label={module.volume} 
+                          size="small" 
+                          color="primary" 
+                          variant="outlined" 
+                          sx={{ fontSize: '0.75rem' }}
+                        />
+                      )}
+                    </Box>
                     <Typography variant="body2" color="text.secondary">
                       {module.description}
                     </Typography>
@@ -635,6 +669,35 @@ export default function CourseManage() {
                               <Typography variant="body2" color="text.secondary">
                                 {lesson.description}
                               </Typography>
+                              {lesson.type === 'document' && lesson.content?.fileUrl && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                                  <Chip 
+                                    icon={<DescriptionIcon />}
+                                    label={lesson.content.fileName || 'Tài liệu đính kèm'} 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined"
+                                    clickable
+                                    onClick={() => window.open(lesson.content.fileUrl, '_blank')}
+                                    sx={{
+                                      '&:hover': {
+                                        backgroundColor: 'primary.main',
+                                        color: 'white',
+                                        transform: 'scale(1.05)',
+                                      },
+                                      transition: 'all 0.3s ease',
+                                      fontWeight: 500,
+                                      maxWidth: '200px',
+                                      '& .MuiChip-label': {
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      },
+                                    }}
+                                    title={lesson.content.fileName || 'Tài liệu đính kèm'}
+                                  />
+                                </Box>
+                              )}
                               <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                                 <Chip 
                                   label={getLessonTypeLabel(lesson.type)} 
@@ -727,6 +790,14 @@ export default function CourseManage() {
               fullWidth
             />
             <TextField
+              label="Tập (Volume)"
+              value={moduleForm.volume}
+              onChange={(e) => setModuleForm({ ...moduleForm, volume: e.target.value })}
+              fullWidth
+              placeholder="Ví dụ: Tập 1, Tập 2, Phần A, Phần B..."
+              helperText="Tùy chọn: Chia module thành các tập hoặc phần"
+            />
+            <TextField
               label="Thời lượng ước tính (phút)"
               type="number"
               value={moduleForm.estimatedDuration}
@@ -802,6 +873,54 @@ export default function CourseManage() {
               onChange={(e) => setLessonForm({ ...lessonForm, estimatedDuration: parseInt(e.target.value) || 0 })}
               fullWidth
             />
+            
+            {/* File Upload for Document Type */}
+            {lessonForm.type === 'document' && (
+              <Box sx={{ mt: 2 }}>
+                <Paper 
+                  elevation={1} 
+                  sx={{ 
+                    p: 2, 
+                    borderRadius: 2, 
+                    backgroundColor: 'primary.50',
+                    border: '1px solid',
+                    borderColor: 'primary.200',
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                    <DescriptionIcon color="primary" />
+                    <Typography variant="h6" fontWeight={600} color="primary.main">
+                      Upload tài liệu
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Chọn file tài liệu để đính kèm với bài học. Hỗ trợ PDF, Word, Excel, PowerPoint và Text.
+                  </Typography>
+                  <FileUpload
+                    onFileUploaded={(fileData) => setLessonFile(fileData)}
+                    onFileRemoved={() => setLessonFile(null)}
+                    acceptedTypes={[
+                      'application/pdf',
+                      'application/msword',
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      'text/plain',
+                      'application/vnd.ms-excel',
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      'application/vnd.ms-powerpoint',
+                      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    ]}
+                    maxSize={20} // 20MB
+                    folder="lessons"
+                    disabled={loading}
+                    existingFile={editingLesson?.content?.fileUrl ? {
+                      url: editingLesson.content.fileUrl,
+                      fileName: editingLesson.content.fileName || 'Tài liệu đính kèm',
+                      fileType: editingLesson.content.fileType || 'application/pdf'
+                    } : undefined}
+                  />
+                </Paper>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

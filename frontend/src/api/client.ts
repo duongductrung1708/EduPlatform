@@ -13,15 +13,12 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    console.log('API Request - Token:', token ? 'Present' : 'Missing');
-    console.log('API Request - URL:', config.url);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
-    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -29,12 +26,9 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('API Response - Status:', response.status);
-    console.log('API Response - Data:', response.data);
     return response;
   },
   async (error) => {
-    console.error('API Response Error:', error.response?.status, error.response?.data);
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {

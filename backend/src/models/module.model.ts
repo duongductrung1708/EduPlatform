@@ -9,6 +9,7 @@ export interface IModule {
   description: string;
   courseId: Types.ObjectId;
   order: number;
+  volume?: string; // Tập 1, Tập 2, etc.
   isPublished: boolean;
   estimatedDuration?: number; // in minutes
   createdAt: Date;
@@ -28,6 +29,9 @@ export class Module {
 
   @Prop({ required: true, default: 0 })
   order!: number;
+
+  @Prop()
+  volume?: string; // Tập 1, Tập 2, etc.
 
   @Prop({ default: true })
   isPublished!: boolean;

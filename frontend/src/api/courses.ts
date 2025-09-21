@@ -90,7 +90,7 @@ export const coursesApi = {
     const res = await apiClient.get(`/api/courses/${courseId}/modules`);
     return res.data;
   },
-  async createModule(courseId: string, payload: { title: string; description: string; order?: number; estimatedDuration?: number; isPublished?: boolean; }): Promise<any> {
+  async createModule(courseId: string, payload: { title: string; description: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean; }): Promise<any> {
     const res = await apiClient.post(`/api/courses/${courseId}/modules`, payload);
     return res.data;
   },
@@ -137,8 +137,8 @@ export const coursesApi = {
       return [];
     }
   },
-  async updateModule(courseId: string, moduleId: string, payload: { title?: string; description?: string; order?: number; estimatedDuration?: number; isPublished?: boolean }): Promise<any> {
-    const res = await apiClient.patch(`/api/courses/${courseId}/modules/${moduleId}`, payload);
+  async updateModule(courseId: string, moduleId: string, payload: { title?: string; description?: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean }): Promise<any> {
+    const res = await apiClient.patch(`/api/courses/modules/${moduleId}`, payload);
     return res.data;
   },
   async deleteModule(courseId: string, moduleId: string): Promise<{ message: string }> {

@@ -92,12 +92,10 @@ export default function StudentHome() {
         
         // Load enrolled courses
         const enrolledRes = await coursesApi.getMyEnrolled();
-        console.log('📚 Loaded enrolled courses:', enrolledRes);
         setEnrolledCourses(enrolledRes || []);
         
         // Load public courses
         const publicRes = await coursesApi.getPublic();
-        console.log('📊 Loaded public courses:', publicRes);
         setPublicCourses(publicRes || []);
         setFilteredPublicCourses(publicRes || []);
         
@@ -127,22 +125,13 @@ export default function StudentHome() {
   useEffect(() => {
     let filtered = publicCourses;
     
-    console.log('🔍 Filter Debug:', {
-      totalCourses: publicCourses.length,
-      selectedSubject: selectedSubject?.name,
-      selectedGradeLevel: selectedGradeLevel?.name,
-      selectedSubjectFilter,
-      selectedLevel,
-      searchTerm
-    });
-    
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(course => 
         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      console.log('📝 After search filter:', filtered.length);
+      // console.log('📝 After search filter:', filtered.length);
     }
     
     // Apply subject filter - ưu tiên môn học đã chọn
@@ -150,18 +139,18 @@ export default function StudentHome() {
       // Chỉ hiển thị môn học đã chọn
       filtered = filtered.filter(course => {
         const match = course.category === selectedSubject.name;
-        console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubject.name} = ${match}`);
+        // console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubject.name} = ${match}`);
         return match;
       });
-      console.log('📚 After subject filter (selected):', filtered.length);
+      // console.log('📚 After subject filter (selected):', filtered.length);
     } else if (selectedSubjectFilter) {
       // Chỉ áp dụng subject filter khi không có selectedSubject
       filtered = filtered.filter(course => {
         const match = course.category === selectedSubjectFilter;
-        console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubjectFilter} = ${match}`);
+        // console.log(`📚 Subject filter: ${course.title} (${course.category}) === ${selectedSubjectFilter} = ${match}`);
         return match;
       });
-      console.log('📚 After subject filter (manual):', filtered.length);
+      // console.log('📚 After subject filter (manual):', filtered.length);
     }
     
     // Apply grade level filter - ưu tiên cấp lớp đã chọn
@@ -180,22 +169,22 @@ export default function StudentHome() {
         // Chỉ hiển thị môn học của cấp lớp đã chọn
         filtered = filtered.filter(course => {
           const match = course.level === targetLevel;
-          console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${targetLevel} = ${match}`);
+          // console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${targetLevel} = ${match}`);
           return match;
         });
-        console.log('🎓 After level filter (selected):', filtered.length);
+        // console.log('🎓 After level filter (selected):', filtered.length);
       }
     } else if (selectedLevel) {
       // Chỉ áp dụng level filter khi không có selectedGradeLevel
       filtered = filtered.filter(course => {
         const match = course.level === selectedLevel;
-        console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${selectedLevel} = ${match}`);
+        // console.log(`🎓 Level filter: ${course.title} (${course.level}) === ${selectedLevel} = ${match}`);
         return match;
       });
-      console.log('🎓 After level filter (manual):', filtered.length);
+      // console.log('🎓 After level filter (manual):', filtered.length);
     }
     
-    console.log('✅ Final filtered courses:', filtered.length);
+    // console.log('✅ Final filtered courses:', filtered.length);
     setFilteredPublicCourses(filtered);
   }, [publicCourses, searchTerm, selectedSubjectFilter, selectedLevel, selectedGradeLevel, selectedSubject]);
 
