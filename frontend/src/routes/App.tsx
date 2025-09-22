@@ -30,7 +30,9 @@ import StudentBadges from '../features/student/pages/Badges';
 import JoinClassPage from '../pages/JoinClassPage';
 import ChangePasswordPage from '../pages/ChangePasswordPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import ForgotPasswordSuccessPage from '../pages/ForgotPasswordSuccessPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
+import TestForgotPasswordPage from '../pages/TestForgotPasswordPage';
 import SubmitAssignmentPage from '../pages/SubmitAssignmentPage';
 import GradeSubmissionsPage from '../pages/GradeSubmissionsPage';
 import CourseDetailPage from '../pages/CourseDetailPage';
@@ -58,8 +60,16 @@ export default function App() {
         element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} 
       />
       <Route 
+        path="/auth/forgot-password/success" 
+        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordSuccessPage />} 
+      />
+      <Route 
         path="/auth/reset-password" 
         element={user ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />} 
+      />
+      <Route 
+        path="/test/forgot-password" 
+        element={<TestForgotPasswordPage />} 
       />
       <Route 
         path="/dashboard" 

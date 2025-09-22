@@ -453,6 +453,20 @@ export class CoursesService {
       .lean();
     
     this.realtimeGateway.emitEnrollmentAdded(courseId, populatedEnrollment);
+    // Notify the student directly
+    if ((populatedEnrollment as any)?.studentId?._id) {
+      this.realtimeGateway.emitUserEvent((populatedEnrollment as any).studentId._id.toString(), 'enrollmentAdded', {
+        courseId,
+        enrollment: populatedEnrollment,
+      });
+    }
+    // Notify the course owner (teacher)
+    if (course?.createdBy) {
+      this.realtimeGateway.emitUserEvent(course.createdBy.toString(), 'enrollmentAdded', {
+        courseId,
+        enrollment: populatedEnrollment,
+      });
+    }
 
     return { message: 'Enrolled successfully' };
   }
@@ -719,6 +733,12 @@ export class CoursesService {
 
     // Emit real-time event
     this.realtimeGateway.emitEnrollmentRemoved(courseId, studentId);
+    // Notify the student directly
+    this.realtimeGateway.emitUserEvent(studentId.toString(), 'enrollmentRemoved', { courseId, studentId });
+    // Notify the course owner (teacher)
+    if (course?.createdBy) {
+      this.realtimeGateway.emitUserEvent(course.createdBy.toString(), 'enrollmentRemoved', { courseId, studentId });
+    }
 
     return { message: 'Student removed from course successfully' };
   }

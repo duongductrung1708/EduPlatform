@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Classroom, ClassroomDocument } from '../../models/classroom.model';
@@ -43,10 +43,15 @@ export class ClassroomsService {
     // Generate unique invite code
     const inviteCode = await this.generateUniqueInviteCode();
 
+    // Ensure the creator is included as a teacher by default
+    const finalTeacherIds = (teacherIds && teacherIds.length > 0)
+      ? teacherIds
+      : [createdBy];
+
     const classroom = new this.classroomModel({
       ...rest,
       courseId: courseId ? new Types.ObjectId(courseId) : undefined,
-      teacherIds: teacherIds.map(id => new Types.ObjectId(id)),
+      teacherIds: finalTeacherIds.map(id => new Types.ObjectId(id)),
       assistantIds: assistantIds.map(id => new Types.ObjectId(id)),
       inviteCode,
       schedule: startDate ? {
@@ -173,6 +178,14 @@ export class ClassroomsService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async delete(classroomId: string, userId: string): Promise<void> {
+    const classroom = await this.classroomModel.findById(classroomId);
+    if (!classroom) throw new NotFoundException('Classroom not found');
+    const isOwner = (classroom.teacherIds || []).some((id: any) => String(id) === String(userId));
+    if (!isOwner) throw new ForbiddenException('Not allowed to delete this classroom');
+    await this.classroomModel.deleteOne({ _id: classroomId });
   }
 
   async findOne(id: string): Promise<ClassroomDocument> {
@@ -319,8 +332,16 @@ export class ClassroomsService {
       }
     }
 
-    // Emit real-time event
+    // Emit real-time event to classroom room
     this.realtimeGateway.emitClassroomStudentAdded(classroomId, student);
+    // Notify the student directly
+    this.realtimeGateway.emitUserEvent(student._id.toString(), 'classroomStudentAdded', { classroomId, student });
+    // Notify all teachers of this classroom
+    if (classroom.teacherIds && classroom.teacherIds.length > 0) {
+      for (const tId of classroom.teacherIds) {
+        this.realtimeGateway.emitUserEvent(tId.toString(), 'classroomStudentAdded', { classroomId, student });
+      }
+    }
 
     // Return updated classroom with populated students
     return this.findOne(classroomId);
@@ -429,8 +450,16 @@ export class ClassroomsService {
     classroom.studentIds = classroom.studentIds.filter(id => id.toString() !== studentId);
     await classroom.save();
 
-    // Emit real-time event
+    // Emit real-time event to classroom room
     this.realtimeGateway.emitClassroomStudentRemoved(classroomId, studentId);
+    // Notify the student directly
+    this.realtimeGateway.emitUserEvent(studentId.toString(), 'classroomStudentRemoved', { classroomId, studentId });
+    // Notify all teachers of this classroom
+    if (classroom.teacherIds && classroom.teacherIds.length > 0) {
+      for (const tId of classroom.teacherIds) {
+        this.realtimeGateway.emitUserEvent(tId.toString(), 'classroomStudentRemoved', { classroomId, studentId });
+      }
+    }
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

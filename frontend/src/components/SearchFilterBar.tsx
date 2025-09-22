@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   TextField,
@@ -91,6 +92,8 @@ export default function SearchFilterBar({
 }: SearchFilterBarProps) {
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   // Debounce search
   useEffect(() => {
@@ -150,8 +153,12 @@ export default function SearchFilterBar({
       elevation={elevation}
       sx={{
         borderRadius: 3,
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
-        border: '1px solid rgba(239, 91, 91, 0.1)',
+        background: isDark
+          ? 'linear-gradient(135deg, #111827 0%, #0B1220 100%)'
+          : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
+        border: isDark
+          ? '1px solid rgba(255,255,255,0.08)'
+          : '1px solid rgba(239, 91, 91, 0.1)',
         ...sx
       }}
     >
@@ -169,10 +176,32 @@ export default function SearchFilterBar({
             value={localSearchValue}
             onChange={(e) => setLocalSearchValue(e.target.value)}
             size={variant === 'compact' ? 'small' : 'medium'}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(239, 91, 91, 0.05)',
+                '& fieldset': {
+                  border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(239, 91, 91, 0.2)'
+                },
+                '&:hover fieldset': {
+                  border: isDark ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(239, 91, 91, 0.3)'
+                },
+                '&.Mui-focused fieldset': {
+                  border: isDark ? '1px solid #FCA5A5' : '1px solid #EF5B5B'
+                }
+              },
+              '& .MuiInputBase-input': {
+                color: isDark ? '#F3F4F6' : undefined
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: isDark ? 'rgba(243,244,246,0.7)' : undefined,
+                opacity: 1
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search sx={{ color: '#EF5B5B' }} />
+                  <Search sx={{ color: isDark ? '#FCA5A5' : '#EF5B5B' }} />
                 </InputAdornment>
               ),
               endAdornment: hasActiveSearch && (
@@ -180,25 +209,13 @@ export default function SearchFilterBar({
                   <IconButton
                     size="small"
                     onClick={handleClearSearch}
-                    sx={{ color: '#EF5B5B' }}
+                    sx={{ color: isDark ? '#FCA5A5' : '#EF5B5B' }}
                   >
                     <Clear />
                   </IconButton>
                 </InputAdornment>
               ),
-              sx: {
-                borderRadius: 3,
-                backgroundColor: 'rgba(239, 91, 91, 0.05)',
-                '& fieldset': {
-                  border: '1px solid rgba(239, 91, 91, 0.2)',
-                },
-                '&:hover fieldset': {
-                  border: '1px solid rgba(239, 91, 91, 0.3)',
-                },
-                '&.Mui-focused fieldset': {
-                  border: '1px solid #EF5B5B',
-                }
-              }
+              
             }}
           />
 
@@ -218,7 +235,7 @@ export default function SearchFilterBar({
                 size={variant === 'compact' ? 'small' : 'medium'}
                 sx={{ minWidth: 120 }}
               >
-                <InputLabel>{filter.label}</InputLabel>
+                <InputLabel sx={{ color: isDark ? '#E5E7EB' : undefined }}>{filter.label}</InputLabel>
                 <Select
                   value={filter.value}
                   label={filter.label}
@@ -227,21 +244,21 @@ export default function SearchFilterBar({
                   sx={{
                     borderRadius: 2,
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(239, 91, 91, 0.2)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(239, 91, 91, 0.2)',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(239, 91, 91, 0.3)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(239, 91, 91, 0.3)',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#EF5B5B',
+                      borderColor: isDark ? '#FCA5A5' : '#EF5B5B',
                     }
                   }}
                 >
                   <MenuItem value="">
-                    <em>Tất cả</em>
+                    <em style={{ color: isDark ? '#E5E7EB' : undefined }}>Tất cả</em>
                   </MenuItem>
                   {filter.options.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
+                    <MenuItem key={option.value} value={option.value} sx={{ color: isDark ? '#E5E7EB' : undefined }}>
                       <Stack direction="row" alignItems="center" spacing={1}>
                         {option.icon}
                         <span>{option.label}</span>
@@ -258,30 +275,30 @@ export default function SearchFilterBar({
                 size={variant === 'compact' ? 'small' : 'medium'}
                 sx={{ minWidth: 120 }}
               >
-                <InputLabel>Sắp xếp</InputLabel>
+                <InputLabel sx={{ color: isDark ? '#E5E7EB' : undefined }}>Sắp xếp</InputLabel>
                 <Select
                   value={sortValue || ''}
                   label="Sắp xếp"
                   onChange={(e) => onSortChange(e.target.value)}
-                  startAdornment={<Sort sx={{ color: '#EF5B5B', mr: 1 }} />}
+                  startAdornment={<Sort sx={{ color: isDark ? '#FCA5A5' : '#EF5B5B', mr: 1 }} />}
                   sx={{
                     borderRadius: 2,
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(239, 91, 91, 0.2)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(239, 91, 91, 0.2)',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(239, 91, 91, 0.3)',
+                      borderColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(239, 91, 91, 0.3)',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#EF5B5B',
+                      borderColor: isDark ? '#FCA5A5' : '#EF5B5B',
                     }
                   }}
                 >
                   <MenuItem value="">
-                    <em>Mặc định</em>
+                    <em style={{ color: isDark ? '#E5E7EB' : undefined }}>Mặc định</em>
                   </MenuItem>
                   {sortOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
+                    <MenuItem key={option.value} value={option.value} sx={{ color: isDark ? '#E5E7EB' : undefined }}>
                       {option.label}
                     </MenuItem>
                   ))}
@@ -298,11 +315,11 @@ export default function SearchFilterBar({
                 onClick={handleToggleAdvanced}
                 size={variant === 'compact' ? 'small' : 'medium'}
                 sx={{
-                  borderColor: 'rgba(239, 91, 91, 0.3)',
-                  color: '#EF5B5B',
+                  borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(239, 91, 91, 0.3)',
+                  color: isDark ? '#E5E7EB' : '#EF5B5B',
                   '&:hover': {
-                    borderColor: '#EF5B5B',
-                    backgroundColor: 'rgba(239, 91, 91, 0.05)',
+                    borderColor: isDark ? '#E5E7EB' : '#EF5B5B',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(239, 91, 91, 0.05)',
                   }
                 }}
               >
@@ -318,11 +335,11 @@ export default function SearchFilterBar({
                 onClick={handleClearAll}
                 size={variant === 'compact' ? 'small' : 'medium'}
                 sx={{
-                  borderColor: 'rgba(239, 91, 91, 0.3)',
-                  color: '#EF5B5B',
+                  borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(239, 91, 91, 0.3)',
+                  color: isDark ? '#E5E7EB' : '#EF5B5B',
                   '&:hover': {
-                    borderColor: '#EF5B5B',
-                    backgroundColor: 'rgba(239, 91, 91, 0.05)',
+                    borderColor: isDark ? '#E5E7EB' : '#EF5B5B',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(239, 91, 91, 0.05)',
                   }
                 }}
               >

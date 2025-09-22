@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAuth, isAuthenticated } from '../utils/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
@@ -46,11 +47,14 @@ apiClient.interceptors.response.use(
 
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return apiClient(originalRequest);
+        } else {
+          // No refresh token, clear everything and redirect
+          clearAuth();
+          window.location.href = '/auth/login';
         }
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        clearAuth();
         window.location.href = '/auth/login';
       }
     }

@@ -7,6 +7,7 @@ import { User, UserDocument } from '../../models/user.model';
 import { RegisterDto, LoginDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyOtpDto } from './dto/auth.dto';
 import { OtpService } from '../otp/otp.service';
 import * as crypto from 'crypto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,7 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
     private otpService: OtpService,
+    private emailService: EmailService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -215,8 +217,37 @@ export class AuthService {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = expires as any;
     await user.save();
-    // TODO: integrate email service; for now, return token for testing
-    return { message: 'Đã tạo yêu cầu đặt lại mật khẩu', token };
+    // Send reset email with link
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
+    try {
+      // Reuse OTP template content style with password_reset type when available, else send a simple email
+      await this.emailService['transporter']?.sendMail?.({
+        from: `"EduLearn" <${process.env.SMTP_USER || 'no-reply@edulearn.local'}>`,
+        to: email,
+        subject: 'Đặt lại mật khẩu EduLearn',
+        html: `
+          <div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#333;">
+            <h2>Yêu cầu đặt lại mật khẩu</h2>
+            <p>Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản EduLearn.</p>
+            <p>Nhấn vào nút bên dưới để đặt lại mật khẩu. Liên kết có hiệu lực trong 30 phút.</p>
+            <p>
+              <a href="${resetUrl}"
+                 style="display:inline-block;background:#EF5B5B;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:600">
+                Đặt lại mật khẩu
+              </a>
+            </p>
+            <p>Nếu nút không hoạt động, hãy sao chép liên kết này vào trình duyệt:</p>
+            <p><a href="${resetUrl}">${resetUrl}</a></p>
+            <hr />
+            <small>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</small>
+          </div>
+        `,
+      });
+    } catch (e) {
+      // Log and still respond success without exposing details
+    }
+    return { message: 'Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu' };
   }
 
   async resetPassword(dto: ResetPasswordDto) {

@@ -208,6 +208,9 @@ export const classesApi = {
     const res = await apiClient.patch(`/api/classes/${id}` , data);
     return res.data;
   },
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`/api/classes/${id}`);
+  },
   async removeStudent(classId: string, studentId: string): Promise<void> {
     await apiClient.delete(`/api/classes/${classId}/students/${studentId}`);
   },

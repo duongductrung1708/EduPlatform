@@ -105,7 +105,7 @@ export default function TeacherOverview() {
                   <Typography variant="h3" fontWeight="bold" sx={{ mb: 1, color: '#FFFFFF', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                     {stats.classrooms}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: '#FFFFFF' }}>
                     Lớp của tôi
                   </Typography>
                 </Box>
@@ -143,7 +143,7 @@ export default function TeacherOverview() {
                   <Typography variant="h3" fontWeight="bold" sx={{ mb: 1, color: '#FFFFFF', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                     {stats.students}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: '#FFFFFF' }}>
                     Học sinh
                   </Typography>
                 </Box>
@@ -181,7 +181,7 @@ export default function TeacherOverview() {
                   <Typography variant="h3" fontWeight="bold" sx={{ mb: 1, color: '#FFFFFF', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                     {stats.assignments}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: '#FFFFFF' }}>
                     Bài tập
                   </Typography>
                 </Box>

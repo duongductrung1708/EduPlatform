@@ -23,6 +23,19 @@ export class ClassroomsController {
   ) {
     return this.classroomsService.create(createClassroomDto, user.id);
   }
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete classroom (teacher/admin only)' })
+  @ApiResponse({ status: 200, description: 'Classroom deleted successfully' })
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    await this.classroomsService.delete(id, user.id);
+    return { message: 'Classroom deleted successfully' };
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)

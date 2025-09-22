@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import GroupIcon from '@mui/icons-material/Group';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import { coursesApi } from '../../../api/courses';
+// import { coursesApi } from '../../../api/courses';
 import { useSocket } from '../../../hooks/useSocket';
 import { useTheme } from '../../../contexts/ThemeContext';
 import Pagination from '../../../components/Pagination';
@@ -38,10 +38,7 @@ export default function MyClassrooms() {
   const [editOpen, setEditOpen] = useState<boolean>(false);
   const [editLoading, setEditLoading] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>('');
-  const [editCourseId, setEditCourseId] = useState<string>('');
-  const [courses, setCourses] = useState<Array<{ _id: string; title: string }>>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  const [courseFilter, setCourseFilter] = useState<string>('');
+  // Classrooms no longer link to a course
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('');
   const [addStudentOpen, setAddStudentOpen] = useState<boolean>(false);
@@ -50,11 +47,13 @@ export default function MyClassrooms() {
   const [searchingStudent, setSearchingStudent] = useState<boolean>(false);
   const [addingStudent, setAddingStudent] = useState<boolean>(false);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
+  const [studentsPreviewMap, setStudentsPreviewMap] = useState<Record<string, any[]>>({});
   
   // Delete classroom states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [classroomToDelete, setClassroomToDelete] = useState<ClassroomItem | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
+  const [confirmName, setConfirmName] = useState<string>('');
 
   const fetchClasses = async () => {
     try {
@@ -80,13 +79,48 @@ export default function MyClassrooms() {
 
   useEffect(() => {
     fetchClasses();
-    (async () => {
-      try {
-        const list = await coursesApi.listAll(1, 200);
-        setCourses(list.items || []);
-      } catch {}
-    })();
   }, [currentPage, itemsPerPage]);
+
+  // Load students preview (first 3) for each classroom on the current page
+  useEffect(() => {
+    let cancelled = false;
+    const loadPreviews = async () => {
+      try {
+        const entries = await Promise.allSettled(
+          items.map(async (cls) => {
+            try {
+              // If already have objects with names, use them directly
+              const raw = (cls as any).studentIds || [];
+              let students: any[] = [];
+              if (raw.length > 0 && typeof raw[0] === 'object') {
+                students = raw as any[];
+              } else {
+                students = await classesApi.getStudents(cls._id);
+              }
+              return [cls._id, (students || []).slice(0, 3)] as [string, any[]];
+            } catch {
+              return [cls._id, []] as [string, any[]];
+            }
+          })
+        );
+        if (cancelled) return;
+        const map: Record<string, any[]> = {};
+        entries.forEach((r) => {
+          if (r.status === 'fulfilled') {
+            const [id, list] = r.value;
+            map[id] = list;
+          }
+        });
+        setStudentsPreviewMap(map);
+      } catch {
+        // ignore
+      }
+    };
+    if (items.length > 0) loadPreviews();
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   // Real-time updates for classroom student changes
   useEffect(() => {
@@ -155,12 +189,10 @@ export default function MyClassrooms() {
       setCreating(true);
       setDialogError(null);
       const payload: any = { title: title.trim() };
-      if (selectedCourseId) payload.courseId = selectedCourseId;
       await classesApi.create(payload);
       setSuccess('Đã tạo lớp');
       setOpen(false);
       setTitle('');
-      setSelectedCourseId('');
       setDialogError(null);
       fetchClasses();
     } catch (e: any) {
@@ -207,7 +239,6 @@ export default function MyClassrooms() {
   const openEdit = async (cls: any) => {
     setCurrentClass(cls);
     setEditTitle(cls.title || '');
-    setEditCourseId(cls.courseId?._id || cls.courseId || '');
     setEditOpen(true);
   };
 
@@ -216,7 +247,6 @@ export default function MyClassrooms() {
     try {
       setEditLoading(true);
       const data: any = { title: editTitle.trim() };
-      if (editCourseId) data.courseId = editCourseId;
       await classesApi.update(currentClass._id || currentClass.id, data);
       setSuccess('Đã cập nhật lớp');
       setEditOpen(false);
@@ -289,6 +319,7 @@ export default function MyClassrooms() {
   const openDeleteDialog = (classroom: ClassroomItem) => {
     setClassroomToDelete(classroom);
     setDeleteDialogOpen(true);
+    setConfirmName('');
   };
 
   const confirmDeleteClassroom = async () => {
@@ -311,6 +342,7 @@ export default function MyClassrooms() {
   const cancelDeleteClassroom = () => {
     setDeleteDialogOpen(false);
     setClassroomToDelete(null);
+    setConfirmName('');
   };
 
   // Search and filter handlers
@@ -319,9 +351,7 @@ export default function MyClassrooms() {
   };
 
   const handleFilterChange = (filterKey: string, value: string) => {
-    if (filterKey === 'course') {
-      setCourseFilter(value);
-    }
+    // No filters needed
   };
 
   const handleSortChange = (value: string) => {
@@ -330,7 +360,6 @@ export default function MyClassrooms() {
 
   const handleClearAll = () => {
     setSearchTerm('');
-    setCourseFilter('');
     setSortBy('');
   };
 
@@ -341,14 +370,7 @@ export default function MyClassrooms() {
       if (searchTerm.trim()) {
         const searchLower = searchTerm.toLowerCase();
         const titleMatch = (item.title || (item as any).name || '').toLowerCase().includes(searchLower);
-        const courseMatch = courses.find(c => c._id === (item as any).courseId)?.title.toLowerCase().includes(searchLower);
-        if (!titleMatch && !courseMatch) return false;
-      }
-
-      // Course filter
-      if (courseFilter) {
-        const itemCourseId = (item as any).courseId?._id || (item as any).courseId;
-        if (itemCourseId !== courseFilter) return false;
+        if (!titleMatch) return false;
       }
 
       return true;
@@ -379,26 +401,11 @@ export default function MyClassrooms() {
         <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ 
             fontWeight: 700, 
-            background: darkMode 
-              ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
-              : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            color: 'transparent'
+            color: darkMode ? '#FFFFFF' : 'inherit'
           }}>
             Lớp của tôi
           </Typography>
           <Box display="flex" gap={2}>
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>Lọc theo môn học</InputLabel>
-              <Select label="Lọc theo môn học" value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}>
-                <MenuItem value="">Tất cả</MenuItem>
-                {courses.map(c => (
-                  <MenuItem key={c._id} value={c._id}>{c.title}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
             <Button 
               variant="contained" 
               startIcon={<AddIcon />} 
@@ -425,17 +432,6 @@ export default function MyClassrooms() {
         searchValue={searchTerm}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Tìm kiếm lớp học..."
-        filters={{
-          course: {
-            value: courseFilter,
-            label: 'Môn học',
-            options: courses.map(course => ({
-              value: course._id,
-              label: course.title
-            }))
-          }
-        }}
-        onFilterChange={handleFilterChange}
         sortOptions={[
           { value: 'name-asc', label: 'Tên A-Z' },
           { value: 'name-desc', label: 'Tên Z-A' },
@@ -458,14 +454,24 @@ export default function MyClassrooms() {
                 height: '100%', 
                 display: 'flex', 
                 flexDirection: 'column',
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
-                border: '1px solid rgba(239, 91, 91, 0.1)',
-                boxShadow: '0 4px 20px rgba(239, 91, 91, 0.1)',
+                background: darkMode
+                  ? 'linear-gradient(135deg, #1f2937 0%, #111827 100%)'
+                  : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
+                border: darkMode
+                  ? '1px solid rgba(255, 255, 255, 0.08)'
+                  : '1px solid rgba(239, 91, 91, 0.1)',
+                boxShadow: darkMode
+                  ? '0 4px 20px rgba(0,0,0,0.35)'
+                  : '0 4px 20px rgba(239, 91, 91, 0.1)',
                 transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-4px)',
-                  boxShadow: '0 8px 30px rgba(239, 91, 91, 0.2)',
-                  border: '1px solid rgba(239, 91, 91, 0.2)',
+                  boxShadow: darkMode
+                    ? '0 8px 30px rgba(0,0,0,0.5)'
+                    : '0 8px 30px rgba(239, 91, 91, 0.2)',
+                  border: darkMode
+                    ? '1px solid rgba(255, 255, 255, 0.15)'
+                    : '1px solid rgba(239, 91, 91, 0.2)',
                 }
               }}>
                 <CardContent sx={{ flexGrow: 1, p: 3 }}>
@@ -480,41 +486,36 @@ export default function MyClassrooms() {
                     }}>
                       <SchoolIcon sx={{ color: 'white', fontSize: 24 }} />
                     </Box>
-                    <Typography variant="h6" fontWeight="600" sx={{ color: '#333333' }}>
+                    <Typography variant="h6" fontWeight="600" sx={{ color: darkMode ? '#E5E7EB' : '#333333' }}>
                       {c.title || (c as any).name}
                     </Typography>
                   </Box>
-                  {(c as any).courseId && (
-                    <Box sx={{ mb: 2 }}>
-                      <Chip 
-                        label={`Môn học: ${typeof (c as any).courseId === 'object' ? (c as any).courseId.title : courses.find(cs => cs._id === (c as any).courseId)?.title || 'N/A'}`} 
-                        size="small"
-                        sx={{
-                          backgroundColor: '#AED6E6',
-                          color: '#333333',
-                          fontWeight: 500
-                        }}
-                      />
-                    </Box>
-                  )}
+                  {/* course info removed */}
                   <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                    <Typography variant="body2" sx={{ color: '#777777', fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ color: darkMode ? '#D1D5DB' : '#777777', fontWeight: 500 }}>
                       {Math.max(0, (c as any).studentsCount ?? (c.studentIds || []).length)} học sinh
                     </Typography>
                     <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14, border: '2px solid white' } }}>
-                      <Avatar sx={{ bgcolor: '#EF5B5B' }}>H</Avatar>
-                      <Avatar sx={{ bgcolor: '#AED6E6', color: '#333333' }}>S</Avatar>
-                      <Avatar sx={{ bgcolor: '#FF7B7B' }}>3</Avatar>
+                      {(studentsPreviewMap[c._id] || []).map((s, idx) => {
+                        const display = s?.name || s?.email || 'U';
+                        const letter = String(display).charAt(0).toUpperCase();
+                        const bg = idx === 0 ? '#EF5B5B' : idx === 1 ? '#AED6E6' : '#FF7B7B';
+                        return (
+                          <Avatar key={s?._id || idx} src={s?.avatarUrl || s?.avatar} sx={{ bgcolor: s?.avatarUrl ? undefined : bg, color: idx === 1 ? '#333333' : '#fff' }}>
+                            {!s?.avatarUrl && letter}
+                          </Avatar>
+                        );
+                      })}
                     </AvatarGroup>
                   </Box>
                   <Box sx={{ 
                     p: 2, 
                     borderRadius: 2, 
-                    backgroundColor: 'rgba(239, 91, 91, 0.05)',
-                    border: '1px solid rgba(239, 91, 91, 0.1)'
+                    backgroundColor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                    border: darkMode ? '1px solid rgba(239, 91, 91, 0.3)' : '1px solid rgba(239, 91, 91, 0.1)'
                   }}>
-                    <Typography variant="body2" sx={{ color: '#777777', fontWeight: 500 }}>
-                      Mã mời: <span style={{ fontWeight: 600, color: '#EF5B5B' }}>{c.inviteCode || '-'}</span>
+                    <Typography variant="body2" sx={{ color: darkMode ? '#E5E7EB' : '#777777', fontWeight: 500 }}>
+                      Mã mời: <span style={{ fontWeight: 600, color: darkMode ? '#FCA5A5' : '#EF5B5B' }}>{c.inviteCode || '-'}</span>
                     </Typography>
                   </Box>
                 </CardContent>
@@ -529,11 +530,11 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      borderColor: '#AED6E6',
-                      color: '#333333',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.25)' : '#AED6E6',
+                      color: darkMode ? '#E5E7EB' : '#333333',
                       '&:hover': {
-                        borderColor: '#7BB3D1',
-                        backgroundColor: 'rgba(174, 214, 230, 0.1)'
+                        borderColor: darkMode ? 'rgba(255,255,255,0.35)' : '#7BB3D1',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(174, 214, 230, 0.1)'
                       }
                     }}
                   >
@@ -549,10 +550,10 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                      background: darkMode ? 'linear-gradient(135deg, #F43F5E 0%, #FB7185 100%)' : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
                       boxShadow: '0 2px 10px rgba(239, 91, 91, 0.3)',
                       '&:hover': {
-                        background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+                        background: darkMode ? 'linear-gradient(135deg, #E11D48 0%, #F43F5E 100%)' : 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
                         boxShadow: '0 4px 15px rgba(239, 91, 91, 0.4)',
                       }
                     }}
@@ -568,11 +569,11 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      borderColor: '#AED6E6',
-                      color: '#333333',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.25)' : '#AED6E6',
+                      color: darkMode ? '#E5E7EB' : '#333333',
                       '&:hover': {
-                        borderColor: '#7BB3D1',
-                        backgroundColor: 'rgba(174, 214, 230, 0.1)'
+                        borderColor: darkMode ? 'rgba(255,255,255,0.35)' : '#7BB3D1',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(174, 214, 230, 0.1)'
                       }
                     }}
                   >
@@ -587,11 +588,11 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      borderColor: '#AED6E6',
-                      color: '#333333',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.25)' : '#AED6E6',
+                      color: darkMode ? '#E5E7EB' : '#333333',
                       '&:hover': {
-                        borderColor: '#7BB3D1',
-                        backgroundColor: 'rgba(174, 214, 230, 0.1)'
+                        borderColor: darkMode ? 'rgba(255,255,255,0.35)' : '#7BB3D1',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(174, 214, 230, 0.1)'
                       }
                     }}
                   >
@@ -608,11 +609,11 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      borderColor: '#AED6E6',
-                      color: '#333333',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.25)' : '#AED6E6',
+                      color: darkMode ? '#E5E7EB' : '#333333',
                       '&:hover': {
-                        borderColor: '#7BB3D1',
-                        backgroundColor: 'rgba(174, 214, 230, 0.1)'
+                        borderColor: darkMode ? 'rgba(255,255,255,0.35)' : '#7BB3D1',
+                        backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(174, 214, 230, 0.1)'
                       }
                     }}
                   >
@@ -628,12 +629,12 @@ export default function MyClassrooms() {
                       px: 2,
                       py: 1,
                       borderRadius: 2,
-                      borderColor: '#FF6B6B',
-                      color: '#FF6B6B',
+                      borderColor: darkMode ? '#F87171' : '#FF6B6B',
+                      color: darkMode ? '#FCA5A5' : '#FF6B6B',
                       '&:hover': {
-                        borderColor: '#FF5252',
-                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                        color: '#FF5252'
+                        borderColor: darkMode ? '#EF4444' : '#FF5252',
+                        backgroundColor: darkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 107, 107, 0.1)',
+                        color: darkMode ? '#FCA5A5' : '#FF5252'
                       }
                     }}
                   >
@@ -646,12 +647,14 @@ export default function MyClassrooms() {
         ))}
       </Grid>
 
-        <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" PaperProps={{
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" PaperProps={{
           sx: {
             borderRadius: 4,
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
-            border: '1px solid rgba(239, 91, 91, 0.1)',
-            boxShadow: '0 8px 32px rgba(239, 91, 91, 0.15)'
+            background: darkMode
+              ? 'linear-gradient(135deg, #111827 0%, #0B1220 100%)'
+              : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)',
+            border: darkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(239, 91, 91, 0.1)',
+            boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(239, 91, 91, 0.15)'
           }
         }}>
           <DialogTitle sx={{ 
@@ -675,16 +678,25 @@ export default function MyClassrooms() {
               fullWidth 
               value={title} 
               onChange={(e) => setTitle(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : undefined,
+                  '& fieldset': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.18)' : undefined
+                  },
+                  '&:hover fieldset': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.28)' : undefined
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: darkMode ? '#FCA5A5' : undefined
+                  }
+                },
+                '& .MuiInputBase-input': { color: darkMode ? '#F3F4F6' : undefined },
+                '& .MuiInputLabel-root': { color: darkMode ? '#E5E7EB' : undefined }
+              }}
             />
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Môn học</InputLabel>
-              <Select label="Môn học" value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)}>
-                {courses.map(c => (
-                  <MenuItem key={c._id} value={c._id}>{c.title}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* Course selection removed */}
             <Typography variant="body2" sx={{ color: '#777777', fontStyle: 'italic' }}>
               Có thể chỉnh sửa thêm thông tin sau khi tạo.
             </Typography>
@@ -728,7 +740,14 @@ export default function MyClassrooms() {
           </DialogActions>
         </Dialog>
 
-      <Dialog open={manageOpen} onClose={() => setManageOpen(false)} fullWidth maxWidth="md">
+      <Dialog open={manageOpen} onClose={() => setManageOpen(false)} fullWidth maxWidth="md" PaperProps={{
+        sx: {
+          borderRadius: 3,
+          background: darkMode
+            ? 'linear-gradient(135deg, #111827 0%, #0B1220 100%)'
+            : undefined
+        }
+      }}>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="h6">Quản lý học sinh</Typography>
@@ -802,19 +821,17 @@ export default function MyClassrooms() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm" PaperProps={{
+        sx: {
+          borderRadius: 3,
+          background: darkMode
+            ? 'linear-gradient(135deg, #111827 0%, #0B1220 100%)'
+            : undefined
+        }
+      }}>
         <DialogTitle>Chỉnh sửa lớp học</DialogTitle>
         <DialogContent>
           <TextField fullWidth margin="dense" label="Tên lớp" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Môn học</InputLabel>
-            <Select label="Môn học" value={editCourseId} onChange={(e) => setEditCourseId(e.target.value)}>
-              <MenuItem value="">Không chọn</MenuItem>
-              {courses.map(c => (
-                <MenuItem key={c._id} value={c._id}>{c.title}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Hủy</Button>
@@ -823,7 +840,14 @@ export default function MyClassrooms() {
       </Dialog>
 
       {/* Add Student Dialog */}
-      <Dialog open={addStudentOpen} onClose={() => setAddStudentOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={addStudentOpen} onClose={() => setAddStudentOpen(false)} fullWidth maxWidth="sm" PaperProps={{
+        sx: {
+          borderRadius: 3,
+          background: darkMode
+            ? 'linear-gradient(135deg, #111827 0%, #0B1220 100%)'
+            : undefined
+        }
+      }}>
         <DialogTitle>Thêm học sinh vào lớp</DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 2 }}>
@@ -859,7 +883,7 @@ export default function MyClassrooms() {
             }}>
               <Typography variant="h6" sx={{ mb: 1 }}>Học sinh được tìm thấy:</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ width: 40, height: 40, bgcolor: '#EF5B5B' }}>
+                <Avatar sx={{ width: 40, height: 40, bgcolor: darkMode ? '#F43F5E' : '#EF5B5B' }}>
                   {foundStudent.name?.charAt(0) || foundStudent.email?.charAt(0) || 'U'}
                 </Avatar>
                 <Box>
@@ -914,9 +938,16 @@ export default function MyClassrooms() {
               <li>Tất cả dữ liệu khác liên quan</li>
             </ul>
           </Alert>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Vui lòng nhập tên lớp học để xác nhận: <strong>{classroomToDelete?.title || classroomToDelete?.name}</strong>
           </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            value={confirmName}
+            onChange={(e) => setConfirmName(e.target.value)}
+            placeholder={(classroomToDelete?.title || (classroomToDelete as any)?.name) as any}
+          />
         </DialogContent>
         <DialogActions sx={{ p: 3, gap: 1 }}>
           <Button 
@@ -931,7 +962,7 @@ export default function MyClassrooms() {
             variant="contained"
             color="error"
             startIcon={<DeleteIcon />}
-            disabled={deleting}
+            disabled={deleting || !classroomToDelete || confirmName.trim() !== ((classroomToDelete?.title || (classroomToDelete as any)?.name || '') as any).trim()}
             sx={{
               background: 'linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%)',
               '&:hover': {

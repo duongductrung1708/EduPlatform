@@ -38,7 +38,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const handleNotifOpen = (e: React.MouseEvent<HTMLElement>) => setNotifAnchor(e.currentTarget);
   const handleNotifClose = () => setNotifAnchor(null);
 
-  // Wire realtime notifications (classMessage, submissionGraded)
+  // Wire realtime notifications (classMessage, submissionGraded, enrollment/classroom changes)
   React.useEffect(() => {
     const handleJoined = (_: any) => {};
     const handleMsg = (data: any) => {
@@ -48,11 +48,37 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const handleGraded = (data: any) => {
       setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Bài tập đã chấm: ${data?.grade ?? ''}`.trim(), ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
     };
+    const handleEnrollmentAdded = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Bạn đã được ghi danh vào môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleEnrollmentRemoved = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Bạn đã bị hủy ghi danh khỏi môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleClassroomAdded = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Bạn được thêm vào lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleClassroomRemoved = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Bạn đã bị xóa khỏi lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
     onJoinedClassroom(handleJoined);
     onClassMessage(handleMsg);
-    socket?.on('submissionGraded', handleSubmissionCreated);
+    socket?.on('submissionGraded', handleGraded);
+    socket?.on('enrollmentAdded', handleEnrollmentAdded);
+    socket?.on('enrollmentRemoved', handleEnrollmentRemoved);
+    socket?.on('classroomStudentAdded', handleClassroomAdded);
+    socket?.on('classroomStudentRemoved', handleClassroomRemoved);
+    const handleAny = (event: string, ...args: any[]) => {
+      // eslint-disable-next-line no-console
+      console.debug('[socket][student] event:', event, args?.[0]);
+    };
+    socket?.onAny(handleAny);
     return () => {
-      // best-effort cleanup; hooks already clean basic handlers on unmount
+      socket?.off('submissionGraded', handleGraded);
+      socket?.off('enrollmentAdded', handleEnrollmentAdded);
+      socket?.off('enrollmentRemoved', handleEnrollmentRemoved);
+      socket?.off('classroomStudentAdded', handleClassroomAdded);
+      socket?.off('classroomStudentRemoved', handleClassroomRemoved);
+      socket?.offAny(handleAny);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

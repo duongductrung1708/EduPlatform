@@ -25,10 +25,12 @@ import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton
 import { useTheme } from '../../../contexts/ThemeContext';
 import Pagination from '../../../components/Pagination';
 import SearchFilterBar from '../../../components/SearchFilterBar';
+import { useAuth } from '../../../hooks/useAuth';
 
 export default function StudentClassrooms() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,15 @@ export default function StudentClassrooms() {
 
   useEffect(() => {
     const loadClassrooms = async () => {
+      // Don't load if not authenticated
+      if (!isAuthenticated) {
+        setClassrooms([]);
+        setTotalItems(0);
+        setTotalPages(0);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -68,8 +79,10 @@ export default function StudentClassrooms() {
       }
     };
 
-    loadClassrooms();
-  }, [currentPage, itemsPerPage]);
+    if (!authLoading) {
+      loadClassrooms();
+    }
+  }, [currentPage, itemsPerPage, isAuthenticated, authLoading]);
 
   // Search and filter handlers
   const handleSearchChange = (value: string) => {
@@ -122,7 +135,7 @@ export default function StudentClassrooms() {
       }
     });
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" sx={{ 
@@ -138,6 +151,28 @@ export default function StudentClassrooms() {
           Lớp học của tôi
         </Typography>
         <SkeletonGrid />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" sx={{ 
+          mb: 4, 
+          fontWeight: 700,
+          background: darkMode 
+            ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+            : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          Lớp học của tôi
+        </Typography>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Bạn cần đăng nhập để xem lớp học của mình
+        </Alert>
       </Box>
     );
   }

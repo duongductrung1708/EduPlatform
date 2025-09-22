@@ -21,7 +21,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { onClassMessage, onJoinedClassroom, socket } = useSocket();
+  const { onClassMessage, onJoinedClassroom, socket, onAny, offAny, onConnect } = useSocket();
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [notifications, setNotifications] = useState<Array<{ id: string; text: string; ts: string }>>([]);
   const location = useLocation();
@@ -45,11 +45,46 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const handleSubmissionCreated = (data: any) => {
       setNotifications((prev) => [{ id: crypto.randomUUID(), text: `HS nộp bài: ${data?.studentId ?? ''}`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
     };
-    onJoinedClassroom(handleJoined);
-    onClassMessage(handleMsg);
-    socket?.on('submissionCreated', handleSubmissionCreated);
+    const handleEnrollmentAdded = (data: any) => {
+      const name = data?.enrollment?.studentId?.name || 'Học sinh';
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã ghi danh vào môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleEnrollmentRemoved = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị hủy ghi danh khỏi môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleClassroomAdded = (data: any) => {
+      const name = data?.student?.name || 'Học sinh';
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã được thêm vào lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    const handleClassroomRemoved = (data: any) => {
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị xóa khỏi lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    };
+    // Debug: log any event
+    const debug = (import.meta as any).env?.VITE_DEBUG_SOCKET === '1';
+    const handleAny = (event: string, ...args: any[]) => {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.debug('[socket][teacher] event:', event, args?.[0]);
+      }
+    };
+
+    onConnect(() => {
+      onJoinedClassroom(handleJoined);
+      onClassMessage(handleMsg);
+      socket?.on('submissionCreated', handleSubmissionCreated);
+      socket?.on('enrollmentAdded', handleEnrollmentAdded);
+      socket?.on('enrollmentRemoved', handleEnrollmentRemoved);
+      socket?.on('classroomStudentAdded', handleClassroomAdded);
+      socket?.on('classroomStudentRemoved', handleClassroomRemoved);
+      onAny(handleAny);
+    });
     return () => {
       socket?.off('submissionCreated', handleSubmissionCreated);
+      socket?.off('enrollmentAdded', handleEnrollmentAdded);
+      socket?.off('enrollmentRemoved', handleEnrollmentRemoved);
+      socket?.off('classroomStudentAdded', handleClassroomAdded);
+      socket?.off('classroomStudentRemoved', handleClassroomRemoved);
+      offAny(handleAny);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -62,6 +62,8 @@ export default function MyCourses() {
   const [courseToDelete, setCourseToDelete] = useState<CourseItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [manageContentDialogOpen, setManageContentDialogOpen] = useState(false);
+  const [selectedCourseForManage, setSelectedCourseForManage] = useState<string>('');
 
   // Form states
   const [title, setTitle] = useState('');
@@ -263,6 +265,14 @@ export default function MyCourses() {
     }
   };
 
+  const handleManageContent = () => {
+    if (selectedCourseForManage) {
+      navigate(`/teacher/courses/${selectedCourseForManage}/manage`);
+      setManageContentDialogOpen(false);
+      setSelectedCourseForManage('');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -315,17 +325,7 @@ export default function MyCourses() {
               variant="outlined"
               size="large"
               startIcon={<SettingsIcon />}
-              onClick={() => {
-                if (courses.length === 1) {
-                  navigate(`/teacher/courses/${courses[0]._id}/manage`);
-                } else {
-                  // Show a dialog to select which course to manage
-                  const courseId = window.prompt('Nhập ID môn học cần quản lý:');
-                  if (courseId) {
-                    navigate(`/teacher/courses/${courseId}/manage`);
-                  }
-                }
-              }}
+              onClick={() => setManageContentDialogOpen(true)}
               sx={{ 
                 borderRadius: 3,
                 py: 1.5,
@@ -688,6 +688,101 @@ export default function MyCourses() {
           </Button>
           <Button variant="contained" onClick={handleUpdateCourse}>
             Cập nhật môn học
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Manage Content Dialog */}
+      <Dialog open={manageContentDialogOpen} onClose={() => setManageContentDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, textAlign: 'center' }}>
+          <SettingsIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Chọn môn học để quản lý nội dung
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+            Chọn môn học mà bạn muốn quản lý nội dung (bài giảng, bài tập, v.v.)
+          </Typography>
+          
+          <TextField
+            select
+            fullWidth
+            label="Chọn môn học"
+            value={selectedCourseForManage}
+            onChange={(e) => setSelectedCourseForManage(e.target.value)}
+            margin="normal"
+            required
+          >
+            {courses.map((course) => (
+              <MenuItem key={course._id} value={course._id}>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="body1" fontWeight={600}>
+                      {course.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      ID: {course._id}
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    size="small" 
+                    label={course.category} 
+                    sx={{ ml: 1 }}
+                    variant="outlined"
+                  />
+                </Box>
+              </MenuItem>
+            ))}
+          </TextField>
+
+          {selectedCourseForManage && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Thông tin môn học đã chọn:
+              </Typography>
+              {(() => {
+                const selectedCourse = courses.find(c => c._id === selectedCourseForManage);
+                return selectedCourse ? (
+                  <Box>
+                    <Typography variant="body2">
+                      <strong>Tên:</strong> {selectedCourse.title}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>ID:</strong> {selectedCourse._id}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Mô tả:</strong> {selectedCourse.description}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Danh mục:</strong> {selectedCourse.category}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Cấp độ:</strong> {selectedCourse.level}
+                    </Typography>
+                  </Box>
+                ) : null;
+              })()}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setManageContentDialogOpen(false);
+            setSelectedCourseForManage('');
+          }}>
+            Hủy
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleManageContent}
+            disabled={!selectedCourseForManage}
+            sx={{
+              background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+              }
+            }}
+          >
+            Quản lý nội dung
           </Button>
         </DialogActions>
       </Dialog>

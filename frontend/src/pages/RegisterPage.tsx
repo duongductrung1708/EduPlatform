@@ -24,6 +24,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorAlert from '../components/ErrorAlert';
 import OtpVerificationDialog from '../components/OtpVerificationDialog';
+import Logo from '../components/Logo';
 
 export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -102,7 +103,11 @@ export const RegisterPage: React.FC = () => {
         ? 'linear-gradient(135deg, #0f172a 0%, #111827 100%)'
         : 'linear-gradient(135deg, #e3f2fd 0%, #f5f7ff 100%)',
       p: 2,
+      position: 'relative',
     }}>
+      <Box sx={{ position: 'absolute', top: 16, left: 16 }}>
+        <Logo height={48} />
+      </Box>
       <Container maxWidth="sm">
         <Paper elevation={8} sx={{ p: 4, borderRadius: 3 }}>
           <Box textAlign="center" sx={{ mb: 2 }}>
