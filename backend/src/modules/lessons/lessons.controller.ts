@@ -35,6 +35,14 @@ export class LessonsController {
     return this.lessonsService.findAll(classroomId, user.id);
   }
 
+  @Get('/:lessonId/detail')
+  @ApiOperation({ summary: 'Get lesson detail by id (for mention context)' })
+  async findById(
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.lessonsService.findById(lessonId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get lesson by ID' })
   @ApiResponse({ status: 200, description: 'Lesson details', type: LessonResponseDto })

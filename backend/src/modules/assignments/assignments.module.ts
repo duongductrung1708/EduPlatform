@@ -6,6 +6,7 @@ import { Assignment, AssignmentSchema } from '../../models/assignment.model';
 import { Submission, SubmissionSchema } from '../../models/assignment.model';
 import { Classroom, ClassroomSchema } from '../../models/classroom.model';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
       { name: Classroom.name, schema: ClassroomSchema },
     ]),
     RealtimeModule,
+    NotificationsModule,
   ],
   controllers: [AssignmentsController],
   providers: [AssignmentsService],

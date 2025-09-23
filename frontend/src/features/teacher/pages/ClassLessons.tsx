@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink } from '@mui/material';
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -9,6 +9,7 @@ import { uploadsApi } from '../../../api/uploads';
 import { classesApi } from '../../../api/admin';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useAuth } from '../../../contexts/AuthContext';
+import { ChatBox } from '../../../components/ChatBox';
 
 export default function ClassLessons() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function ClassLessons() {
   const [editing, setEditing] = useState<LessonItem | null>(null);
   const [classroomInfo, setClassroomInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseItem | null>(null);
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   const fetchLessons = async () => {
     if (!classroomId) return;
@@ -193,7 +195,7 @@ export default function ClassLessons() {
 
       <Grid container spacing={2}>
         {items.filter(it => !filterTag || (it.tags || []).some(t => t.toLowerCase().includes(filterTag.toLowerCase()))).map(it => (
-          <Grid item xs={12} md={6} key={it._id}>
+          <Grid item xs={12} md={12} key={it._id}>
             <Card>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 1 }}>{it.title}</Typography>
@@ -204,10 +206,20 @@ export default function ClassLessons() {
                     {it.tags && it.tags.length > 0 && <Typography variant="body2">Nhãn: {it.tags.join(', ')}</Typography>}
                   </Box>
                 )}
-                {(user?.role === 'teacher' || user?.role === 'admin') && (
-                  <Box display="flex" gap={1} sx={{ mb: 1 }}>
-                    <IconButton size="small" onClick={() => startEdit(it)}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" onClick={() => removeLesson(it)}><DeleteIcon fontSize="small" /></IconButton>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                  {(user?.role === 'teacher' || user?.role === 'admin') && (
+                    <>
+                      <IconButton size="small" onClick={() => startEdit(it)}><EditIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={() => removeLesson(it)}><DeleteIcon fontSize="small" /></IconButton>
+                    </>
+                  )}
+                  <Button size="small" variant="outlined" onClick={() => setExpandedLessonId(prev => prev === it._id ? null : it._id)}>
+                    {expandedLessonId === it._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                  </Button>
+                </Stack>
+                {expandedLessonId === it._id && (
+                  <Box sx={{ mt: 1 }}>
+                    <ChatBox classroomId={classroomId} lessonId={it._id} />
                   </Box>
                 )}
                 {it.attachments && it.attachments.length > 0 && (

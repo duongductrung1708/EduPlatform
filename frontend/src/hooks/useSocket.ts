@@ -94,8 +94,16 @@ export const useSocket = () => {
     socketRef.current?.emit('joinClassroom', { classroomId });
   };
 
+  const joinLesson = (lessonId: string) => {
+    socketRef.current?.emit('joinLesson', { lessonId });
+  };
+
   const sendMessage = (classroomId: string, message: string, user: { id: string; name: string }) => {
     socketRef.current?.emit('classMessage', { classroomId, message, user });
+  };
+
+  const sendLessonMessage = (lessonId: string, message: string, user: { id: string; name: string }) => {
+    socketRef.current?.emit('lessonMessage', { lessonId, message, user });
   };
 
   const onJoinedClassroom = (callback: (data: { classroomId: string }) => void) => {
@@ -106,12 +114,20 @@ export const useSocket = () => {
     socketRef.current?.on('classMessage', callback);
   };
 
+  const onLessonMessage = (callback: (data: { lessonId: string; message: string; user: { id: string; name: string }; timestamp: string }) => void) => {
+    socketRef.current?.on('lessonMessage', callback);
+  };
+
   const offJoinedClassroom = (callback: (data: { classroomId: string }) => void) => {
     socketRef.current?.off('joinedClassroom', callback);
   };
 
   const offClassMessage = (callback: (data: { classroomId: string; message: string; user: { id: string; name: string }; timestamp: string }) => void) => {
     socketRef.current?.off('classMessage', callback);
+  };
+
+  const offLessonMessage = (callback: (data: { lessonId: string; message: string; user: { id: string; name: string }; timestamp: string }) => void) => {
+    socketRef.current?.off('lessonMessage', callback);
   };
 
   // Course events
@@ -199,11 +215,15 @@ export const useSocket = () => {
     socket: socketRef.current,
     isConnected,
     joinClassroom,
+    joinLesson,
     sendMessage,
+    sendLessonMessage,
     onJoinedClassroom,
     onClassMessage,
+    onLessonMessage,
     offJoinedClassroom,
     offClassMessage,
+    offLessonMessage,
     joinCourse,
     leaveCourse,
     onJoinedCourse,

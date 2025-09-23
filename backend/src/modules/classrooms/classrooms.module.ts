@@ -8,6 +8,7 @@ import { User, UserSchema } from '../../models/user.model';
 import { Assignment, AssignmentSchema } from '../../models/assignment.model';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EmailModule } from '../email/email.module';
     ]),
     RealtimeModule,
     EmailModule,
+    NotificationsModule,
   ],
   controllers: [ClassroomsController],
   providers: [ClassroomsService],

@@ -6,11 +6,13 @@ export type LessonDocument = Lesson & Document;
 export interface ILesson {
   _id: Types.ObjectId;
   title: string;
-  description: string;
-  moduleId: Types.ObjectId;
-  courseId: Types.ObjectId;
+  description?: string;
+  moduleId?: Types.ObjectId;
+  courseId?: Types.ObjectId;
+  classroomId?: Types.ObjectId;
+  createdBy?: Types.ObjectId;
   order: number;
-  type: 'document' | 'video' | 'interactive' | 'quiz' | 'assignment';
+  type: 'document' | 'video' | 'interactive' | 'quiz' | 'assignment' | 'discussion';
   content: {
     // For document type
     fileUrl?: string;
@@ -56,21 +58,27 @@ export class Lesson {
   @Prop({ required: true })
   title!: string;
 
-  @Prop({ required: true })
-  description!: string;
+  @Prop()
+  description?: string;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Module' })
-  moduleId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Module' })
+  moduleId?: Types.ObjectId;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Course' })
-  courseId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Course' })
+  courseId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Classroom' })
+  classroomId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  createdBy?: Types.ObjectId;
 
   @Prop({ required: true, default: 0 })
   order!: number;
 
   @Prop({ 
-    required: true, 
-    enum: ['document', 'video', 'interactive', 'quiz', 'assignment'] 
+    enum: ['document', 'video', 'interactive', 'quiz', 'assignment', 'discussion'],
+    default: 'discussion'
   })
   type!: string;
 

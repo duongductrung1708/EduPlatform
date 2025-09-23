@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, useMediaQuery, Avatar, Tooltip, InputBase, alpha, Badge, Menu, MenuItem, ListItemText } from '@mui/material';
+import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, useMediaQuery, Avatar, Tooltip, InputBase, alpha, Badge, Menu, MenuItem, ListItemText, Divider, CircularProgress } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,6 +14,7 @@ import { useSocket } from '../hooks/useSocket';
 import Logo from './Logo';
 import { useNavigate, useLocation } from 'react-router-dom';
 import VirtualAssistant from './VirtualAssistant';
+import { deleteNotification, fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../api/notifications';
 
 const drawerWidth = 260;
 
@@ -21,12 +23,23 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { onClassMessage, onJoinedClassroom, socket, onAny, offAny, onConnect } = useSocket();
+  const { onClassMessage, onJoinedClassroom, on, off, onAny, offAny, onConnect } = useSocket();
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
-  const [notifications, setNotifications] = useState<Array<{ id: string; text: string; ts: string }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; text: string; ts: string; link?: string; _raw?: any; read?: boolean }>>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
   const location = useLocation();
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('q') || '');
   React.useEffect(() => {
+    (async () => {
+      try {
+        setNotifLoading(true);
+        const res = await fetchNotifications(20);
+        setNotifications(res.items.map(it => ({ id: it._id, text: it.title || it.body, ts: new Date(it.createdAt).toLocaleTimeString(), link: it.meta?.link, _raw: it, read: it.read })));
+        setUnreadCount(res.unread ?? 0);
+      } catch {}
+      finally { setNotifLoading(false); }
+    })();
     const q = new URLSearchParams(location.search).get('q') || '';
     setSearch(q);
   }, [location.search]);
@@ -40,24 +53,34 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const handleJoined = (_: any) => {};
     const handleMsg = (data: any) => {
       if (!data?.message) return;
-      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Tin nhắn lớp: ${data.message}`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Tin nhắn lớp: ${data.message}`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
     };
     const handleSubmissionCreated = (data: any) => {
       setNotifications((prev) => [{ id: crypto.randomUUID(), text: `HS nộp bài: ${data?.studentId ?? ''}`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
     };
     const handleEnrollmentAdded = (data: any) => {
       const name = data?.enrollment?.studentId?.name || 'Học sinh';
-      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã ghi danh vào môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã ghi danh vào môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
     };
     const handleEnrollmentRemoved = (data: any) => {
-      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị hủy ghi danh khỏi môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị hủy ghi danh khỏi môn học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
+    };
+    const handleNotificationCreated = (data: any) => {
+      const text = data?.title || data?.body || 'Thông báo mới';
+      setNotifications((prev) => [{ id: data?.id || crypto.randomUUID(), text, ts: new Date().toLocaleTimeString(), link: data?.link, _raw: data, read: false }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
     };
     const handleClassroomAdded = (data: any) => {
       const name = data?.student?.name || 'Học sinh';
-      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã được thêm vào lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã được thêm vào lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
     };
     const handleClassroomRemoved = (data: any) => {
-      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị xóa khỏi lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+      setNotifications((prev) => [{ id: crypto.randomUUID(), text: `Một học sinh đã bị xóa khỏi lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
     };
     // Debug: log any event
     const debug = (import.meta as any).env?.VITE_DEBUG_SOCKET === '1';
@@ -71,23 +94,54 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     onConnect(() => {
       onJoinedClassroom(handleJoined);
       onClassMessage(handleMsg);
-      socket?.on('submissionCreated', handleSubmissionCreated);
-      socket?.on('enrollmentAdded', handleEnrollmentAdded);
-      socket?.on('enrollmentRemoved', handleEnrollmentRemoved);
-      socket?.on('classroomStudentAdded', handleClassroomAdded);
-      socket?.on('classroomStudentRemoved', handleClassroomRemoved);
+      on('submissionCreated', handleSubmissionCreated);
+      on('enrollmentAdded', handleEnrollmentAdded);
+      on('enrollmentRemoved', handleEnrollmentRemoved);
+      on('classroomStudentAdded', handleClassroomAdded);
+      on('classroomStudentRemoved', handleClassroomRemoved);
       onAny(handleAny);
+      on('notificationCreated', handleNotificationCreated);
     });
     return () => {
-      socket?.off('submissionCreated', handleSubmissionCreated);
-      socket?.off('enrollmentAdded', handleEnrollmentAdded);
-      socket?.off('enrollmentRemoved', handleEnrollmentRemoved);
-      socket?.off('classroomStudentAdded', handleClassroomAdded);
-      socket?.off('classroomStudentRemoved', handleClassroomRemoved);
+      off('notificationCreated', handleNotificationCreated);
+      off('submissionCreated', handleSubmissionCreated);
+      off('enrollmentAdded', handleEnrollmentAdded);
+      off('enrollmentRemoved', handleEnrollmentRemoved);
+      off('classroomStudentAdded', handleClassroomAdded);
+      off('classroomStudentRemoved', handleClassroomRemoved);
       offAny(handleAny);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleClickNotification = async (n: { id: string; link?: string; _raw?: any }) => {
+    try {
+      if (n._raw && !n._raw.read) {
+        const res = await markNotificationRead(n.id);
+        setUnreadCount(res.unread ?? 0);
+      }
+    } catch {}
+    if (n.link) {
+      navigate(n.link);
+    }
+    setNotifAnchor(null);
+  };
+
+  const handleDeleteNotification = async (nid: string) => {
+    try {
+      const res = await deleteNotification(nid);
+      setNotifications((prev) => prev.filter(p => p.id !== nid));
+      setUnreadCount(res.unread ?? 0);
+    } catch {}
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await markAllNotificationsRead();
+      setUnreadCount(res.unread ?? 0);
+      setNotifications((prev) => prev.map(p => ({ ...p, read: true })));
+    } catch {}
+  };
 
   const drawer = <TeacherSidebar />;
 
@@ -219,7 +273,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
             >
               <Badge 
                 color="error" 
-                badgeContent={notifications.length}
+                badgeContent={unreadCount}
                 sx={{
                   '& .MuiBadge-badge': {
                     backgroundColor: '#EF5B5B',
@@ -250,17 +304,50 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Menu anchorEl={notifAnchor} open={Boolean(notifAnchor)} onClose={handleNotifClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        {notifications.length === 0 && (
+      <Menu anchorEl={notifAnchor} open={Boolean(notifAnchor)} onClose={handleNotifClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { width: 360, maxHeight: 420 } }}>
+        <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Thông báo</Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Đánh dấu tất cả là đã đọc"><IconButton size="small" onClick={handleMarkAllRead} aria-label="mark all read">
+              <Badge color="error" variant="dot" invisible={unreadCount === 0}>
+                <NotificationsIcon fontSize="small" />
+              </Badge>
+            </IconButton></Tooltip>
+          </Box>
+        </Box>
+        <Divider />
+        {notifLoading && (
+          <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+            <CircularProgress size={20} />
+          </Box>
+        )}
+        {!notifLoading && notifications.length === 0 && (
           <MenuItem disabled>
             <ListItemText primary="Chưa có thông báo" />
           </MenuItem>
         )}
-        {notifications.map((n) => (
-          <MenuItem key={n.id} onClick={handleNotifClose}>
-            <ListItemText primary={n.text} secondary={n.ts} />
-          </MenuItem>
-        ))}
+        <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
+          {notifications.map((n) => (
+            <MenuItem key={n.id} onClick={() => handleClickNotification(n)} sx={{ alignItems: 'flex-start', gap: 1 }} aria-label="notification item">
+              <Box sx={{ mt: 1 }}>
+                <Badge color="error" variant="dot" invisible={!!n.read}>
+                  <Box sx={{ width: 8, height: 8 }} />
+                </Badge>
+              </Box>
+              <ListItemText primaryTypographyProps={{ fontWeight: n.read ? 400 : 700 }} primary={n.text} secondary={n.ts} />
+              <Tooltip title="Xóa">
+                <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }} aria-label="delete notification">
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </MenuItem>
+          ))}
+        </Box>
+        <Divider />
+        <Box sx={{ px: 2, py: 1, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Nhấn vào thông báo để mở trang chi tiết</Typography>
+        </Box>
       </Menu>
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }}>

@@ -8,6 +8,7 @@ import { User, UserDocument } from '../../models/user.model';
 import { CreateClassroomDto, UpdateClassroomDto, JoinClassroomDto } from './dto/classroom.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ClassroomsService {
@@ -18,6 +19,7 @@ export class ClassroomsService {
     @InjectModel(Assignment.name) private assignmentModel: Model<AssignmentDocument>,
     private realtimeGateway: RealtimeGateway,
     private emailService: EmailService,
+    private notifications: NotificationsService,
   ) {}
 
   async create(createClassroomDto: CreateClassroomDto, createdBy: string): Promise<ClassroomDocument> {
@@ -343,6 +345,15 @@ export class ClassroomsService {
       }
     }
 
+    try {
+      await this.notifications.create(student._id.toString(), 'Thêm vào lớp học', `Bạn được thêm vào lớp: ${classroom.title || classroom.name}`, { link: `/classrooms/${classroomId}` });
+      if (classroom.teacherIds && classroom.teacherIds.length > 0) {
+        for (const tId of classroom.teacherIds) {
+          await this.notifications.create(tId.toString(), 'Thêm học sinh', `${student.name} đã được thêm vào lớp: ${classroom.title || classroom.name}`, { link: `/teacher/classrooms/${classroomId}` });
+        }
+      }
+    } catch {}
+
     // Return updated classroom with populated students
     return this.findOne(classroomId);
   }
@@ -367,6 +378,38 @@ export class ClassroomsService {
     }
 
     return [];
+  }
+
+  async listMembers(classroomId: string, userId: string): Promise<Array<{ _id: string; name: string; email: string; avatarUrl?: string }>> {
+    // Ensure user is a member (teacher/assistant/student)
+    const classroom = await this.classroomModel.findOne({
+      _id: classroomId,
+      $or: [
+        { teacherIds: new Types.ObjectId(userId) },
+        { assistantIds: new Types.ObjectId(userId) },
+        { studentIds: new Types.ObjectId(userId) },
+        { teacherId: new Types.ObjectId(userId) }, // legacy
+        { students: new Types.ObjectId(userId) },   // legacy
+      ],
+    });
+    if (!classroom) {
+      throw new ForbiddenException('Access denied to this classroom');
+    }
+
+    const memberIds = new Set<string>();
+    (classroom.teacherIds || []).forEach((id: any) => memberIds.add(String(id)));
+    (classroom.assistantIds || []).forEach((id: any) => memberIds.add(String(id)));
+    (classroom.studentIds || []).forEach((id: any) => memberIds.add(String(id)));
+    // legacy fields
+    if ((classroom as any).teacherId) memberIds.add(String((classroom as any).teacherId));
+    if (Array.isArray((classroom as any).students)) (classroom as any).students.forEach((id: any) => memberIds.add(String(id)));
+
+    if (memberIds.size === 0) return [];
+    const users = await this.userModel
+      .find({ _id: { $in: Array.from(memberIds).map((id) => new Types.ObjectId(id)) } })
+      .select('name email avatarUrl')
+      .lean();
+    return users.map((u: any) => ({ _id: String(u._id), name: u.name || '', email: u.email || '', avatarUrl: u.avatarUrl }));
   }
 
   async findStudentByEmail(email: string): Promise<any> {
@@ -460,6 +503,14 @@ export class ClassroomsService {
         this.realtimeGateway.emitUserEvent(tId.toString(), 'classroomStudentRemoved', { classroomId, studentId });
       }
     }
+    try {
+      await this.notifications.create(studentId.toString(), 'Bị xóa khỏi lớp học', `Bạn đã bị xóa khỏi lớp: ${classroom.title || classroom.name}`, { link: `/classrooms/${classroomId}` });
+      if (classroom.teacherIds && classroom.teacherIds.length > 0) {
+        for (const tId of classroom.teacherIds) {
+          await this.notifications.create(tId.toString(), 'Xóa học sinh', `Một học sinh đã bị xóa khỏi lớp: ${classroom.title || classroom.name}`, { link: `/teacher/classrooms/${classroomId}` });
+        }
+      }
+    } catch {}
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

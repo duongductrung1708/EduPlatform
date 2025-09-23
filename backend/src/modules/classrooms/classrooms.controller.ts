@@ -119,15 +119,26 @@ export class ClassroomsController {
 
   @Get(':id/students')
   @UseGuards(JwtAuthGuard)
-  @Roles('teacher', 'admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all students in classroom (teacher/admin only)' })
+  @ApiOperation({ summary: 'Get all students in classroom' })
   @ApiResponse({ status: 200, description: 'List of students in classroom' })
   async getClassroomStudents(
     @Param('id') classroomId: string,
     @CurrentUser() user: any,
   ) {
     return this.classroomsService.getClassroomStudents(classroomId, user.id);
+  }
+
+  @Get(':id/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all members (teachers/assistants/students) in classroom' })
+  @ApiResponse({ status: 200, description: 'List of members in classroom' })
+  async listMembers(
+    @Param('id') classroomId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.classroomsService.listMembers(classroomId, user.id);
   }
 
   @Delete(':id/students/:studentId')

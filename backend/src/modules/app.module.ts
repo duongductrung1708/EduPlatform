@@ -16,6 +16,8 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { AdminModule } from './admin/admin.module';
 import { ProgressModule } from './progress/progress.module';
 import { EmailModule } from './email/email.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ChatModule } from './chat/chat.module';
 import { Course, CourseSchema } from '../models/course.model';
 import { Module as CourseModule, ModuleSchema } from '../models/module.model';
 import { Lesson, LessonSchema } from '../models/lesson.model';
@@ -49,6 +51,8 @@ import { UserBadge, UserBadgeSchema } from '../models/user-badge.model';
     AdminModule,
     ProgressModule,
     EmailModule,
+    NotificationsModule,
+    ChatModule,
   ],
   providers: [
     {

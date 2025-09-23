@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar } from '@mui/material';
+import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar, Stack } from '@mui/material';
 import { classesApi } from '../api/admin';
 import { lessonsApi, LessonItem } from '../api/lessons';
 import { assignmentsApi, AssignmentItem } from '../api/assignments';
@@ -9,6 +9,7 @@ import BackButton from '../components/BackButton';
 import Breadcrumb from '../components/Breadcrumb';
 import DownloadIcon from '@mui/icons-material/Download';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { ChatBox } from '../components/ChatBox';
 
 const StudentClassroomDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -21,6 +22,7 @@ const StudentClassroomDetailPage: React.FC = () => {
   const { joinClassroom, onClassMessage, onJoinedClassroom, socket } = useSocket();
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ open: boolean; message: string }>(() => ({ open: false, message: '' }));
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -112,7 +114,7 @@ const StudentClassroomDetailPage: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={12}>
           <Typography variant="h6" sx={{ mb: 1 }}>Bài giảng</Typography>
           <Grid container spacing={2}>
             {lessons.map((l) => (
@@ -151,6 +153,16 @@ const StudentClassroomDetailPage: React.FC = () => {
                             {a.name || 'Tải tệp'}
                           </Button>
                         ))}
+                      </Box>
+                    )}
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Button size="small" variant="outlined" onClick={() => setExpandedLessonId(prev => prev === l._id ? null : l._id)}>
+                        {expandedLessonId === l._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                      </Button>
+                    </Stack>
+                    {expandedLessonId === l._id && (
+                      <Box sx={{ mt: 1 }}>
+                        <ChatBox classroomId={classroomId} lessonId={l._id} />
                       </Box>
                     )}
                   </CardContent>

@@ -264,10 +264,6 @@ export default function StudentClassrooms() {
             border: '1px solid rgba(239, 91, 91, 0.1)'
           }}
         >
-          <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, textAlign: 'center' }}>
-            Danh sách lớp học
-          </Typography>
-
           {/* Search and Filter Bar */}
           <SearchFilterBar
             searchValue={searchTerm}

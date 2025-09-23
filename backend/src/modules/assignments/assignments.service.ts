@@ -6,6 +6,7 @@ import { Submission, SubmissionDocument } from '../../models/assignment.model';
 import { Classroom, ClassroomDocument } from '../../models/classroom.model';
 import { CreateAssignmentDto, UpdateAssignmentDto, CreateSubmissionDto, GradeSubmissionDto } from './dto/assignment.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AssignmentsService {
@@ -14,6 +15,7 @@ export class AssignmentsService {
     @InjectModel(Submission.name) private submissionModel: Model<SubmissionDocument>,
     @InjectModel(Classroom.name) private classroomModel: Model<ClassroomDocument>,
     private realtimeGateway: RealtimeGateway,
+    private notifications: NotificationsService,
   ) {}
 
   async create(classroomId: string, createAssignmentDto: CreateAssignmentDto, createdBy: string): Promise<AssignmentDocument> {
@@ -288,6 +290,16 @@ export class AssignmentsService {
           feedback: updatedSubmission!.feedback,
           graded: true,
         });
+      // Persist notification for the student
+      try {
+        const studentId = String((updatedSubmission!.studentId as any)._id || updatedSubmission!.studentId);
+        await this.notifications.create(
+          studentId,
+          'Bài tập đã được chấm',
+          `Bạn đã được chấm điểm cho một bài tập` ,
+          { link: `/classrooms/${(assignment.classroomId as any).toString()}/assignments/${(assignment._id as any).toString()}` }
+        );
+      } catch {}
     } catch {}
 
     return updatedSubmission!;

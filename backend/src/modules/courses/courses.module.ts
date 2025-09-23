@@ -13,6 +13,7 @@ import { Module as CourseModule, ModuleSchema } from '../../models/module.model'
 import { User, UserSchema } from '../../models/user.model';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { EmailModule } from '../email/email.module';
     ]),
     RealtimeModule,
     EmailModule,
+    NotificationsModule,
   ],
   controllers: [CoursesController, CourseInvitationsController],
   providers: [CoursesService, CourseInvitationsService],

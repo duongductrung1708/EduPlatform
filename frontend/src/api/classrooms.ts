@@ -1,5 +1,12 @@
 import { apiClient } from './client';
 
+export async function getClassMembers(classroomId: string): Promise<Array<{ _id: string; name: string; email: string }>> {
+  const { data } = await apiClient.get(`/api/classes/${classroomId}/members`);
+  return Array.isArray(data) ? data : [];
+}
+
+import { apiClient } from './client';
+
 export interface Classroom {
   _id: string;
   title: string;

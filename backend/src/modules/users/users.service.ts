@@ -22,6 +22,16 @@ export class UsersService {
     return this.userModel.findOne({ email });
   }
 
+  async findIdsByExactNameInsensitive(name: string): Promise<string[]> {
+    if (!name || !name.trim()) return [];
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const users = await this.userModel
+      .find({ name: { $regex: `^${escaped}$`, $options: 'i' } })
+      .select('_id')
+      .lean();
+    return Array.isArray(users) ? users.map((u: any) => String(u._id)) : [];
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserDocument> {
     const user = await this.userModel.findByIdAndUpdate(
       id,

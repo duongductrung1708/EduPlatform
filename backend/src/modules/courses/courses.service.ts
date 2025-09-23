@@ -10,6 +10,7 @@ import { Module as CourseModule, ModuleDocument } from '../../models/module.mode
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { EmailService } from '../email/email.service';
 import { User, UserDocument } from '../../models/user.model';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CoursesService {
@@ -22,6 +23,7 @@ export class CoursesService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private realtimeGateway: RealtimeGateway,
     private emailService: EmailService,
+    private notifications: NotificationsService,
   ) {}
 
   async create(createCourseDto: CreateCourseDto, createdBy: string): Promise<CourseDocument> {
@@ -459,6 +461,9 @@ export class CoursesService {
         courseId,
         enrollment: populatedEnrollment,
       });
+      try {
+        await this.notifications.create((populatedEnrollment as any).studentId._id.toString(), 'Ghi danh khóa học', `Bạn đã được ghi danh vào ${course.title}`, { link: `/courses/${courseId}` });
+      } catch {}
     }
     // Notify the course owner (teacher)
     if (course?.createdBy) {
@@ -466,6 +471,9 @@ export class CoursesService {
         courseId,
         enrollment: populatedEnrollment,
       });
+      try {
+        await this.notifications.create(course.createdBy.toString(), 'Học sinh ghi danh', `${(populatedEnrollment as any)?.studentId?.name || 'Học sinh'} đã ghi danh vào ${course.title}`, { link: `/teacher/courses/${courseId}/enrollments` });
+      } catch {}
     }
 
     return { message: 'Enrolled successfully' };
@@ -739,6 +747,12 @@ export class CoursesService {
     if (course?.createdBy) {
       this.realtimeGateway.emitUserEvent(course.createdBy.toString(), 'enrollmentRemoved', { courseId, studentId });
     }
+    try {
+      await this.notifications.create(studentId.toString(), 'Hủy ghi danh khóa học', `Bạn đã bị hủy ghi danh khỏi ${course.title}`, { link: `/courses/${courseId}` });
+      if (course?.createdBy) {
+        await this.notifications.create(course.createdBy.toString(), 'Hủy ghi danh', `Một học sinh đã bị hủy ghi danh khỏi ${course.title}`, { link: `/teacher/courses/${courseId}/enrollments` });
+      }
+    } catch {}
 
     return { message: 'Student removed from course successfully' };
   }

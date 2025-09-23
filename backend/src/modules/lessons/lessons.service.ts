@@ -29,12 +29,26 @@ export class LessonsService {
     }
 
     const lesson = new this.lessonModel({
-      ...createLessonDto,
+      title: createLessonDto.title,
+      description: (createLessonDto as any).description,
+      type: (createLessonDto as any).type || 'discussion',
       classroomId: new Types.ObjectId(classroomId),
+      order: createLessonDto.order ?? 0,
+      content: {
+        htmlContent: createLessonDto.contentHtml,
+        attachments: (createLessonDto as any).attachments,
+      },
+      isPublished: true,
       createdBy: new Types.ObjectId(createdBy),
-    });
+    } as any);
 
     return lesson.save();
+  }
+
+  async findById(lessonId: string) {
+    const lesson = await this.lessonModel.findById(lessonId).lean();
+    if (!lesson) throw new NotFoundException('Lesson not found');
+    return lesson;
   }
 
   async findAll(classroomId: string, userId: string) {
