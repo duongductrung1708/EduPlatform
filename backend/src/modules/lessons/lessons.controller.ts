@@ -13,6 +13,25 @@ import { CreateLessonDto, UpdateLessonDto, LessonResponseDto } from './dto/lesso
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
+  private mapLesson(doc: any) {
+    if (!doc) return doc;
+    const plain = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+    return {
+      _id: String(plain._id),
+      classroomId: plain.classroomId ? String(plain.classroomId) : undefined,
+      title: plain.title,
+      contentHtml: plain.content?.htmlContent,
+      attachments: plain.content?.attachments || [],
+      order: plain.order,
+      topic: plain.topic,
+      week: plain.week,
+      tags: plain.tags || [],
+      createdBy: plain.createdBy,
+      createdAt: plain.createdAt,
+      updatedAt: plain.updatedAt,
+    };
+  }
+
   @Post()
   @Roles('teacher', 'admin')
   @ApiOperation({ summary: 'Create a new lesson (teacher/admin only)' })
@@ -22,7 +41,8 @@ export class LessonsController {
     @Body() createLessonDto: CreateLessonDto,
     @CurrentUser() user: any,
   ) {
-    return this.lessonsService.create(classroomId, createLessonDto, user.id);
+    const created = await this.lessonsService.create(classroomId, createLessonDto, user.id);
+    return this.mapLesson(created);
   }
 
   @Get()
@@ -32,7 +52,8 @@ export class LessonsController {
     @Param('classroomId') classroomId: string,
     @CurrentUser() user: any,
   ) {
-    return this.lessonsService.findAll(classroomId, user.id);
+    const list = await this.lessonsService.findAll(classroomId, user.id);
+    return list.map(l => this.mapLesson(l));
   }
 
   @Get('/:lessonId/detail')
@@ -50,7 +71,8 @@ export class LessonsController {
     @Param('id') id: string,
     @CurrentUser() user: any,
   ) {
-    return this.lessonsService.findOne(id, user.id);
+    const lesson = await this.lessonsService.findOne(id, user.id);
+    return this.mapLesson(lesson);
   }
 
   @Patch(':id')
@@ -62,7 +84,8 @@ export class LessonsController {
     @Body() updateLessonDto: UpdateLessonDto,
     @CurrentUser() user: any,
   ) {
-    return this.lessonsService.update(id, updateLessonDto, user.id);
+    const updated = await this.lessonsService.update(id, updateLessonDto, user.id);
+    return this.mapLesson(updated);
   }
 
   @Delete(':id')

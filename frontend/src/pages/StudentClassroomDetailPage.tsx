@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar, Stack } from '@mui/material';
+import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, IconButton } from '@mui/material';
 import { classesApi } from '../api/admin';
 import { lessonsApi, LessonItem } from '../api/lessons';
 import { assignmentsApi, AssignmentItem } from '../api/assignments';
@@ -9,6 +9,11 @@ import BackButton from '../components/BackButton';
 import Breadcrumb from '../components/Breadcrumb';
 import DownloadIcon from '@mui/icons-material/Download';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ImageIcon from '@mui/icons-material/Image';
+import MovieIcon from '@mui/icons-material/Movie';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import { ChatBox } from '../components/ChatBox';
 
 const StudentClassroomDetailPage: React.FC = () => {
@@ -126,39 +131,58 @@ const StudentClassroomDetailPage: React.FC = () => {
                     {l.week !== undefined && <Typography variant="body2" color="text.secondary">Tuần: {l.week}</Typography>}
                     {l.attachments && l.attachments.length > 0 && (
                       <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          📎 Tài liệu đính kèm:
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                          📎 Tài liệu đính kèm ({l.attachments.length}):
                         </Typography>
-                        {l.attachments.map((a, i) => (
-                          <Button 
-                            key={i} 
-                            size="small" 
-                            component="a" 
-                            href={a.url} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            startIcon={<DownloadIcon />}
-                            sx={{
-                              color: '#4CAF50',
-                              borderColor: '#4CAF50',
-                              '&:hover': {
-                                borderColor: '#45a049',
-                                backgroundColor: 'rgba(76, 175, 80, 0.04)'
-                              },
-                              mr: 1,
-                              mb: 1
-                            }}
-                            variant="outlined"
-                          >
-                            {a.name || 'Tải tệp'}
-                          </Button>
-                        ))}
+                        <List dense disablePadding>
+                          {l.attachments.map((a, idx) => {
+                            const getIcon = () => {
+                              const name = (a.name || a.url || '').toLowerCase();
+                              const type = (a.type || '').toLowerCase();
+                              if (name.endsWith('.pdf') || type.includes('pdf')) return <PictureAsPdfIcon fontSize="small" color="error" />;
+                              if (type.includes('image')) return <ImageIcon fontSize="small" color="primary" />;
+                              if (type.includes('video')) return <MovieIcon fontSize="small" color="action" />;
+                              return <InsertDriveFileIcon fontSize="small" color="action" />;
+                            };
+                            const formatSize = (size?: number) => {
+                              if (!size || size <= 0) return '';
+                              if (size < 1024) return `${size} B`;
+                              if (size < 1024 * 1024) return `${Math.round(size / 102.4) / 10} KB`;
+                              return `${Math.round(size / 104857.6) / 10} MB`;
+                            };
+                            const secondary = formatSize(a.size);
+                            return (
+                              <React.Fragment key={idx}>
+                                <ListItem disablePadding>
+                                  <ListItemButton component="a" href={a.url} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
+                                    <ListItemIcon sx={{ minWidth: 32 }}>
+                                      {getIcon()}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                      primary={a.name || a.url}
+                                      secondary={secondary}
+                                      primaryTypographyProps={{ variant: 'body2' }}
+                                      secondaryTypographyProps={{ variant: 'caption' }}
+                                    />
+                                  </ListItemButton>
+                                </ListItem>
+                                {idx < l.attachments!.length - 1 && <Divider component="li" sx={{ my: 0.25 }} />}
+                              </React.Fragment>
+                            );
+                          })}
+                        </List>
                       </Box>
                     )}
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                      <Button size="small" variant="outlined" onClick={() => setExpandedLessonId(prev => prev === l._id ? null : l._id)}>
-                        {expandedLessonId === l._id ? 'Ẩn thảo luận' : 'Thảo luận'}
-                      </Button>
+                      <IconButton
+                        size="small"
+                        aria-label={expandedLessonId === l._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                        title={expandedLessonId === l._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                        color={expandedLessonId === l._id ? 'primary' : 'default'}
+                        onClick={() => setExpandedLessonId(prev => prev === l._id ? null : l._id)}
+                      >
+                        <ChatBubbleOutlineIcon fontSize="small" />
+                      </IconButton>
                     </Stack>
                     {expandedLessonId === l._id && (
                       <Box sx={{ mt: 1 }}>

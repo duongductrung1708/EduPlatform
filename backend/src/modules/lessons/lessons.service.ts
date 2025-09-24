@@ -34,6 +34,9 @@ export class LessonsService {
       type: (createLessonDto as any).type || 'discussion',
       classroomId: new Types.ObjectId(classroomId),
       order: createLessonDto.order ?? 0,
+      topic: (createLessonDto as any).topic,
+      week: (createLessonDto as any).week,
+      tags: (createLessonDto as any).tags,
       content: {
         htmlContent: createLessonDto.contentHtml,
         attachments: (createLessonDto as any).attachments,
@@ -127,8 +130,20 @@ export class LessonsService {
       throw new ForbiddenException('Access denied to update this lesson');
     }
 
+    // Build update payload to handle nested content fields
+    const updatePayload: any = { ...updateLessonDto };
+    if (typeof (updateLessonDto as any).contentHtml !== 'undefined' || typeof (updateLessonDto as any).attachments !== 'undefined') {
+      updatePayload.content = {
+        ...(lesson.toObject().content || {}),
+        ...(typeof (updateLessonDto as any).contentHtml !== 'undefined' ? { htmlContent: (updateLessonDto as any).contentHtml } : {}),
+        ...(typeof (updateLessonDto as any).attachments !== 'undefined' ? { attachments: (updateLessonDto as any).attachments } : {}),
+      };
+      delete (updatePayload as any).contentHtml;
+      delete (updatePayload as any).attachments;
+    }
+
     const updatedLesson = await this.lessonModel
-      .findByIdAndUpdate(id, updateLessonDto, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true })
       .populate('createdBy', 'name email');
 
     return updatedLesson!;

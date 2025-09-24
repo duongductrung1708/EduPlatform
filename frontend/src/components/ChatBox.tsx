@@ -135,6 +135,24 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
       const pattern = new RegExp(`@${escapeRegex(name)}(?=\s|$)`, 'g');
       out = out.replace(pattern, `@uid:${id}`);
     }
+    // Best-effort: convert any '@Full Name' (from members) to @uid:<id> if exact match is present
+    const candidates = (members || []).map((m: any) => ({
+      name: (m.name || '').trim(),
+      email: (m.email || '').trim(),
+      id: String((m as any)._id || (m as any).id || ''),
+    })).filter(c => c.id);
+    // Sort by longer names first to avoid partial replacements
+    candidates.sort((a, b) => b.name.length - a.name.length);
+    for (const c of candidates) {
+      if (c.name) {
+        const namePattern = new RegExp(`@${escapeRegex(c.name)}(?=\s|$)`, 'g');
+        out = out.replace(namePattern, `@uid:${c.id}`);
+      }
+      if (c.email) {
+        const emailPattern = new RegExp(`@${escapeRegex(c.email)}(?=\s|$)`, 'g');
+        out = out.replace(emailPattern, `@uid:${c.id}`);
+      }
+    }
     return out;
   };
 

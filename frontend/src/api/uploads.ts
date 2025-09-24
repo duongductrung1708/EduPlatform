@@ -16,6 +16,9 @@ export const uploadsApi = {
     });
     return res.data;
   },
+  async deleteStoredFile(storedFilename: string): Promise<void> {
+    await apiClient.delete(`/api/uploads/file/${encodeURIComponent(storedFilename)}`);
+  },
 };
 
 

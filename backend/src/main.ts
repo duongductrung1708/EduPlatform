@@ -21,7 +21,7 @@ async function bootstrap() {
   );
 
   // Serve uploads statically
-  app.useStaticAssets(join(process.cwd(), 'backend', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 

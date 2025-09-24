@@ -4,13 +4,22 @@ import { diskStorage } from 'multer';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 import * as path from 'path';
+import * as fs from 'fs';
 
 @Module({
   imports: [
     MulterModule.register({
       storage: diskStorage({
         destination: (_req: any, _file: any, cb: (error: any, destination: string) => void) => {
-          cb(null, path.join(process.cwd(), 'backend', 'uploads'));
+          const uploadDir = path.join(process.cwd(), 'uploads');
+          try {
+            if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+            }
+          } catch (err) {
+            return cb(err, uploadDir);
+          }
+          cb(null, uploadDir);
         },
         filename: (_req: any, file: any, cb: (error: any, filename: string) => void) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);

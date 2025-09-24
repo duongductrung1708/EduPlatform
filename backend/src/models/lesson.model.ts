@@ -12,6 +12,10 @@ export interface ILesson {
   classroomId?: Types.ObjectId;
   createdBy?: Types.ObjectId;
   order: number;
+  // Additional metadata
+  topic?: string;
+  week?: number;
+  tags?: string[];
   type: 'document' | 'video' | 'interactive' | 'quiz' | 'assignment' | 'discussion';
   content: {
     // For document type
@@ -75,6 +79,15 @@ export class Lesson {
 
   @Prop({ required: true, default: 0 })
   order!: number;
+
+  @Prop()
+  topic?: string;
+
+  @Prop()
+  week?: number;
+
+  @Prop({ type: [String], default: [] })
+  tags?: string[];
 
   @Prop({ 
     enum: ['document', 'video', 'interactive', 'quiz', 'assignment', 'discussion'],

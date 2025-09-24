@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack } from '@mui/material';
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ImageIcon from '@mui/icons-material/Image';
+import MovieIcon from '@mui/icons-material/Movie';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { lessonsApi, LessonItem, LessonAttachment } from '../../../api/lessons';
 import { uploadsApi } from '../../../api/uploads';
 import { classesApi } from '../../../api/admin';
@@ -122,6 +127,23 @@ export default function ClassLessons() {
     setError(null);
     setSuccess(null);
     try {
+      // Delete removed files from server (best-effort)
+      const original = editing.attachments || [];
+      const current = attachments || [];
+      const removed = original.filter(o => !current.some(c => c.url === o.url));
+      if (removed.length > 0) {
+        await Promise.all(removed.map(async (f) => {
+          try {
+            const url = new URL(f.url, window.location.origin);
+            const parts = (url.pathname || '').split('/');
+            const idx = parts.findIndex(p => p === 'uploads');
+            const stored = idx >= 0 ? parts[parts.length - 1] : '';
+            if (stored) {
+              await uploadsApi.deleteStoredFile(stored);
+            }
+          } catch {}
+        }));
+      }
       const payloadTags = tags.split(',').map(s => s.trim()).filter(Boolean);
       await lessonsApi.update(classroomId, editing._id, { title, contentHtml, attachments, topic: topic || undefined, week: week === '' ? undefined : Number(week), tags: payloadTags });
       setEditOpen(false);
@@ -209,13 +231,33 @@ export default function ClassLessons() {
                 <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                   {(user?.role === 'teacher' || user?.role === 'admin') && (
                     <>
-                      <IconButton size="small" onClick={() => startEdit(it)}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" onClick={() => removeLesson(it)}><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label="Sửa bài giảng"
+                        title="Sửa bài giảng"
+                        onClick={() => startEdit(it)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label="Xóa bài giảng"
+                        title="Xóa bài giảng"
+                        onClick={() => removeLesson(it)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </>
                   )}
-                  <Button size="small" variant="outlined" onClick={() => setExpandedLessonId(prev => prev === it._id ? null : it._id)}>
-                    {expandedLessonId === it._id ? 'Ẩn thảo luận' : 'Thảo luận'}
-                  </Button>
+                  <IconButton
+                    size="small"
+                    aria-label={expandedLessonId === it._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                    title={expandedLessonId === it._id ? 'Ẩn thảo luận' : 'Thảo luận'}
+                    color={expandedLessonId === it._id ? 'primary' : 'default'}
+                    onClick={() => setExpandedLessonId(prev => prev === it._id ? null : it._id)}
+                  >
+                    <ChatBubbleOutlineIcon fontSize="small" />
+                  </IconButton>
                 </Stack>
                 {expandedLessonId === it._id && (
                   <Box sx={{ mt: 1 }}>
@@ -224,12 +266,44 @@ export default function ClassLessons() {
                 )}
                 {it.attachments && it.attachments.length > 0 && (
                   <Box>
-                    <Typography variant="body2" color="text.secondary">Tài liệu đính kèm:</Typography>
-                    <ul>
-                      {it.attachments.map((a, idx) => (
-                        <li key={idx}><a href={a.url} target="_blank" rel="noreferrer">{a.name || a.url}</a></li>
-                      ))}
-                    </ul>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Tài liệu đính kèm ({it.attachments.length}):</Typography>
+                    <List dense disablePadding>
+                      {it.attachments.map((a, idx) => {
+                        const getIcon = () => {
+                          const name = (a.name || a.url || '').toLowerCase();
+                          const type = (a.type || '').toLowerCase();
+                          if (name.endsWith('.pdf') || type.includes('pdf')) return <PictureAsPdfIcon fontSize="small" color="error" />;
+                          if (type.includes('image')) return <ImageIcon fontSize="small" color="primary" />;
+                          if (type.includes('video')) return <MovieIcon fontSize="small" color="action" />;
+                          return <InsertDriveFileIcon fontSize="small" color="action" />;
+                        };
+                        const formatSize = (size?: number) => {
+                          if (!size || size <= 0) return '';
+                          if (size < 1024) return `${size} B`;
+                          if (size < 1024 * 1024) return `${Math.round(size / 102.4) / 10} KB`;
+                          return `${Math.round(size / 104857.6) / 10} MB`;
+                        };
+                        const secondary = formatSize(a.size);
+                        return (
+                          <React.Fragment key={idx}>
+                            <ListItem disablePadding>
+                              <ListItemButton component="a" href={a.url} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
+                                <ListItemIcon sx={{ minWidth: 32 }}>
+                                  {getIcon()}
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={a.name || a.url}
+                                  secondary={secondary}
+                                  primaryTypographyProps={{ variant: 'body2' }}
+                                  secondaryTypographyProps={{ variant: 'caption' }}
+                                />
+                              </ListItemButton>
+                            </ListItem>
+                            {idx < it.attachments!.length - 1 && <Divider component="li" sx={{ my: 0.25 }} />}
+                          </React.Fragment>
+                        );
+                      })}
+                    </List>
                   </Box>
                 )}
               </CardContent>
@@ -282,9 +356,39 @@ export default function ClassLessons() {
               <input type="file" hidden multiple onChange={(e) => onFiles(e.target.files)} />
             </Button>
             <Box sx={{ mt: 1 }}>
-              {attachments.map((a, i) => (
-                <Typography key={i} variant="body2">{a.name} - {a.type}</Typography>
-              ))}
+              <List dense disablePadding>
+                {attachments.map((a, idx) => (
+                  <React.Fragment key={idx}>
+                    <ListItem
+                      secondaryAction={
+                        <IconButton edge="end" aria-label="Xóa tệp" title="Xóa tệp" onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      }
+                      disablePadding
+                    >
+                      <ListItemButton component="a" href={a.url} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          {(a.name || a.url || '').toLowerCase().endsWith('.pdf') || (a.type || '').toLowerCase().includes('pdf') ? (
+                            <PictureAsPdfIcon fontSize="small" color="error" />
+                          ) : (a.type || '').toLowerCase().includes('image') ? (
+                            <ImageIcon fontSize="small" color="primary" />
+                          ) : (a.type || '').toLowerCase().includes('video') ? (
+                            <MovieIcon fontSize="small" color="action" />
+                          ) : (
+                            <InsertDriveFileIcon fontSize="small" color="action" />
+                          )}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={a.name || a.url}
+                          primaryTypographyProps={{ variant: 'body2' }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                    {idx < attachments.length - 1 && <Divider component="li" sx={{ my: 0.25 }} />}
+                  </React.Fragment>
+                ))}
+              </List>
             </Box>
           </Box>
         </DialogContent>
