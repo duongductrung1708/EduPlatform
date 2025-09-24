@@ -40,12 +40,14 @@ import CourseInvitationPage from '../pages/CourseInvitationPage';
 import StudentClassroomDetailPage from '../pages/StudentClassroomDetailPage';
 import PublicCoursesPage from '../pages/PublicCoursesPage';
 import CreatePublicCoursePage from '../pages/CreatePublicCoursePage';
+import LessonDetailPage from '../pages/LessonDetailPage';
 
 export default function App() {
   const { user } = useAuth();
 
   return (
     <Routes>
+      <Route path="/courses/:id/lessons/:lessonId" element={<LessonDetailPage />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route 
         path="/auth/login" 

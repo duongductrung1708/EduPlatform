@@ -478,13 +478,16 @@ export class CoursesService {
   }
 
   async getEnrollmentStatus(courseId: string, studentId: string) {
-    console.log('Checking enrollment status for course:', courseId, 'student:', studentId);
+    // Treat course owner (teacher) as enrolled
+    const courseDoc = await this.courseModel.findById(courseId).lean();
+    if (courseDoc && String(courseDoc.createdBy) === String(studentId)) {
+      return { enrolled: true, progress: 0 };
+    }
     const enrollment = await this.enrollmentModel.findOne({ 
       courseId: new Types.ObjectId(courseId), 
       studentId: new Types.ObjectId(studentId),
       isActive: true 
     }).lean();
-    console.log('Found enrollment:', enrollment);
     if (!enrollment) return { enrolled: false, progress: 0 };
     return { enrolled: true, progress: enrollment.progress?.percentage ?? 0 };
   }

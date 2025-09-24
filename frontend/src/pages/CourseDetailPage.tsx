@@ -115,6 +115,11 @@ export default function CourseDetailPage() {
       
       const courseData = await coursesApi.getById(id!);
       setCourse(courseData);
+      // If current user is the course owner or admin/teacher, consider as enrolled
+      if (user && (courseData?.createdBy?._id === (user as any)?.id || (user as any)?.role === 'admin' || (user as any)?.role === 'teacher')) {
+        setEnrolled(true);
+        setProgress(0);
+      }
       
       // Load modules and lessons
       const modulesData = await coursesApi.getModules(id!);
@@ -131,7 +136,7 @@ export default function CourseDetailPage() {
       setModules(modulesWithLessons);
       
       // Check enrollment status for authenticated users
-      if (user) {
+      if (user && !enrolled) {
         try {
           const enrollmentStatus = await coursesApi.checkEnrollment(id!);
           setEnrolled(enrollmentStatus.enrolled);

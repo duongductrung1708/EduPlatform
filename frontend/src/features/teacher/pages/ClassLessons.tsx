@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { Link as RouterLink } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -41,6 +43,27 @@ export default function ClassLessons() {
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lessonToDelete, setLessonToDelete] = useState<LessonItem | null>(null);
+
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, 4, false] }],
+      ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
+      [{ align: [] }],
+      [{ color: [] }, { background: [] }],
+      ['link', 'image', 'video'],
+      ['clean'],
+    ],
+  } as const;
+
+  const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
+    'list', 'bullet', 'indent',
+    'align', 'color', 'background',
+    'link', 'image', 'video',
+  ];
 
   const fetchLessons = async () => {
     if (!classroomId) return;
@@ -318,7 +341,10 @@ export default function ClassLessons() {
         <DialogTitle>Tạo bài giảng</DialogTitle>
         <DialogContent>
           <TextField label="Tiêu đề" fullWidth sx={{ mt: 1, mb: 2 }} value={title} onChange={(e) => setTitle(e.target.value)} />
-          <TextField label="Nội dung (HTML)" fullWidth multiline minRows={6} value={contentHtml} onChange={(e) => setContentHtml(e.target.value)} />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Nội dung</Typography>
+            <ReactQuill theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+          </Box>
           <Box display="flex" gap={2} sx={{ mt: 2 }}>
             <TextField label="Chủ đề" fullWidth value={topic} onChange={(e) => setTopic(e.target.value)} />
             <TextField label="Tuần" type="number" fullWidth value={week} onChange={(e) => setWeek(e.target.value === '' ? '' : Number(e.target.value))} />
@@ -346,7 +372,10 @@ export default function ClassLessons() {
         <DialogTitle>Sửa bài giảng</DialogTitle>
         <DialogContent>
           <TextField label="Tiêu đề" fullWidth sx={{ mt: 1, mb: 2 }} value={title} onChange={(e) => setTitle(e.target.value)} />
-          <TextField label="Nội dung (HTML)" fullWidth multiline minRows={6} value={contentHtml} onChange={(e) => setContentHtml(e.target.value)} />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Nội dung</Typography>
+            <ReactQuill theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+          </Box>
           <Box display="flex" gap={2} sx={{ mt: 2 }}>
             <TextField label="Chủ đề" fullWidth value={topic} onChange={(e) => setTopic(e.target.value)} />
             <TextField label="Tuần" type="number" fullWidth value={week} onChange={(e) => setWeek(e.target.value === '' ? '' : Number(e.target.value))} />

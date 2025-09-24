@@ -22,6 +22,8 @@ import {
   Divider,
   Paper
 } from '@mui/material';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -121,7 +123,8 @@ export default function CourseManage() {
     type: 'document' as const,
     order: 0,
     estimatedDuration: 0,
-    isPublished: true
+    isPublished: true,
+    content: { htmlContent: '' } as any,
   });
 
   useEffect(() => {
@@ -338,7 +341,7 @@ export default function CourseManage() {
         order: lesson.order,
         estimatedDuration: lesson.estimatedDuration || 0,
         isPublished: lesson.isPublished,
-        content: lesson.content || {}
+        content: lesson.content || { htmlContent: '' }
       });
       
       // Set existing file if lesson has file content
@@ -826,7 +829,7 @@ export default function CourseManage() {
         <DialogTitle>
           {editingLesson ? 'Chỉnh sửa Bài học' : 'Tạo Bài học mới'}
         </DialogTitle>
-        <DialogContent>
+      <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Tên bài học"
@@ -842,7 +845,35 @@ export default function CourseManage() {
               fullWidth
               multiline
               rows={3}
+              placeholder="Tóm tắt ngắn gọn nội dung bài học"
             />
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Nội dung chi tiết</Typography>
+              <ReactQuill
+                theme="snow"
+                value={lessonForm.content?.htmlContent || ''}
+                onChange={(val) => setLessonForm({ ...lessonForm, content: { ...(lessonForm.content || {}), htmlContent: val } })}
+                modules={{
+                  toolbar: [
+                    [{ header: [1, 2, 3, 4, false] }],
+                    ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ indent: '-1' }, { indent: '+1' }],
+                    [{ align: [] }],
+                    [{ color: [] }, { background: [] }],
+                    ['link', 'image', 'video'],
+                    ['clean'],
+                  ],
+                }}
+                formats={[
+                  'header',
+                  'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
+                  'list', 'bullet', 'indent',
+                  'align', 'color', 'background',
+                  'link', 'image', 'video',
+                ]}
+              />
+            </Box>
             <TextField
               select
               label="Loại bài học"
