@@ -192,6 +192,19 @@ export class CoursesController {
     return this.coursesService.createModule(id, user.id, body);
   }
 
+  @Delete(':id/modules/:moduleId')
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a module and its lessons (teacher/admin)' })
+  async deleteModule(
+    @Param('id') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.coursesService.deleteModule(courseId, moduleId, user.id);
+  }
+
   @Patch('modules/:moduleId')
   @UseGuards(JwtAuthGuard)
   @Roles('teacher', 'admin')
@@ -202,7 +215,7 @@ export class CoursesController {
     @Body() body: { title?: string; description?: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean },
     @CurrentUser() user: any,
   ) {
-    return this.coursesService.updateModule('', moduleId, user.id, body);
+    return this.coursesService.updateModule(moduleId, user.id, body);
   }
 
   // Teacher content management: lessons by module
@@ -237,6 +250,19 @@ export class CoursesController {
     @CurrentUser() user: any,
   ) {
     return this.coursesService.updateLesson(moduleId, lessonId, user.id, body);
+  }
+
+  @Delete('modules/:moduleId/lessons/:lessonId')
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a lesson under a module (teacher/admin)' })
+  async deleteLesson(
+    @Param('moduleId') moduleId: string,
+    @Param('lessonId') lessonId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.coursesService.deleteLesson(moduleId, lessonId, user.id);
   }
 
   // Materials endpoints

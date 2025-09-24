@@ -150,9 +150,7 @@ export const coursesApi = {
     return res.data;
   },
   async deleteLesson(moduleId: string, lessonId: string): Promise<{ message: string }> {
-    const res = await apiClient.delete(`/api/courses/remove-lesson/${lessonId}`, {
-      data: { moduleId }
-    });
+    const res = await apiClient.delete(`/api/courses/modules/${moduleId}/lessons/${lessonId}`);
     return res.data;
   },
   async getEnrollments(courseId: string): Promise<{ students: any[] }> {

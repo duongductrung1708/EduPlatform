@@ -11,6 +11,9 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { EmailService } from '../email/email.service';
 import { User, UserDocument } from '../../models/user.model';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CourseInvitation, CourseInvitationDocument } from '../../models/course-invitation.model';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class CoursesService {
@@ -21,6 +24,7 @@ export class CoursesService {
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
     @InjectModel(CourseModule.name) private moduleModel: Model<ModuleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(CourseInvitation.name) private invitationModel: Model<CourseInvitationDocument>,
     private realtimeGateway: RealtimeGateway,
     private emailService: EmailService,
     private notifications: NotificationsService,
@@ -66,7 +70,7 @@ export class CoursesService {
     return moduleDoc.save();
   }
 
-  async updateModule(courseId: string, moduleId: string, userId: string, payload: {
+  async updateModule(moduleId: string, userId: string, payload: {
     title?: string;
     description?: string;
     order?: number;
@@ -74,21 +78,17 @@ export class CoursesService {
     estimatedDuration?: number;
     isPublished?: boolean;
   }) {
-    const course = await this.courseModel.findById(courseId);
-    if (!course) throw new NotFoundException('Course not found');
-    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
-
-    // Try to find module by ID first
+    // Find module first
     const module = await this.moduleModel.findById(moduleId);
     
     if (!module) {
       throw new NotFoundException('Module not found');
     }
     
-    // Check if module belongs to the course
-    if (String(module.courseId) !== String(courseId)) {
-      throw new NotFoundException('Module does not belong to this course');
-    }
+    // Check course ownership
+    const course = await this.courseModel.findById(module.courseId);
+    if (!course) throw new NotFoundException('Course not found');
+    if (String(course.createdBy) !== String(userId)) throw new ForbiddenException('Not course owner');
 
     Object.assign(module, payload);
     return module.save();
@@ -102,16 +102,10 @@ export class CoursesService {
 
     // Check if module exists at all
     const moduleExists = await this.moduleModel.findById(moduleId);
-    console.log('📋 Module exists:', moduleExists ? 'Yes' : 'No');
     if (moduleExists) {
-      console.log('📋 Module details:', {
-        _id: moduleExists._id,
-        title: moduleExists.title,
-        courseId: moduleExists.courseId
-      });
+      // details available if needed
     }
     if (!moduleExists) {
-      console.log('📋 Module not found in database');
       throw new NotFoundException('Module not found');
     }
 
@@ -120,21 +114,15 @@ export class CoursesService {
       _id: new Types.ObjectId(moduleId), 
       courseId: new Types.ObjectId(courseId) 
     });
-    console.log('📋 Found module in course:', module ? 'Yes' : 'No', module ? `Title: ${module.title}` : '');
     if (!module) {
-      console.log('📋 Module exists but belongs to different course');
-      console.log('📋 Expected courseId:', courseId);
-      console.log('📋 Actual courseId:', moduleExists.courseId);
       throw new NotFoundException('Module not found in this course');
     }
 
     // Delete all lessons in this module first
-    const deletedLessons = await this.lessonModel.deleteMany({ moduleId: new Types.ObjectId(moduleId) });
-    console.log('🗑️ Deleted lessons count:', deletedLessons.deletedCount);
+    await this.lessonModel.deleteMany({ moduleId: new Types.ObjectId(moduleId) });
     
     // Delete the module
-    const deletedModule = await this.moduleModel.findByIdAndDelete(moduleId);
-    console.log('🗑️ Deleted module:', deletedModule ? 'Yes' : 'No');
+    await this.moduleModel.findByIdAndDelete(moduleId);
     return { message: 'Module and all its lessons deleted successfully' };
   }
 
@@ -217,15 +205,7 @@ export class CoursesService {
 
     // Check if lesson exists at all
     const lessonExists = await this.lessonModel.findById(lessonId);
-    if (lessonExists) {
-      console.log('📄 Lesson details:', {
-        _id: lessonExists._id,
-        title: lessonExists.title,
-        moduleId: lessonExists.moduleId
-      });
-    }
     if (!lessonExists) {
-      console.log('📄 Lesson not found in database');
       throw new NotFoundException('Lesson not found');
     }
 
@@ -234,16 +214,11 @@ export class CoursesService {
       _id: new Types.ObjectId(lessonId), 
       moduleId: new Types.ObjectId(moduleId) 
     });
-    console.log('📄 Found lesson in module:', lesson ? 'Yes' : 'No', lesson ? `Title: ${lesson.title}` : '');
     if (!lesson) {
-      console.log('📄 Lesson exists but belongs to different module');
-      console.log('📄 Expected moduleId:', moduleId);
-      console.log('📄 Actual moduleId:', lessonExists.moduleId);
       throw new NotFoundException('Lesson not found in this module');
     }
 
-    const deletedLesson = await this.lessonModel.findByIdAndDelete(lessonId);
-    console.log('🗑️ Deleted lesson:', deletedLesson ? 'Yes' : 'No');
+    await this.lessonModel.findByIdAndDelete(lessonId);
     return { message: 'Lesson deleted successfully' };
   }
 
@@ -356,7 +331,34 @@ export class CoursesService {
     if (!course) {
       throw new NotFoundException('Course not found or access denied');
     }
-
+    // Delete invitations
+    await this.invitationModel.deleteMany({ courseId: new Types.ObjectId(id) });
+    // Delete enrollments
+    await this.enrollmentModel.deleteMany({ courseId: new Types.ObjectId(id) });
+    // Find lessons belonging to this course (across modules)
+    const lessons = await this.lessonModel.find({ courseId: new Types.ObjectId(id) }).lean();
+    // Delete attachments files for lessons (local storage only)
+    for (const l of lessons) {
+      const attachments: Array<{ url: string }> = (l.content?.attachments || []) as any;
+      for (const a of attachments) {
+        try {
+          const u = new URL(a.url, process.env.BACKEND_URL || 'http://localhost:3000');
+          const parts = (u.pathname || '').split('/');
+          const idx = parts.findIndex((p) => p === 'uploads');
+          const stored = idx >= 0 ? parts[parts.length - 1] : '';
+          if (stored) {
+            const filePath = path.join(process.cwd(), 'uploads', stored);
+            if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+          }
+        } catch {}
+      }
+    }
+    // Delete lessons and modules
+    await this.lessonModel.deleteMany({ courseId: new Types.ObjectId(id) });
+    await this.moduleModel.deleteMany({ courseId: new Types.ObjectId(id) });
+    // Delete course documents/materials
+    await this.documentModel.deleteMany({ courseId: new Types.ObjectId(id) });
+    // Finally delete the course
     await this.courseModel.findByIdAndDelete(id);
   }
 
@@ -408,12 +410,10 @@ export class CoursesService {
       courseId: new Types.ObjectId(courseId), 
       studentId: new Types.ObjectId(studentId) 
     });
-    console.log('Existing enrollment:', exists);
     if (exists) {
       if (!exists.isActive) {
         exists.isActive = true;
         await exists.save();
-        console.log('Reactivated existing enrollment');
       }
       return { message: 'Already enrolled' };
     }
@@ -422,8 +422,6 @@ export class CoursesService {
       courseId: new Types.ObjectId(courseId),
       studentId: new Types.ObjectId(studentId),
     });
-    console.log('Created new enrollment:', enrollment);
-
     // increment enrollment count
     await this.courseModel.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
 

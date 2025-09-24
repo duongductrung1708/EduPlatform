@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException, 
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Classroom, ClassroomDocument } from '../../models/classroom.model';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Course, CourseDocument } from '../../models/course.model';
 import { Assignment, AssignmentDocument } from '../../models/assignment.model';
 import { User, UserDocument } from '../../models/user.model';
@@ -187,6 +189,40 @@ export class ClassroomsService {
     if (!classroom) throw new NotFoundException('Classroom not found');
     const isOwner = (classroom.teacherIds || []).some((id: any) => String(id) === String(userId));
     if (!isOwner) throw new ForbiddenException('Not allowed to delete this classroom');
+    // Cascade deletions
+    const db = (this.classroomModel as any).db;
+    const LessonModel = db.model('Lesson');
+    const ChatMessageModel = db.model('ChatMessage');
+    const AssignmentModel = db.models['Assignment'] ? db.model('Assignment') : null;
+
+    // Find and cleanup lessons
+    const lessons = await LessonModel.find({ classroomId: new Types.ObjectId(classroomId) }).lean();
+    // Delete files for attachments
+    for (const l of lessons) {
+      const attachments: Array<{ url: string }> = (l.content?.attachments || []) as any;
+      for (const a of attachments) {
+        try {
+          const u = new URL(a.url, process.env.BACKEND_URL || 'http://localhost:3000');
+          const parts = (u.pathname || '').split('/');
+          const idx = parts.findIndex((p) => p === 'uploads');
+          const stored = idx >= 0 ? parts[parts.length - 1] : '';
+          if (stored) {
+            const filePath = path.join(process.cwd(), 'uploads', stored);
+            if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+          }
+        } catch {}
+      }
+    }
+    // Delete chats for lessons and classroom
+    await ChatMessageModel.deleteMany({ lessonId: { $in: lessons.map((l: any) => l._id) } });
+    await ChatMessageModel.deleteMany({ classroomId: new Types.ObjectId(classroomId) });
+    // Delete lessons
+    await LessonModel.deleteMany({ classroomId: new Types.ObjectId(classroomId) });
+    // Delete assignments under classroom if model exists
+    if (AssignmentModel) {
+      await AssignmentModel.deleteMany({ classroomId: new Types.ObjectId(classroomId) });
+    }
+    // Finally remove classroom
     await this.classroomModel.deleteOne({ _id: classroomId });
   }
 

@@ -39,6 +39,8 @@ export default function ClassLessons() {
   const [classroomInfo, setClassroomInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseItem | null>(null);
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<LessonItem | null>(null);
 
   const fetchLessons = async () => {
     if (!classroomId) return;
@@ -243,7 +245,7 @@ export default function ClassLessons() {
                         size="small"
                         aria-label="Xóa bài giảng"
                         title="Xóa bài giảng"
-                        onClick={() => removeLesson(it)}
+                        onClick={() => { setLessonToDelete(it); setConfirmOpen(true); }}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -395,6 +397,23 @@ export default function ClassLessons() {
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Hủy</Button>
           <Button variant="contained" disabled={saving || !title.trim()} onClick={saveEdit}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onClose={() => { setConfirmOpen(false); setLessonToDelete(null); }}>
+        <DialogTitle>Xác nhận xóa</DialogTitle>
+        <DialogContent>
+          <Typography>Bạn có chắc muốn xóa bài giảng{lessonToDelete ? ` "${lessonToDelete.title}"` : ''}? Hành động này không thể hoàn tác.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setConfirmOpen(false); setLessonToDelete(null); }}>Hủy</Button>
+          <Button color="error" variant="contained" onClick={async () => {
+            if (lessonToDelete) {
+              await removeLesson(lessonToDelete);
+            }
+            setConfirmOpen(false);
+            setLessonToDelete(null);
+          }}>Xóa</Button>
         </DialogActions>
       </Dialog>
     </Box>

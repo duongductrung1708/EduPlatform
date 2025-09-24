@@ -4,12 +4,17 @@ import { Model, Types } from 'mongoose';
 import { Lesson, LessonDocument } from '../../models/lesson.model';
 import { Classroom, ClassroomDocument } from '../../models/classroom.model';
 import { CreateLessonDto, UpdateLessonDto } from './dto/lesson.dto';
+import * as path from 'path';
+import * as fs from 'fs';
+import { Optional } from '@nestjs/common';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class LessonsService {
   constructor(
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
     @InjectModel(Classroom.name) private classroomModel: Model<ClassroomDocument>,
+    @Optional() private realtime?: RealtimeGateway,
   ) {}
 
   async create(classroomId: string, createLessonDto: CreateLessonDto, createdBy: string): Promise<LessonDocument> {
@@ -170,6 +175,32 @@ export class LessonsService {
       throw new ForbiddenException('Access denied to delete this lesson');
     }
 
+    // Collect attachments to delete files
+    const attachments: Array<{ url: string }> = ((lesson as any).content?.attachments || []) as any;
+    // Delete lesson
     await this.lessonModel.findByIdAndDelete(id);
+    // Best-effort: delete chat messages under this lesson
+    try {
+      const ChatMessageModel = (this.lessonModel as any).db.model('ChatMessage');
+      await ChatMessageModel.deleteMany({ lessonId: new Types.ObjectId(id) });
+      if (this.realtime) {
+        this.realtime.server.to(`lesson:${id}`).emit('lessonDeleted', { id });
+      }
+    } catch {}
+    // Delete uploaded files stored locally (only for /uploads/<filename> URLs)
+    try {
+      for (const a of attachments) {
+        try {
+          const u = new URL(a.url, process.env.BACKEND_URL || 'http://localhost:3000');
+          const parts = (u.pathname || '').split('/');
+          const idx = parts.findIndex((p) => p === 'uploads');
+          const stored = idx >= 0 ? parts[parts.length - 1] : '';
+          if (stored) {
+            const filePath = path.join(process.cwd(), 'uploads', stored);
+            if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+          }
+        } catch {}
+      }
+    } catch {}
   }
 }
