@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip, Paper } from '@mui/material';
 import ReactQuillWrapper from '../../../components/ReactQuillWrapper';
 import { Link as RouterLink } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
@@ -16,6 +16,8 @@ import { classesApi } from '../../../api/admin';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ChatBox } from '../../../components/ChatBox';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { resolveFileUrl } from '../../../utils/url';
 
 export default function ClassLessons() {
   const { id } = useParams();
@@ -42,6 +44,10 @@ export default function ClassLessons() {
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lessonToDelete, setLessonToDelete] = useState<LessonItem | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewKind, setPreviewKind] = useState<'image'|'video'|'pdf'|'doc'|'other'>('other');
+  const [previewTitle, setPreviewTitle] = useState<string>('Xem tài liệu');
 
   const quillModules = {
     toolbar: [
@@ -308,15 +314,79 @@ export default function ClassLessons() {
                           return `${Math.round(size / 104857.6) / 10} MB`;
                         };
                         const secondary = formatSize(a.size);
+                        const fileUrl = resolveFileUrl(a.url) || a.url;
+                        const viewerUrl = (function(){
+                          try {
+                            const u = new URL(fileUrl);
+                            const pathname = u.pathname || '';
+                            const ext = pathname.split('.').pop()?.toLowerCase() || '';
+                            const office = new Set(['doc','docx','xls','xlsx','ppt','pptx']);
+                            const google = new Set(['odt','ods','odp','rtf','txt','csv']);
+                            const enc = encodeURIComponent(fileUrl);
+                            if (office.has(ext)) return `https://view.officeapps.live.com/op/embed.aspx?src=${enc}`;
+                            if (google.has(ext)) return `https://docs.google.com/gview?embedded=true&url=${enc}`;
+                          } catch {}
+                          return undefined;
+                        })();
                         return (
                           <React.Fragment key={idx}>
-                            <ListItem disablePadding>
-                              <ListItemButton component="a" href={a.url} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
+                            <ListItem
+                              disablePadding
+                              secondaryAction={
+                                <Tooltip title="Xem nhanh">
+                                  <IconButton
+                                    edge="end"
+                                    size="small"
+                                    onClick={() => {
+                                      try {
+                                        const u = new URL(fileUrl);
+                                        const pathname = u.pathname || '';
+                                        const ext = pathname.split('.').pop()?.toLowerCase() || '';
+                                        const lower = (fileUrl || '').toLowerCase();
+                                        if (/(png|jpe?g|gif|webp|svg)$/.test(ext) || (a.type || '').includes('image')) {
+                                          setPreviewKind('image');
+                                          setPreviewUrl(fileUrl);
+                                        } else if (/(mp4|webm|ogg)$/.test(ext) || (a.type || '').includes('video')) {
+                                          setPreviewKind('video');
+                                          setPreviewUrl(fileUrl);
+                                        } else if (ext === 'pdf' || (a.type || '').includes('pdf')) {
+                                          setPreviewKind('pdf');
+                                          setPreviewUrl(fileUrl);
+                                        } else {
+                                          const office = new Set(['doc','docx','xls','xlsx','ppt','pptx']);
+                                          const google = new Set(['odt','ods','odp','rtf','txt','csv']);
+                                          const enc = encodeURIComponent(fileUrl);
+                                          if (office.has(ext)) {
+                                            setPreviewKind('doc');
+                                            setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${enc}`);
+                                          } else if (google.has(ext)) {
+                                            setPreviewKind('doc');
+                                            setPreviewUrl(`https://docs.google.com/gview?embedded=true&url=${enc}`);
+                                          } else {
+                                            setPreviewKind('other');
+                                            setPreviewUrl(fileUrl);
+                                          }
+                                        }
+                                      } catch {
+                                        setPreviewKind('other');
+                                        setPreviewUrl(fileUrl);
+                                      }
+                                      setPreviewTitle(a.name || 'Xem tài liệu');
+                                      setPreviewOpen(true);
+                                    }}
+                                    aria-label="Xem nhanh"
+                                  >
+                                    <OpenInNewIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                            >
+                              <ListItemButton component="a" href={fileUrl} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
                                 <ListItemIcon sx={{ minWidth: 32 }}>
                                   {getIcon()}
                                 </ListItemIcon>
                                 <ListItemText
-                                  primary={a.name || a.url}
+                                  primary={a.name || (fileUrl || '')}
                                   secondary={secondary}
                                   primaryTypographyProps={{ variant: 'body2' }}
                                   secondaryTypographyProps={{ variant: 'caption' }}
@@ -397,6 +467,35 @@ export default function ClassLessons() {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} fullWidth maxWidth="lg">
+        <DialogTitle>{previewTitle}</DialogTitle>
+        <DialogContent>
+          {previewKind === 'image' && (
+            <Box sx={{ width: '100%', maxHeight: '70vh' }}>
+              <img src={previewUrl} alt={previewTitle} style={{ maxWidth: '100%', borderRadius: 8 }} />
+            </Box>
+          )}
+          {previewKind === 'video' && (
+            <Box sx={{ width: '100%' }}>
+              <video src={previewUrl} controls preload="metadata" style={{ width: '100%', borderRadius: 8 }} />
+            </Box>
+          )}
+          {previewKind === 'pdf' && (
+            <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+              <iframe src={previewUrl} title="preview" loading="lazy" style={{ width: '100%', height: 500, border: 0 }} />
+            </Paper>
+          )}
+          {previewKind === 'doc' && (
+            <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+              <iframe src={previewUrl} title="preview" loading="lazy" style={{ width: '100%', height: 500, border: 0 }} />
+            </Paper>
+          )}
+          {previewKind === 'other' && (
+            <Typography variant="body2" color="text.secondary">Không hỗ trợ xem nhanh định dạng này. Vui lòng mở trong tab mới.</Typography>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog 
         open={editOpen} 
         onClose={() => setEditOpen(false)} 
@@ -470,7 +569,7 @@ export default function ClassLessons() {
                           )}
                         </ListItemIcon>
                         <ListItemText
-                          primary={a.name || a.url}
+                          primary={a.name || (a.url || '')}
                           primaryTypographyProps={{ variant: 'body2' }}
                         />
                       </ListItemButton>

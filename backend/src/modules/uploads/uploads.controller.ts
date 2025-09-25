@@ -1,4 +1,4 @@
-import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Delete, Param } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Delete, Param, BadRequestException, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -16,7 +16,9 @@ export class UploadsController {
   @Post('file')
   @ApiOperation({ summary: 'Upload a single file (200MB limit)' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    // If USE_S3=true we use memory storage (set at module level). This ensures file.buffer is available.
+  }))
   @ApiBody({
     schema: {
       type: 'object',
@@ -28,8 +30,32 @@ export class UploadsController {
       },
     },
   })
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    const url = await this.uploadsService.getPublicUrl(file.filename);
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('folder') folder?: string,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    // If S3 is enabled, prefer S3 URL; otherwise, use local static URL
+    try {
+      if (String(process.env.USE_S3 || '').toLowerCase() === 'true' && file.buffer) {
+        const original = path.basename(file.originalname || 'file');
+        const prefix = (folder && String(folder).trim()) || 'uploads';
+        const key = `${prefix}/${Date.now()}-${original}`;
+        const url = await this.uploadsService.uploadBufferToS3(key, file.buffer, file.mimetype);
+        return {
+          filename: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          url,
+        };
+      }
+    } catch (e) {
+      // If S3 mode is on, do not fallback silently; surface the error
+      if (String(process.env.USE_S3 || '').toLowerCase() === 'true') {
+        throw new BadRequestException((e as Error).message || 'Upload failed');
+      }
+    }
+    const url = await this.uploadsService.getPublicUrl((file as any).filename);
     return {
       filename: file.originalname,
       mimetype: file.mimetype,

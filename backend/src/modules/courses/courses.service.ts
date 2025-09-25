@@ -337,18 +337,28 @@ export class CoursesService {
     await this.enrollmentModel.deleteMany({ courseId: new Types.ObjectId(id) });
     // Find lessons belonging to this course (across modules)
     const lessons = await this.lessonModel.find({ courseId: new Types.ObjectId(id) }).lean();
-    // Delete attachments files for lessons (local storage only)
+    // Delete attachments files for lessons (S3 and local)
     for (const l of lessons) {
       const attachments: Array<{ url: string }> = (l.content?.attachments || []) as any;
       for (const a of attachments) {
         try {
-          const u = new URL(a.url, process.env.BACKEND_URL || 'http://localhost:3000');
-          const parts = (u.pathname || '').split('/');
-          const idx = parts.findIndex((p) => p === 'uploads');
-          const stored = idx >= 0 ? parts[parts.length - 1] : '';
-          if (stored) {
-            const filePath = path.join(process.cwd(), 'uploads', stored);
-            if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+          const url = a.url || '';
+          if (/\.s3[.-].*\.amazonaws\.com\//.test(url)) {
+            const parsed = new URL(url);
+            const key = decodeURIComponent((parsed.pathname || '').replace(/^\//, ''));
+            // Use runtime import to avoid circular dep issues
+            const { UploadsService } = await import('../uploads/uploads.service');
+            const uploadsService = new (UploadsService as any)();
+            await uploadsService.deleteFromS3(key);
+          } else {
+            const u = new URL(url, process.env.BACKEND_URL || 'http://localhost:3000');
+            const parts = (u.pathname || '').split('/');
+            const idx = parts.findIndex((p) => p === 'uploads');
+            const stored = idx >= 0 ? parts[parts.length - 1] : '';
+            if (stored) {
+              const filePath = path.join(process.cwd(), 'uploads', stored);
+              if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+            }
           }
         } catch {}
       }
@@ -398,6 +408,26 @@ export class CoursesService {
   async removeDocument(id: string, userId: string) {
     const doc = await this.documentModel.findOne({ _id: id, createdBy: userId });
     if (!doc) throw new NotFoundException('Document not found or access denied');
+    // Best-effort delete underlying file
+    try {
+      const url = (doc as any).fileUrl || '';
+      if (/\.s3[.-].*\.amazonaws\.com\//.test(url)) {
+        const parsed = new URL(url);
+        const key = decodeURIComponent((parsed.pathname || '').replace(/^\//, ''));
+        const { UploadsService } = await import('../uploads/uploads.service');
+        const uploadsService = new (UploadsService as any)();
+        await uploadsService.deleteFromS3(key);
+      } else {
+        const u = new URL(url, process.env.BACKEND_URL || 'http://localhost:3000');
+        const parts = (u.pathname || '').split('/');
+        const idx = parts.findIndex((p) => p === 'uploads');
+        const stored = idx >= 0 ? parts[parts.length - 1] : '';
+        if (stored) {
+          const filePath = path.join(process.cwd(), 'uploads', stored);
+          if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+        }
+      }
+    } catch {}
     await this.documentModel.findByIdAndDelete(id);
   }
 

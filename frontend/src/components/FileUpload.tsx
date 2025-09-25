@@ -25,7 +25,7 @@ import {
   Slideshow as SlideshowIcon,
   TextSnippet as TextSnippetIcon,
 } from '@mui/icons-material';
-import { uploadApi } from '../api/upload';
+import { uploadsApi } from '../api/uploads';
 
 interface FileUploadProps {
   onFileUploaded: (fileData: { url: string; fileName: string; fileType: string }) => void;
@@ -84,14 +84,14 @@ export default function FileUpload({
         });
       }, 200);
 
-      const result = await uploadApi.uploadFile(file, folder);
+      const result = await uploadsApi.uploadFile(file, folder);
       
       clearInterval(progressInterval);
       setUploadProgress(100);
 
       const fileData = {
-        url: result.data.url,
-        fileName: result.data.fileName,
+        url: result.url,
+        fileName: file.name,
         fileType: file.type,
       };
 

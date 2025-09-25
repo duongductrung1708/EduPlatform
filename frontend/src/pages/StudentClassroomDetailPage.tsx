@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, IconButton } from '@mui/material';
+import { Box, Container, Typography, Chip, Alert, Grid, Card, CardContent, Button, Breadcrumbs, Link as MuiLink, Snackbar, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, IconButton, Paper, Skeleton, Tooltip, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { classesApi } from '../api/admin';
 import { lessonsApi, LessonItem } from '../api/lessons';
 import { assignmentsApi, AssignmentItem } from '../api/assignments';
@@ -15,6 +15,8 @@ import MovieIcon from '@mui/icons-material/Movie';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import { ChatBox } from '../components/ChatBox';
+import { resolveFileUrl } from '../utils/url';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 const StudentClassroomDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -28,6 +30,68 @@ const StudentClassroomDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ open: boolean; message: string }>(() => ({ open: false, message: '' }));
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewKind, setPreviewKind] = useState<'image'|'video'|'pdf'|'doc'|'other'>('other');
+  const [previewTitle, setPreviewTitle] = useState<string>('Xem tài liệu');
+  
+  // Inline preview components
+  const LazyImage: React.FC<{ src: string; alt: string; width?: number | string; height?: number | string; style?: React.CSSProperties }> = ({ src, alt, width = '100%', height = 140, style }) => {
+    const [loaded, setLoaded] = useState(false);
+    return (
+      <Box sx={{ position: 'relative', width, height }}>
+        {!loaded && <Skeleton variant="rounded" width="100%" height="100%" />}
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          style={{
+            display: loaded ? 'block' : 'none',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: 8,
+            border: '1px solid rgba(0,0,0,0.08)',
+            ...(style || {}),
+          }}
+        />
+      </Box>
+    );
+  };
+
+  const LazyVideo: React.FC<{ src: string }> = ({ src }) => {
+    const [ready, setReady] = useState(false);
+    return (
+      <Box sx={{ position: 'relative', width: '100%', borderRadius: 2 }}>
+        {!ready && <Skeleton variant="rounded" width="100%" height={180} />}
+        <video
+          src={src}
+          controls
+          preload="metadata"
+          onLoadedMetadata={() => setReady(true)}
+          style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)', display: ready ? 'block' : 'none' }}
+        />
+      </Box>
+    );
+  };
+
+  const LazyIframe: React.FC<{ src: string; height?: number }> = ({ src, height = 400 }) => {
+    const [ready, setReady] = useState(false);
+    return (
+      <Box sx={{ position: 'relative', width: '100%' }}>
+        {!ready && <Skeleton variant="rounded" width="100%" height={height} />}
+        <iframe
+          src={src}
+          title="preview"
+          loading="lazy"
+          onLoad={() => setReady(true)}
+          style={{ width: '100%', height, border: 0, display: ready ? 'block' : 'none', borderRadius: 8 }}
+        />
+      </Box>
+    );
+  };
 
   useEffect(() => {
     (async () => {
@@ -84,6 +148,7 @@ const StudentClassroomDetailPage: React.FC = () => {
   }, [classroomId]);
 
   return (
+    <>
     <Container maxWidth="lg" sx={{ mt: 3, mb: 4 }}>
       {/* Breadcrumb */}
       <Breadcrumb 
@@ -151,15 +216,68 @@ const StudentClassroomDetailPage: React.FC = () => {
                               return `${Math.round(size / 104857.6) / 10} MB`;
                             };
                             const secondary = formatSize(a.size);
+                            const fileUrl = resolveFileUrl(a.url) || a.url;
+                            const determinePreview = () => {
+                              try {
+                                const u = new URL(fileUrl);
+                                const pathname = u.pathname || '';
+                                const ext = (pathname.split('.').pop() || '').toLowerCase();
+                                const lower = (fileUrl || '').toLowerCase();
+                                if (/(png|jpe?g|gif|webp|svg)$/i.test(ext) || (a.type || '').includes('image')) {
+                                  setPreviewKind('image');
+                                  setPreviewUrl(fileUrl);
+                                  return;
+                                }
+                                if (/(mp4|webm|ogg)$/i.test(ext) || (a.type || '').includes('video')) {
+                                  setPreviewKind('video');
+                                  setPreviewUrl(fileUrl);
+                                  return;
+                                }
+                                if (ext === 'pdf' || (a.type || '').includes('pdf')) {
+                                  setPreviewKind('pdf');
+                                  setPreviewUrl(fileUrl);
+                                  return;
+                                }
+                                const office = new Set(['doc','docx','xls','xlsx','ppt','pptx']);
+                                const google = new Set(['odt','ods','odp','rtf','txt','csv']);
+                                const enc = encodeURIComponent(fileUrl);
+                                if (office.has(ext)) {
+                                  setPreviewKind('doc');
+                                  setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${enc}`);
+                                  return;
+                                }
+                                if (google.has(ext)) {
+                                  setPreviewKind('doc');
+                                  setPreviewUrl(`https://docs.google.com/gview?embedded=true&url=${enc}`);
+                                  return;
+                                }
+                              } catch {}
+                              setPreviewKind('other');
+                              setPreviewUrl(fileUrl);
+                            };
                             return (
                               <React.Fragment key={idx}>
-                                <ListItem disablePadding>
-                                  <ListItemButton component="a" href={a.url} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
+                                <ListItem
+                                  disablePadding
+                                  secondaryAction={
+                                    <Tooltip title="Xem nhanh">
+                                      <IconButton
+                                        edge="end"
+                                        size="small"
+                                        onClick={() => { setPreviewTitle(a.name || 'Xem tài liệu'); determinePreview(); setPreviewOpen(true); }}
+                                        aria-label="Xem nhanh"
+                                      >
+                                        <OpenInNewIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  }
+                                >
+                                  <ListItemButton component="a" href={fileUrl} target="_blank" rel="noreferrer" sx={{ borderRadius: 1 }}>
                                     <ListItemIcon sx={{ minWidth: 32 }}>
                                       {getIcon()}
                                     </ListItemIcon>
                                     <ListItemText
-                                      primary={a.name || a.url}
+                                      primary={a.name || (fileUrl || '')}
                                       secondary={secondary}
                                       primaryTypographyProps={{ variant: 'body2' }}
                                       secondaryTypographyProps={{ variant: 'caption' }}
@@ -171,6 +289,7 @@ const StudentClassroomDetailPage: React.FC = () => {
                             );
                           })}
                         </List>
+                        
                       </Box>
                     )}
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
@@ -228,6 +347,36 @@ const StudentClassroomDetailPage: React.FC = () => {
         </Grid>
       </Grid>
     </Container>
+
+    <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} fullWidth maxWidth="lg">
+      <DialogTitle>{previewTitle}</DialogTitle>
+      <DialogContent>
+        {previewKind === 'image' && (
+          <Box sx={{ width: '100%', maxHeight: '70vh' }}>
+            <LazyImage src={previewUrl} alt={previewTitle} height={300} />
+          </Box>
+        )}
+        {previewKind === 'video' && (
+          <Box sx={{ width: '100%' }}>
+            <LazyVideo src={previewUrl} />
+          </Box>
+        )}
+        {previewKind === 'pdf' && (
+          <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+            <LazyIframe src={previewUrl} height={500} />
+          </Paper>
+        )}
+        {previewKind === 'doc' && (
+          <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+            <LazyIframe src={previewUrl} height={500} />
+          </Paper>
+        )}
+        {previewKind === 'other' && (
+          <Typography variant="body2" color="text.secondary">Không hỗ trợ xem nhanh định dạng này. Vui lòng mở trong tab mới.</Typography>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 

@@ -26,6 +26,8 @@ import {
   TextField,
   MenuItem
 } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SchoolIcon from '@mui/icons-material/School';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -66,6 +68,7 @@ interface Lesson {
   order: number;
   estimatedDuration?: number;
   isCompleted?: boolean;
+  content?: { fileUrl?: string; fileName?: string };
 }
 
 export default function CourseDetailPage() {
@@ -81,6 +84,10 @@ export default function CourseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [userLoaded, setUserLoaded] = useState(false);
   const [volumeFilter, setVolumeFilter] = useState<string>('all');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewKind, setPreviewKind] = useState<'image'|'video'|'pdf'|'doc'|'other'>('other');
+  const [previewTitle, setPreviewTitle] = useState<string>('Xem tài liệu');
 
   useEffect(() => {
     if (id) {
@@ -242,6 +249,7 @@ export default function CourseDetailPage() {
   // Debug logging
 
   return (
+    <>
     <Box sx={{ p: 3 }}>
       {/* Breadcrumb */}
       <Breadcrumb 
@@ -342,7 +350,7 @@ export default function CourseDetailPage() {
           <Grid item xs={12} md={4}>
             <Card sx={{ borderRadius: 3, border: '2px solid', borderColor: 'divider' }}>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                {user?.role === 'teacher' && course.createdBy?._id === user?._id ? (
+                {user?.role === 'teacher' && String((course as any).createdBy?._id || (course as any).createdBy) === String((user as any)?._id) ? (
                   <Stack spacing={2}>
                     <Typography variant="h6" fontWeight={600} color="#EF5B5B">
                       Môn học của bạn
@@ -484,7 +492,7 @@ export default function CourseDetailPage() {
                         </Typography>
                         {module.volume && (
                           <Chip 
-                            label={module.volume.startsWith('Tập') ? module.volume : `Tập ${module.volume}`} 
+                            label={module.volume.startsWith('Tập') ? module.volume : `${module.volume}`} 
                             size="small" 
                             variant="outlined" 
                             sx={{ borderColor: '#4CAF50', color: '#4CAF50' }}
@@ -504,7 +512,7 @@ export default function CourseDetailPage() {
                       </Typography>
                       <List>
                         {module.lessons.map((lesson) => (
-                          <ListItem key={lesson._id} sx={{ px: 0 }}>
+                          <ListItem key={lesson._id} sx={{ px: 0, alignItems: 'center' }}>
                             <ListItemIcon>
                               {lesson.isCompleted ? (
                                 <CheckCircleIcon color="success" />
@@ -528,50 +536,96 @@ export default function CourseDetailPage() {
                                     </Typography>
                                   )}
                                   {lesson.type === 'document' && lesson.content?.fileName && (
-                                    <Chip 
-                                      icon={<AttachFileIcon />}
-                                      label={lesson.content.fileName}
-                                      size="small"
-                                      variant="outlined"
-                                      sx={{ 
-                                        borderColor: '#4CAF50', 
-                                        color: '#4CAF50',
-                                        maxWidth: '200px',
-                                        '& .MuiChip-label': {
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap'
-                                        }
-                                      }}
-                                    />
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                      <Chip 
+                                        icon={<AttachFileIcon />}
+                                        label={lesson.content.fileName}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ 
+                                          borderColor: '#4CAF50', 
+                                          color: '#4CAF50',
+                                          maxWidth: '200px',
+                                          '& .MuiChip-label': {
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                          }
+                                        }}
+                                      />
+                                      <Tooltip title="Xem nhanh">
+                                        <IconButton size="small" onClick={() => {
+                                          const url = lesson.content?.fileUrl || '';
+                                          try {
+                                            const u = new URL(url);
+                                            const pathname = u.pathname || '';
+                                            const ext = pathname.split('.').pop()?.toLowerCase() || '';
+                                            if (/\.(png|jpe?g|gif|webp|svg)$/i.test(ext)) {
+                                              setPreviewKind('image');
+                                              setPreviewUrl(url);
+                                            } else if (/\.(mp4|webm|ogg)$/i.test(ext)) {
+                                              setPreviewKind('video');
+                                              setPreviewUrl(url);
+                                            } else if (ext === 'pdf') {
+                                              setPreviewKind('pdf');
+                                              setPreviewUrl(url);
+                                            } else {
+                                              const office = new Set(['doc','docx','xls','xlsx','ppt','pptx']);
+                                              const google = new Set(['odt','ods','odp','rtf','txt','csv']);
+                                              const enc = encodeURIComponent(url);
+                                              if (office.has(ext)) {
+                                                setPreviewKind('doc');
+                                                setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${enc}`);
+                                              } else if (google.has(ext)) {
+                                                setPreviewKind('doc');
+                                                setPreviewUrl(`https://docs.google.com/gview?embedded=true&url=${enc}`);
+                                              } else {
+                                                setPreviewKind('other');
+                                                setPreviewUrl(url);
+                                              }
+                                            }
+                                          } catch {
+                                            setPreviewKind('other');
+                                            setPreviewUrl(url);
+                                          }
+                                          setPreviewTitle(lesson.content?.fileName || 'Xem tài liệu');
+                                          setPreviewOpen(true);
+                                        }} sx={{ width: 28, height: 28, p: 0.25 }}>
+                                          <OpenInNewIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </Stack>
                                   )}
                                 </Stack>
                               }
                               secondaryTypographyProps={{ component: 'div' }}
                             />
-                            <Stack direction="row" spacing={1}>
+                            <Stack direction="row" spacing={1} alignItems="center">
                               {lesson.type === 'document' && lesson.content?.fileUrl && (
-                                <Button
-                                  size="small"
-                                  startIcon={<DownloadIcon />}
-                                  onClick={() => handleDownloadDocument(lesson)}
-                                  sx={{
-                                    color: '#4CAF50',
-                                    borderColor: '#4CAF50',
-                                    '&:hover': {
-                                      borderColor: '#45a049',
-                                      backgroundColor: 'rgba(76, 175, 80, 0.04)'
-                                    }
-                                  }}
-                                  variant="outlined"
-                                >
-                                  Tải về
-                                </Button>
+                                <Tooltip title="Tải về">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleDownloadDocument(lesson)}
+                                    sx={{
+                                      color: '#4CAF50',
+                                      width: 28,
+                                      height: 28,
+                                      p: 0.25,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(76, 175, 80, 0.08)'
+                                      }
+                                    }}
+                                    aria-label="Tải về"
+                                  >
+                                    <DownloadIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
-                              <Button
-                                size="small"
-                                startIcon={<PlayArrowIcon />}
-                                onClick={() => {
+                              <Tooltip title={enrolled ? 'Học' : 'Cần đăng ký'}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
                                   if (!user) {
                                     alert('Vui lòng đăng nhập để học bài này');
                                     return;
@@ -581,19 +635,23 @@ export default function CourseDetailPage() {
                                     return;
                                   }
                                   navigate(`/courses/${id}/lessons/${lesson._id}`);
-                                }}
-                                sx={{
-                                  color: enrolled ? '#EF5B5B' : '#999',
-                                  borderColor: enrolled ? '#EF5B5B' : '#999',
-                                  '&:hover': {
-                                    borderColor: enrolled ? '#FF7B7B' : '#999',
-                                    backgroundColor: enrolled ? 'rgba(239, 91, 91, 0.04)' : 'rgba(153, 153, 153, 0.04)'
-                                  }
-                                }}
-                                variant="outlined"
-                              >
-                                {enrolled ? 'Học' : 'Cần đăng ký'}
-                              </Button>
+                                    }}
+                                    sx={{
+                                      color: enrolled ? '#EF5B5B' : '#999',
+                                      width: 28,
+                                      height: 28,
+                                      p: 0.25,
+                                      '&:hover': {
+                                        backgroundColor: enrolled ? 'rgba(239, 91, 91, 0.08)' : 'rgba(153, 153, 153, 0.08)'
+                                      }
+                                    }}
+                                    aria-label="Học"
+                                    disabled={!enrolled}
+                                  >
+                                    <PlayArrowIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                             </Stack>
                           </ListItem>
                         ))}
@@ -683,5 +741,35 @@ export default function CourseDetailPage() {
         </Grid>
       </Grid>
     </Box>
+
+    <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} fullWidth maxWidth="lg">
+      <DialogTitle>{previewTitle}</DialogTitle>
+      <DialogContent>
+        {previewKind === 'image' && (
+          <Box sx={{ width: '100%', maxHeight: '70vh' }}>
+            <img src={previewUrl} alt={previewTitle} style={{ maxWidth: '100%', borderRadius: 8 }} />
+          </Box>
+        )}
+        {previewKind === 'video' && (
+          <Box sx={{ width: '100%' }}>
+            <video src={previewUrl} controls preload="metadata" style={{ width: '100%', borderRadius: 8 }} />
+          </Box>
+        )}
+        {previewKind === 'pdf' && (
+          <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+            <iframe src={previewUrl} title="preview" loading="lazy" style={{ width: '100%', height: 500, border: 0 }} />
+          </Paper>
+        )}
+        {previewKind === 'doc' && (
+          <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+            <iframe src={previewUrl} title="preview" loading="lazy" style={{ width: '100%', height: 500, border: 0 }} />
+          </Paper>
+        )}
+        {previewKind === 'other' && (
+          <Typography variant="body2" color="text.secondary">Không hỗ trợ xem nhanh định dạng này. Vui lòng tải về hoặc mở tab mới.</Typography>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

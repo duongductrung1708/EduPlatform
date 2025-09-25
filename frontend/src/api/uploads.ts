@@ -8,9 +8,10 @@ export interface UploadResult {
 }
 
 export const uploadsApi = {
-  async uploadFile(file: File): Promise<UploadResult> {
+  async uploadFile(file: File, folder?: string): Promise<UploadResult> {
     const form = new FormData();
     form.append('file', file);
+    if (folder) form.append('folder', folder);
     const res = await apiClient.post('/api/uploads/file', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

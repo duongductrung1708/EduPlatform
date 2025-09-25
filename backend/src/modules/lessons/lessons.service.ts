@@ -6,6 +6,7 @@ import { Classroom, ClassroomDocument } from '../../models/classroom.model';
 import { CreateLessonDto, UpdateLessonDto } from './dto/lesson.dto';
 import * as path from 'path';
 import * as fs from 'fs';
+import { UploadsService } from '../uploads/uploads.service';
 import { Optional } from '@nestjs/common';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -15,6 +16,7 @@ export class LessonsService {
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
     @InjectModel(Classroom.name) private classroomModel: Model<ClassroomDocument>,
     @Optional() private realtime?: RealtimeGateway,
+    @Optional() private uploadsService?: UploadsService,
   ) {}
 
   async create(classroomId: string, createLessonDto: CreateLessonDto, createdBy: string): Promise<LessonDocument> {
@@ -187,17 +189,26 @@ export class LessonsService {
         this.realtime.server.to(`lesson:${id}`).emit('lessonDeleted', { id });
       }
     } catch {}
-    // Delete uploaded files stored locally (only for /uploads/<filename> URLs)
+    // Delete uploaded files: S3 keys and local files
     try {
       for (const a of attachments) {
         try {
-          const u = new URL(a.url, process.env.BACKEND_URL || 'http://localhost:3000');
-          const parts = (u.pathname || '').split('/');
-          const idx = parts.findIndex((p) => p === 'uploads');
-          const stored = idx >= 0 ? parts[parts.length - 1] : '';
-          if (stored) {
-            const filePath = path.join(process.cwd(), 'uploads', stored);
-            if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+          const url = a.url || '';
+          if (/\.s3[.-].*\.amazonaws\.com\//.test(url)) {
+            // S3 public URL → derive key (path after host)
+            const parsed = new URL(url);
+            const key = decodeURIComponent((parsed.pathname || '').replace(/^\//, ''));
+            await this.uploadsService?.deleteFromS3(key);
+          } else {
+            // Local static upload
+            const u = new URL(url, process.env.BACKEND_URL || 'http://localhost:3000');
+            const parts = (u.pathname || '').split('/');
+            const idx = parts.findIndex((p) => p === 'uploads');
+            const stored = idx >= 0 ? parts[parts.length - 1] : '';
+            if (stored) {
+              const filePath = path.join(process.cwd(), 'uploads', stored);
+              if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
+            }
           }
         } catch {}
       }

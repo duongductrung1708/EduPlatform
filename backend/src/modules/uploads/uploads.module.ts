@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 import * as path from 'path';
@@ -9,7 +10,7 @@ import * as fs from 'fs';
 @Module({
   imports: [
     MulterModule.register({
-      storage: diskStorage({
+      storage: (String(process.env.USE_S3 || '').toLowerCase() === 'true') ? memoryStorage() : diskStorage({
         destination: (_req: any, _file: any, cb: (error: any, destination: string) => void) => {
           const uploadDir = path.join(process.cwd(), 'uploads');
           try {
