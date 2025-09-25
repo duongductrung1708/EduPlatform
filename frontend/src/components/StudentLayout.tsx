@@ -385,7 +385,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 primaryTypographyProps={{ 
                   fontWeight: n.read ? 400 : 700,
                   whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
+                  sx: { wordBreak: 'break-word' }
                 }} 
                 primary={n.text} 
                 secondary={n.ts} 
