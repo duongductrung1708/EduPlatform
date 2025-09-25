@@ -262,6 +262,14 @@ export class EmailService {
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
             }
+            .logo-img {
+                max-width: 200px;
+                height: auto;
+                margin-bottom: 10px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
             .course-card {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 border: 2px solid #EF5B5B;
@@ -284,7 +292,7 @@ export class EmailService {
             .join-button {
                 display: inline-block;
                 background: linear-gradient(45deg, #EF5B5B, #FF7B7B);
-                color: white;
+                color: white !important;
                 padding: 15px 30px;
                 text-decoration: none;
                 border-radius: 25px;
@@ -317,7 +325,11 @@ export class EmailService {
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">EduLearn</div>
+                <div class="logo-img">
+                    <div style="background: linear-gradient(45deg, #EF5B5B, #FF7B7B); color: white; padding: 15px 30px; border-radius: 10px; font-size: 24px; font-weight: bold; text-align: center; display: inline-block;">
+                        🎓 EduLearn
+                    </div>
+                </div>
                 <h2>Mời tham gia môn học</h2>
             </div>
             
@@ -396,6 +408,14 @@ export class EmailService {
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
             }
+            .logo-img {
+                max-width: 200px;
+                height: auto;
+                margin-bottom: 10px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
             .classroom-card {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 border: 2px solid #EF5B5B;
@@ -417,7 +437,7 @@ export class EmailService {
             }
             .invite-code {
                 background: linear-gradient(45deg, #EF5B5B, #FF7B7B);
-                color: white;
+                color: white !important;
                 padding: 10px 20px;
                 border-radius: 20px;
                 font-weight: bold;
@@ -429,7 +449,7 @@ export class EmailService {
             .join-button {
                 display: inline-block;
                 background: linear-gradient(45deg, #EF5B5B, #FF7B7B);
-                color: white;
+                color: white !important;
                 padding: 15px 30px;
                 text-decoration: none;
                 border-radius: 25px;
@@ -463,7 +483,11 @@ export class EmailService {
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">EduLearn</div>
+                <div class="logo-img">
+                    <div style="background: linear-gradient(45deg, #EF5B5B, #FF7B7B); color: white; padding: 15px 30px; border-radius: 10px; font-size: 24px; font-weight: bold; text-align: center; display: inline-block;">
+                        🎓 EduLearn
+                    </div>
+                </div>
                 <h2>Mời tham gia lớp học</h2>
             </div>
             

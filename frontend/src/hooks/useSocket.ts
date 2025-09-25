@@ -24,10 +24,6 @@ export const useSocket = () => {
   useEffect(() => {
     const url = getSocketUrl();
     const debug = (import.meta as any).env?.VITE_DEBUG_SOCKET === '1';
-    if (debug) {
-      // eslint-disable-next-line no-console
-      console.log('[socket] initializing', url);
-    }
     socketRef.current = io(url, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -36,20 +32,12 @@ export const useSocket = () => {
 
     // Identify after connect to ensure delivery
     const handleConnect = () => {
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('[socket] connected', url);
-      }
       const uid = getUserId();
       if (uid) socketRef.current?.emit('identify', { userId: String(uid) });
     };
     let identified = false;
     const handleIdentified = (payload: any) => {
       identified = true;
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('[socket] identified', payload);
-      }
     };
     const handleConnectError = (err: any) => {
       if (debug) {
@@ -71,10 +59,6 @@ export const useSocket = () => {
     const timer = setTimeout(() => {
       const uid2 = getUserId();
       if (!identified && uid2) {
-        if (debug) {
-          // eslint-disable-next-line no-console
-          console.log('[socket] re-identify fallback');
-        }
         socketRef.current?.emit('identify', { userId: String(uid2) });
       }
     }, 1000);

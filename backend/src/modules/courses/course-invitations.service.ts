@@ -6,6 +6,7 @@ import { Course, CourseDocument } from '../../models/course.model';
 import { User, UserDocument } from '../../models/user.model';
 import { CourseEnrollment, CourseEnrollmentDocument } from '../../models/course-enrollment.model';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class CourseInvitationsService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(CourseEnrollment.name) private enrollmentModel: Model<CourseEnrollmentDocument>,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
     private realtimeGateway: RealtimeGateway,
   ) {}
 
@@ -114,6 +116,30 @@ export class CourseInvitationsService {
         console.error('Failed to send course invitation email:', error);
         // Don't throw error, invitation should still be created
       }
+    }
+
+    // Create notification in database for student
+    try {
+      await this.notificationsService.create(
+        student._id.toString(),
+        'Lời mời tham gia môn học',
+        `${teacher?.name || 'Giáo viên'} đã mời bạn tham gia môn học "${course.title}"`,
+        { link: `/courses/${courseId}` }
+      );
+    } catch (error) {
+      console.error('Failed to create notification for student:', error);
+    }
+
+    // Create notification in database for teacher
+    try {
+      await this.notificationsService.create(
+        teacherId,
+        'Đã gửi lời mời tham gia môn học',
+        `Bạn đã mời ${student.name} tham gia môn học "${course.title}"`,
+        { link: `/courses/${courseId}` }
+      );
+    } catch (error) {
+      console.error('Failed to create notification for teacher:', error);
     }
 
     // Emit real-time notification

@@ -22,7 +22,9 @@ import {
   ListItemIcon,
   ListItemText,
   LinearProgress,
-  Alert
+  Alert,
+  TextField,
+  MenuItem
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -73,10 +75,12 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<CourseItem | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
+  const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   const [enrolled, setEnrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [userLoaded, setUserLoaded] = useState(false);
+  const [volumeFilter, setVolumeFilter] = useState<string>('all');
 
   useEffect(() => {
     if (id) {
@@ -155,6 +159,15 @@ export default function CourseDetailPage() {
       setLoading(false);
     }
   };
+
+  // Filter modules by volume
+  useEffect(() => {
+    if (volumeFilter === 'all') {
+      setFilteredModules(modules);
+    } else {
+      setFilteredModules(modules.filter(module => module.volume === volumeFilter));
+    }
+  }, [modules, volumeFilter]);
 
   const handleEnroll = async () => {
     try {
@@ -428,6 +441,32 @@ export default function CourseDetailPage() {
       {/* Course Content */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
+          {/* Volume Filter */}
+          {modules.length > 0 && (
+            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2, p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+              <Typography variant="body1" fontWeight={600}>
+                Lọc theo tập:
+              </Typography>
+              <TextField
+                select
+                value={volumeFilter}
+                onChange={(e) => setVolumeFilter(e.target.value)}
+                size="small"
+                sx={{ minWidth: 150 }}
+              >
+                <MenuItem value="all">Tất cả</MenuItem>
+                {Array.from(new Set(modules.map(m => m.volume).filter(Boolean))).map(volume => (
+                  <MenuItem key={volume} value={volume}>
+                    {volume}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Typography variant="body2" color="text.secondary">
+                Hiển thị {filteredModules.length} / {modules.length} module
+              </Typography>
+            </Box>
+          )}
+          
           <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
             <Box sx={{ p: 3, background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)', color: 'white' }}>
               <Typography variant="h6" fontWeight={600}>
@@ -435,8 +474,8 @@ export default function CourseDetailPage() {
               </Typography>
             </Box>
             <Box sx={{ p: 3 }}>
-              {modules.length > 0 ? (
-                modules.map((module, index) => (
+              {filteredModules.length > 0 ? (
+                filteredModules.map((module, index) => (
                   <Accordion key={module._id} sx={{ mb: 2, borderRadius: 2 }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>

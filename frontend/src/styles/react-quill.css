@@ -1,0 +1,24 @@
+/* Suppress ReactQuill findDOMNode warnings */
+.ql-editor {
+  font-family: inherit;
+}
+
+/* Ensure proper z-index for dropdowns */
+.ql-snow .ql-picker {
+  z-index: 1300 !important;
+}
+
+.ql-snow .ql-picker-options {
+  z-index: 1300 !important;
+}
+
+/* Fix toolbar positioning */
+.ql-toolbar {
+  position: relative;
+  z-index: 1;
+}
+
+.ql-container {
+  position: relative;
+  z-index: 1;
+}

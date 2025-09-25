@@ -84,7 +84,6 @@ export default function CourseStudents() {
       setLoading(true);
       setError(null);
       
-      // console.log('🔄 Loading course data for courseId:', courseId);
       
       const [courseRes, enrollmentsRes] = await Promise.all([
         coursesApi.getById(courseId!),
@@ -97,15 +96,12 @@ export default function CourseStudents() {
       
       setCourse(courseRes);
       
-      // Debug: Log the enrollments response
-      console.log('📊 Enrollments response:', enrollmentsRes);
       
       // Handle different response formats
       let students = [];
       if (Array.isArray(enrollmentsRes)) {
         // If enrollmentsRes is an array of enrollments
         students = enrollmentsRes.map(enrollment => {
-          console.log('📝 Processing enrollment:', enrollment);
           
           // Extract student data from different possible structures
           const studentData = enrollment.student || enrollment.studentId || {};
@@ -113,7 +109,6 @@ export default function CourseStudents() {
           const studentName = studentData.name || 'Chưa có tên';
           const studentEmail = studentData.email || 'Chưa có email';
           
-          console.log('👤 Extracted student data:', { studentId, studentName, studentEmail });
           
           return {
             _id: studentId,
@@ -129,7 +124,6 @@ export default function CourseStudents() {
         students = enrollmentsRes.students;
       }
       
-      console.log('👥 Final students array:', students);
       
       // Apply pagination to students
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -162,7 +156,6 @@ export default function CourseStudents() {
       setAddingStudent(true);
       setDialogError(null);
       
-      // console.log('Sending invitation to student with email:', studentEmail, 'for course:', courseId);
       await courseInvitationsApi.createInvitation({
         courseId: courseId!,
         studentEmail: studentEmail,

@@ -69,7 +69,6 @@ export const useAdminWebSocket = () => {
       });
 
       newSocket.on('connect', () => {
-        // console.log('Admin WebSocket connected');
         setIsConnected(true);
         setError(null);
         
@@ -80,7 +79,6 @@ export const useAdminWebSocket = () => {
       });
 
       newSocket.on('disconnect', (reason) => {
-        // console.log('Admin WebSocket disconnected:', reason);
         setIsConnected(false);
         
         // Attempt to reconnect after 5 seconds
@@ -100,7 +98,6 @@ export const useAdminWebSocket = () => {
 
       // Analytics data updates
       newSocket.on('analyticsUpdate', (data: AnalyticsData) => {
-        // console.log('Received analytics update:', data);
         setAnalyticsData(data);
       });
 
@@ -111,7 +108,6 @@ export const useAdminWebSocket = () => {
 
       // Dashboard stats updates
       newSocket.on('dashboardStatsUpdate', (data: DashboardStats) => {
-        // console.log('Received dashboard stats update:', data);
         setDashboardStats(data);
       });
 
@@ -122,7 +118,6 @@ export const useAdminWebSocket = () => {
 
       // Admin notifications
       newSocket.on('adminNotification', (notification: AdminNotification) => {
-        // console.log('Received admin notification:', notification);
         setNotifications(prev => [notification, ...prev.slice(0, 9)]); // Keep last 10 notifications
       });
 

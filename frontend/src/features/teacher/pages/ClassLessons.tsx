@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Grid, Card, CardContent, IconButton, Chip, Breadcrumbs, Link as MuiLink, Stack, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuillWrapper from '../../../components/ReactQuillWrapper';
 import { Link as RouterLink } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -337,13 +336,43 @@ export default function ClassLessons() {
         ))}
       </Grid>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
+      <Dialog 
+        open={open} 
+        onClose={() => setOpen(false)} 
+        fullWidth 
+        maxWidth="lg"
+        sx={{
+          '& .MuiDialog-paper': {
+            overflow: 'visible'
+          }
+        }}
+      >
         <DialogTitle>Tạo bài giảng</DialogTitle>
         <DialogContent>
           <TextField label="Tiêu đề" fullWidth sx={{ mt: 1, mb: 2 }} value={title} onChange={(e) => setTitle(e.target.value)} />
           <Box sx={{ mt: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Nội dung</Typography>
-            <ReactQuill theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+            <Box sx={{ 
+              '& .ql-toolbar': { 
+                zIndex: 2,
+                position: 'relative'
+              },
+              '& .ql-container': { 
+                zIndex: 2,
+                position: 'relative'
+              },
+              '& .ql-editor': {
+                minHeight: '120px'
+              },
+              '& .ql-snow .ql-picker': {
+                zIndex: 1300
+              },
+              '& .ql-snow .ql-picker-options': {
+                zIndex: 1300
+              }
+            }}>
+              <ReactQuillWrapper theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+            </Box>
           </Box>
           <Box display="flex" gap={2} sx={{ mt: 2 }}>
             <TextField label="Chủ đề" fullWidth value={topic} onChange={(e) => setTopic(e.target.value)} />
@@ -368,13 +397,43 @@ export default function ClassLessons() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="md">
+      <Dialog 
+        open={editOpen} 
+        onClose={() => setEditOpen(false)} 
+        fullWidth 
+        maxWidth="lg"
+        sx={{
+          '& .MuiDialog-paper': {
+            overflow: 'visible'
+          }
+        }}
+      >
         <DialogTitle>Sửa bài giảng</DialogTitle>
         <DialogContent>
           <TextField label="Tiêu đề" fullWidth sx={{ mt: 1, mb: 2 }} value={title} onChange={(e) => setTitle(e.target.value)} />
           <Box sx={{ mt: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Nội dung</Typography>
-            <ReactQuill theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+            <Box sx={{ 
+              '& .ql-toolbar': { 
+                zIndex: 2,
+                position: 'relative'
+              },
+              '& .ql-container': { 
+                zIndex: 2,
+                position: 'relative'
+              },
+              '& .ql-editor': {
+                minHeight: '120px'
+              },
+              '& .ql-snow .ql-picker': {
+                zIndex: 1300
+              },
+              '& .ql-snow .ql-picker-options': {
+                zIndex: 1300
+              }
+            }}>
+              <ReactQuillWrapper theme="snow" value={contentHtml} onChange={setContentHtml as any} modules={quillModules} formats={quillFormats} />
+            </Box>
           </Box>
           <Box display="flex" gap={2} sx={{ mt: 2 }}>
             <TextField label="Chủ đề" fullWidth value={topic} onChange={(e) => setTopic(e.target.value)} />

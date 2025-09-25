@@ -22,8 +22,7 @@ import {
   Divider,
   Paper
 } from '@mui/material';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuillWrapper from '../../../components/ReactQuillWrapper';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -48,6 +47,7 @@ interface Module {
   order: number;
   estimatedDuration?: number;
   isPublished: boolean;
+  volume?: string;
   lessons?: Lesson[];
 }
 
@@ -59,6 +59,12 @@ interface Lesson {
   order: number;
   estimatedDuration?: number;
   isPublished: boolean;
+  content?: {
+    htmlContent?: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileType?: string;
+  };
 }
 
 const LESSON_TYPES = [
@@ -76,9 +82,11 @@ export default function CourseManage() {
   
   const [course, setCourse] = useState<any>(null);
   const [modules, setModules] = useState<Module[]>([]);
+  const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [volumeFilter, setVolumeFilter] = useState<string>('all');
   
   // Module dialog states
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
@@ -120,7 +128,7 @@ export default function CourseManage() {
   const [lessonForm, setLessonForm] = useState({
     title: '',
     description: '',
-    type: 'document' as const,
+    type: 'document' as 'document' | 'video' | 'interactive' | 'quiz' | 'assignment',
     order: 0,
     estimatedDuration: 0,
     isPublished: true,
@@ -178,6 +186,15 @@ export default function CourseManage() {
       setLoading(false);
     }
   };
+
+  // Filter modules by volume
+  useEffect(() => {
+    if (volumeFilter === 'all') {
+      setFilteredModules(modules);
+    } else {
+      setFilteredModules(modules.filter(module => module.volume === volumeFilter));
+    }
+  }, [modules, volumeFilter]);
 
   const handleCreateModule = async () => {
     try {
@@ -542,6 +559,30 @@ export default function CourseManage() {
         </Button>
       </Box>
 
+      {/* Volume Filter */}
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography variant="body1" fontWeight={600}>
+          Lọc theo tập:
+        </Typography>
+        <TextField
+          select
+          value={volumeFilter}
+          onChange={(e) => setVolumeFilter(e.target.value)}
+          size="small"
+          sx={{ minWidth: 150 }}
+        >
+          <MenuItem value="all">Tất cả</MenuItem>
+          {Array.from(new Set(modules.map(m => m.volume).filter(Boolean))).map(volume => (
+            <MenuItem key={volume} value={volume}>
+              {volume}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Typography variant="body2" color="text.secondary">
+          Hiển thị {filteredModules.length} / {modules.length} module
+        </Typography>
+      </Box>
+
       {/* Modules List */}
       {modules.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center', bgcolor: darkMode ? 'grey.800' : 'grey.50' }}>
@@ -565,7 +606,7 @@ export default function CourseManage() {
         </Paper>
       ) : (
         <Stack spacing={2}>
-          {modules.map((module) => (
+          {filteredModules.map((module) => (
             <Accordion key={module._id} sx={{ bgcolor: darkMode ? 'grey.800' : 'white' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
@@ -588,6 +629,7 @@ export default function CourseManage() {
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     <Chip 
+                      sx={{ color: "white" }}
                       label={module.isPublished ? 'Đã xuất bản' : 'Bản nháp'} 
                       color={module.isPublished ? 'success' : 'default'}
                       size="small"
@@ -676,12 +718,12 @@ export default function CourseManage() {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
                                   <Chip 
                                     icon={<DescriptionIcon />}
-                                    label={lesson.content.fileName || 'Tài liệu đính kèm'} 
+                                    label={lesson.content?.fileName || 'Tài liệu đính kèm'} 
                                     size="small" 
                                     color="primary" 
                                     variant="outlined"
                                     clickable
-                                    onClick={() => window.open(lesson.content.fileUrl, '_blank')}
+                                    onClick={() => window.open(lesson.content?.fileUrl, '_blank')}
                                     sx={{
                                       '&:hover': {
                                         backgroundColor: 'primary.main',
@@ -825,7 +867,17 @@ export default function CourseManage() {
       </Dialog>
 
       {/* Lesson Dialog */}
-      <Dialog open={lessonDialogOpen} onClose={() => setLessonDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={lessonDialogOpen} 
+        onClose={() => setLessonDialogOpen(false)} 
+        maxWidth="lg" 
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            overflow: 'visible'
+          }
+        }}
+      >
         <DialogTitle>
           {editingLesson ? 'Chỉnh sửa Bài học' : 'Tạo Bài học mới'}
         </DialogTitle>
@@ -849,30 +901,50 @@ export default function CourseManage() {
             />
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Nội dung chi tiết</Typography>
-              <ReactQuill
-                theme="snow"
-                value={lessonForm.content?.htmlContent || ''}
-                onChange={(val) => setLessonForm({ ...lessonForm, content: { ...(lessonForm.content || {}), htmlContent: val } })}
-                modules={{
-                  toolbar: [
-                    [{ header: [1, 2, 3, 4, false] }],
-                    ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
-                    [{ list: 'ordered' }, { list: 'bullet' }],
-                    [{ indent: '-1' }, { indent: '+1' }],
-                    [{ align: [] }],
-                    [{ color: [] }, { background: [] }],
-                    ['link', 'image', 'video'],
-                    ['clean'],
-                  ],
-                }}
-                formats={[
-                  'header',
-                  'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
-                  'list', 'bullet', 'indent',
-                  'align', 'color', 'background',
-                  'link', 'image', 'video',
-                ]}
-              />
+              <Box sx={{ 
+                '& .ql-toolbar': { 
+                  zIndex: 2,
+                  position: 'relative'
+                },
+                '& .ql-container': { 
+                  zIndex: 2,
+                  position: 'relative'
+                },
+                '& .ql-editor': {
+                  minHeight: '120px'
+                },
+                '& .ql-snow .ql-picker': {
+                  zIndex: 1300
+                },
+                '& .ql-snow .ql-picker-options': {
+                  zIndex: 1300
+                }
+              }}>
+                <ReactQuillWrapper
+                  theme="snow"
+                  value={lessonForm.content?.htmlContent || ''}
+                  onChange={(val) => setLessonForm({ ...lessonForm, content: { ...(lessonForm.content || {}), htmlContent: val } })}
+                  modules={{
+                    toolbar: [
+                      [{ header: [1, 2, 3, 4, false] }],
+                      ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
+                      [{ list: 'ordered' }, { list: 'bullet' }],
+                      [{ indent: '-1' }, { indent: '+1' }],
+                      [{ align: [] }],
+                      [{ color: [] }, { background: [] }],
+                      ['link', 'image', 'video'],
+                      ['clean'],
+                    ],
+                  }}
+                  formats={[
+                    'header',
+                    'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
+                    'list', 'bullet', 'indent',
+                    'align', 'color', 'background',
+                    'link', 'image', 'video',
+                  ]}
+                />
+              </Box>
             </Box>
             <TextField
               select

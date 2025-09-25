@@ -248,10 +248,12 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteAnchorEl, setDeleteAnchorEl] = useState<HTMLElement | null>(null);
 
-  const requestDelete = (id?: string) => {
+  const requestDelete = (id?: string, event?: React.MouseEvent<HTMLElement>) => {
     if (!id) return;
     setDeleteTargetId(id);
+    setDeleteAnchorEl(event?.currentTarget || null);
     setConfirmOpen(true);
   };
 
@@ -263,11 +265,18 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
       setMessages(prev => prev.filter(m => String(m.id || '') !== String(deleteTargetId)));
       setConfirmOpen(false);
       setDeleteTargetId(null);
+      setDeleteAnchorEl(null);
     } catch {
       // ignore
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmOpen(false);
+    setDeleteTargetId(null);
+    setDeleteAnchorEl(null);
   };
 
   const renderMessage = (text: string) => {
@@ -336,7 +345,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
           {messages.map((msg, index) => (
             <ListItem key={index} alignItems="flex-start"
               secondaryAction={canDelete(msg.user.id) ? (
-                <IconButton edge="end" aria-label="delete" onClick={() => requestDelete(msg.id)}>
+                <IconButton edge="end" aria-label="delete" onClick={(e) => requestDelete(msg.id, e)}>
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               ) : undefined}
@@ -421,18 +430,41 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
         </Button>
       </Box>
 
-      <Dialog open={confirmOpen} onClose={() => (deleting ? null : setConfirmOpen(false))}>
-        <DialogTitle>Xóa tin nhắn?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">Bạn có chắc muốn xóa tin nhắn này? Hành động không thể hoàn tác.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)} disabled={deleting}>Hủy</Button>
-          <Button color="error" variant="contained" onClick={handleConfirmDelete} disabled={deleting}>
-            {deleting ? 'Đang xóa...' : 'Xóa'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Popper
+        open={confirmOpen}
+        anchorEl={deleteAnchorEl}
+        placement="bottom-end"
+        sx={{ zIndex: 1300 }}
+      >
+        <ClickAwayListener onClickAway={handleCancelDelete}>
+          <Paper sx={{ p: 2, minWidth: 200, boxShadow: 3 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Xóa tin nhắn?
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              Bạn có chắc muốn xóa tin nhắn này? Hành động không thể hoàn tác.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+              <Button 
+                size="small" 
+                onClick={handleCancelDelete} 
+                disabled={deleting}
+              >
+                Hủy
+              </Button>
+              <Button 
+                size="small" 
+                color="error" 
+                variant="contained" 
+                onClick={handleConfirmDelete} 
+                disabled={deleting}
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </Button>
+            </Box>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
     </Paper>
   );
 };

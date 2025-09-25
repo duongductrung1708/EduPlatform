@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, useMediaQuery, Avatar, Tooltip, InputBase, alpha, Badge, Menu, MenuItem, ListItemText, Divider, CircularProgress } from '@mui/material';
+import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, useMediaQuery, Avatar, Tooltip, InputBase, alpha, Badge, Menu, MenuItem, ListItemText, Divider, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -28,6 +28,11 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [notifications, setNotifications] = useState<Array<{ id: string; text: string; ts: string; link?: string; _raw?: any; read?: boolean }>>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const location = useLocation();
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('q') || '');
   React.useEffect(() => {
@@ -73,6 +78,11 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       setNotifications((prev) => [{ id: data?.id || crypto.randomUUID(), text, ts: new Date().toLocaleTimeString(), link: data?.link, _raw: data, read: false }, ...prev].slice(0, 20));
       setUnreadCount((c) => c + 1);
     };
+    const handleCourseInvitationCreated = (data: any) => {
+      const text = `Học sinh đã được mời tham gia môn học: ${data?.courseTitle}`;
+      setNotifications((prev) => [{ id: data?.invitationId || crypto.randomUUID(), text, ts: new Date().toLocaleTimeString(), link: `/courses`, _raw: data, read: false }, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
+    };
     const handleClassroomAdded = (data: any) => {
       const name = data?.student?.name || 'Học sinh';
       setNotifications((prev) => [{ id: crypto.randomUUID(), text: `${name} đã được thêm vào lớp học`, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 20));
@@ -85,10 +95,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     // Debug: log any event
     const debug = (import.meta as any).env?.VITE_DEBUG_SOCKET === '1';
     const handleAny = (event: string, ...args: any[]) => {
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.debug('[socket][teacher] event:', event, args?.[0]);
-      }
     };
 
     onConnect(() => {
@@ -101,9 +107,11 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       on('classroomStudentRemoved', handleClassroomRemoved);
       onAny(handleAny);
       on('notificationCreated', handleNotificationCreated);
+      on('courseInvitationCreated', handleCourseInvitationCreated);
     });
     return () => {
       off('notificationCreated', handleNotificationCreated);
+      off('courseInvitationCreated', handleCourseInvitationCreated);
       off('submissionCreated', handleSubmissionCreated);
       off('enrollmentAdded', handleEnrollmentAdded);
       off('enrollmentRemoved', handleEnrollmentRemoved);
@@ -127,12 +135,53 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     setNotifAnchor(null);
   };
 
-  const handleDeleteNotification = async (nid: string) => {
+  const handleDeleteNotification = (nid: string) => {
+    setDeleteTargetId(nid);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
     try {
-      const res = await deleteNotification(nid);
-      setNotifications((prev) => prev.filter(p => p.id !== nid));
+      const res = await deleteNotification(deleteTargetId);
+      setNotifications((prev) => prev.filter(p => p.id !== deleteTargetId));
       setUnreadCount(res.unread ?? 0);
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
     } catch {}
+    finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  const handleDeleteAllNotifications = () => {
+    setDeleteAllConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    setDeletingAll(true);
+    try {
+      // Delete all notifications one by one
+      for (const notification of notifications) {
+        await deleteNotification(notification.id);
+      }
+      setNotifications([]);
+      setUnreadCount(0);
+      setDeleteAllConfirmOpen(false);
+    } catch {}
+    finally {
+      setDeletingAll(false);
+    }
+  };
+
+  const handleCancelDeleteAll = () => {
+    setDeleteAllConfirmOpen(false);
   };
 
   const handleMarkAllRead = async () => {
@@ -314,6 +363,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                 <NotificationsIcon fontSize="small" />
               </Badge>
             </IconButton></Tooltip>
+            <Tooltip title="Xóa tất cả thông báo"><IconButton size="small" onClick={handleDeleteAllNotifications} aria-label="delete all notifications" disabled={notifications.length === 0}>
+              <CloseIcon fontSize="small" />
+            </IconButton></Tooltip>
           </Box>
         </Box>
         <Divider />
@@ -329,13 +381,21 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         )}
         <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
           {notifications.map((n) => (
-            <MenuItem key={n.id} onClick={() => handleClickNotification(n)} sx={{ alignItems: 'flex-start', gap: 1 }} aria-label="notification item">
+            <MenuItem key={n.id} onClick={() => handleClickNotification(n)} sx={{ alignItems: 'flex-start', gap: 1, py: 1.5, minHeight: 'auto' }} aria-label="notification item">
               <Box sx={{ mt: 1 }}>
                 <Badge color="error" variant="dot" invisible={!!n.read}>
                   <Box sx={{ width: 8, height: 8 }} />
                 </Badge>
               </Box>
-              <ListItemText primaryTypographyProps={{ fontWeight: n.read ? 400 : 700 }} primary={n.text} secondary={n.ts} />
+              <ListItemText 
+                primaryTypographyProps={{ 
+                  fontWeight: n.read ? 400 : 700,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }} 
+                primary={n.text} 
+                secondary={n.ts} 
+              />
               <Tooltip title="Xóa">
                 <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }} aria-label="delete notification">
                   <CloseIcon fontSize="small" />
@@ -370,6 +430,52 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       
       {/* Virtual Assistant */}
       <VirtualAssistant />
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Xóa thông báo?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Bạn có chắc muốn xóa thông báo này? Hành động không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} disabled={deleting}>
+            Hủy
+          </Button>
+          <Button 
+            color="error" 
+            variant="contained" 
+            onClick={handleConfirmDelete} 
+            disabled={deleting}
+          >
+            {deleting ? 'Đang xóa...' : 'Xóa'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={deleteAllConfirmOpen} onClose={handleCancelDeleteAll}>
+        <DialogTitle>Xóa tất cả thông báo?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Bạn có chắc muốn xóa tất cả thông báo? Hành động không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDeleteAll} disabled={deletingAll}>
+            Hủy
+          </Button>
+          <Button 
+            color="error" 
+            variant="contained" 
+            onClick={handleConfirmDeleteAll} 
+            disabled={deletingAll}
+          >
+            {deletingAll ? 'Đang xóa...' : 'Xóa tất cả'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
