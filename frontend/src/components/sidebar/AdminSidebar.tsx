@@ -15,11 +15,16 @@ export default function AdminSidebar() {
   const location = useLocation();
 
   return (
-    <Box sx={{ width: 260 }}>
+    <Box sx={{ width: 259 }}>
       <Toolbar />
       <List>
         {items.map((item) => (
-          <ListItemButton key={item.to} component={Link} to={item.to} selected={location.pathname.startsWith(item.to)}>
+          <ListItemButton
+            key={item.to}
+            component={Link}
+            to={item.to}
+            selected={location.pathname.startsWith(item.to)}
+          >
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.label} />
           </ListItemButton>
@@ -28,5 +33,3 @@ export default function AdminSidebar() {
     </Box>
   );
 }
-
-

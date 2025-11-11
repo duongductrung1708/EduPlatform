@@ -17,6 +17,23 @@ import * as fs from 'fs';
 
 @Injectable()
 export class CoursesService {
+  /**
+   * Helper to resolve courseId (can be ObjectId or slug) to actual ObjectId
+   */
+  private async resolveCourseId(courseIdOrSlug: string): Promise<Types.ObjectId> {
+    // Check if it's a valid ObjectId
+    if (/^[0-9a-fA-F]{24}$/.test(courseIdOrSlug)) {
+      return new Types.ObjectId(courseIdOrSlug);
+    }
+    
+    // Otherwise, treat as slug and find the course
+    const course = await this.courseModel.findOne({ slug: courseIdOrSlug });
+    if (!course) {
+      throw new NotFoundException(`Course not found: ${courseIdOrSlug}`);
+    }
+    return course._id;
+  }
+
   constructor(
     @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
     @InjectModel(DocumentFile.name) private documentModel: Model<DocumentFileDocument>,
@@ -47,8 +64,9 @@ export class CoursesService {
 
   // Course modules (teacher content management)
   async listModules(courseId: string) {
+    const resolvedCourseId = await this.resolveCourseId(courseId);
     return this.moduleModel
-      .find({ courseId: new Types.ObjectId(courseId) })
+      .find({ courseId: resolvedCourseId })
       .sort({ order: 1, createdAt: 1 })
       .lean();
   }
@@ -270,7 +288,21 @@ export class CoursesService {
   }
 
   async findOne(id: string): Promise<CourseDocument> {
-    const course = await this.courseModel.findById(id).populate('createdBy', 'name email');
+    // Check if id is a valid ObjectId (24 hex characters)
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    
+    let course: CourseDocument | null = null;
+    
+    if (isObjectId) {
+      // Try to find by ObjectId first
+      course = await this.courseModel.findById(id).populate('createdBy', 'name email');
+    }
+    
+    // If not found by ObjectId or id is not ObjectId format, try slug
+    if (!course) {
+      course = await this.courseModel.findOne({ slug: id }).populate('createdBy', 'name email');
+    }
+    
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -433,11 +465,12 @@ export class CoursesService {
 
   // Enrollment
   async enrollInCourse(courseId: string, studentId: string) {
-    const course = await this.courseModel.findById(courseId);
+    const resolvedCourseId = await this.resolveCourseId(courseId);
+    const course = await this.courseModel.findById(resolvedCourseId);
     if (!course) throw new NotFoundException('Course not found');
 
     const exists = await this.enrollmentModel.findOne({ 
-      courseId: new Types.ObjectId(courseId), 
+      courseId: resolvedCourseId, 
       studentId: new Types.ObjectId(studentId) 
     });
     if (exists) {
@@ -449,11 +482,11 @@ export class CoursesService {
     }
 
     const enrollment = await this.enrollmentModel.create({
-      courseId: new Types.ObjectId(courseId),
+      courseId: resolvedCourseId,
       studentId: new Types.ObjectId(studentId),
     });
     // increment enrollment count
-    await this.courseModel.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
+    await this.courseModel.findByIdAndUpdate(resolvedCourseId, { $inc: { enrollmentCount: 1 } });
 
     // Get student and teacher info for email
     const student = await this.userModel.findById(studentId);
@@ -482,25 +515,25 @@ export class CoursesService {
       .populate('studentId', 'name email avatar')
       .lean();
     
-    this.realtimeGateway.emitEnrollmentAdded(courseId, populatedEnrollment);
+    this.realtimeGateway.emitEnrollmentAdded(resolvedCourseId.toString(), populatedEnrollment);
     // Notify the student directly
     if ((populatedEnrollment as any)?.studentId?._id) {
       this.realtimeGateway.emitUserEvent((populatedEnrollment as any).studentId._id.toString(), 'enrollmentAdded', {
-        courseId,
+        courseId: resolvedCourseId.toString(),
         enrollment: populatedEnrollment,
       });
       try {
-        await this.notifications.create((populatedEnrollment as any).studentId._id.toString(), 'Ghi danh khóa học', `Bạn đã được ghi danh vào ${course.title}`, { link: `/courses/${courseId}` });
+        await this.notifications.create((populatedEnrollment as any).studentId._id.toString(), 'Ghi danh khóa học', `Bạn đã được ghi danh vào ${course.title}`, { link: `/courses/${resolvedCourseId.toString()}` });
       } catch {}
     }
     // Notify the course owner (teacher)
     if (course?.createdBy) {
       this.realtimeGateway.emitUserEvent(course.createdBy.toString(), 'enrollmentAdded', {
-        courseId,
+        courseId: resolvedCourseId.toString(),
         enrollment: populatedEnrollment,
       });
       try {
-        await this.notifications.create(course.createdBy.toString(), 'Học sinh ghi danh', `${(populatedEnrollment as any)?.studentId?.name || 'Học sinh'} đã ghi danh vào ${course.title}`, { link: `/teacher/courses/${courseId}/enrollments` });
+        await this.notifications.create(course.createdBy.toString(), 'Học sinh ghi danh', `${(populatedEnrollment as any)?.studentId?.name || 'Học sinh'} đã ghi danh vào ${course.title}`, { link: `/teacher/courses/${resolvedCourseId.toString()}/enrollments` });
       } catch {}
     }
 
@@ -508,13 +541,14 @@ export class CoursesService {
   }
 
   async getEnrollmentStatus(courseId: string, studentId: string) {
+    const resolvedCourseId = await this.resolveCourseId(courseId);
     // Treat course owner (teacher) as enrolled
-    const courseDoc = await this.courseModel.findById(courseId).lean();
+    const courseDoc = await this.courseModel.findById(resolvedCourseId).lean();
     if (courseDoc && String(courseDoc.createdBy) === String(studentId)) {
       return { enrolled: true, progress: 0 };
     }
     const enrollment = await this.enrollmentModel.findOne({ 
-      courseId: new Types.ObjectId(courseId), 
+      courseId: resolvedCourseId, 
       studentId: new Types.ObjectId(studentId),
       isActive: true 
     }).lean();
@@ -614,8 +648,9 @@ export class CoursesService {
 
   // Lessons grouped by module for a course (merge-friendly)
   async listLessonsByCourse(courseId: string) {
+    const resolvedCourseId = await this.resolveCourseId(courseId);
     const lessons = await this.lessonModel
-      .find({ courseId: new Types.ObjectId(courseId), isPublished: true })
+      .find({ courseId: resolvedCourseId, isPublished: true })
       .sort({ moduleId: 1, order: 1 })
       .lean();
     // group by moduleId

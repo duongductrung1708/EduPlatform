@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Grid, 
-  Card, 
-  CardContent, 
-  LinearProgress, 
-  Chip, 
-  Stack,
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  LinearProgress,
+  Chip,
   Paper,
   Avatar,
   Button,
   Divider,
   Alert,
-  CircularProgress
+  Skeleton,
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { progressApi, ProgressData } from '../../../api/progress';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +28,17 @@ export default function StudentProgress() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const backgroundGradient = darkMode
+    ? 'linear-gradient(135deg, #0f172a 0%, #1f2937 100%)'
+    : 'linear-gradient(135deg, #f4f8ff 0%, #f1f5f9 100%)';
+  const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
+  const secondaryTextColor = darkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(16, 42, 67, 0.64)';
+  const cardBackground = darkMode
+    ? 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)';
+  const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(79, 70, 229, 0.12)';
+  const skeletonBaseColor = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)';
+
   useEffect(() => {
     loadProgress();
   }, []);
@@ -39,9 +48,39 @@ export default function StudentProgress() {
       setLoading(true);
       setError(null);
       const progress = await progressApi.getStudentProgress();
-      setProgressData(progress);
+
+      // Normalize data defensively
+      const normalized = (Array.isArray(progress) ? progress : [])
+        .filter((p): p is ProgressData => {
+          const isValid = !!p && !!p.progress && !!p.courseId;
+          return isValid;
+        })
+        .map((p) => {
+          const normalizedItem = {
+            ...p,
+            // Ensure percentage is a number between 0-100
+            progress: {
+              ...p.progress,
+              percentage: Math.max(0, Math.min(100, Number(p.progress.percentage) || 0)),
+              totalLessons: Number(p.progress.totalLessons) || 0,
+              totalModules: Number(p.progress.totalModules) || 0,
+              completedLessons: Array.isArray(p.progress.completedLessons)
+                ? p.progress.completedLessons.map(String)
+                : [],
+              completedModules: Array.isArray(p.progress.completedModules)
+                ? p.progress.completedModules.map(String)
+                : [],
+            },
+            enrolledAt: p.enrolledAt ? String(p.enrolledAt) : new Date().toISOString(),
+            completedAt: p.completedAt ? String(p.completedAt) : undefined,
+          };
+          return normalizedItem;
+        });
+
+      setProgressData(normalized);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải tiến độ học tập');
+      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      setError(apiMsg || 'Không thể tải tiến độ học tập');
     } finally {
       setLoading(false);
     }
@@ -63,45 +102,179 @@ export default function StudentProgress() {
     return 'Mới bắt đầu';
   };
 
-  if (loading) {
+  const renderLoadingSkeleton = () => {
+    const statsSkeleton = Array.from({ length: 3 });
+    const cardsSkeleton = Array.from({ length: 2 });
+
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Đang tải tiến độ học tập...
-        </Typography>
+      <Box
+        sx={{
+          p: 3,
+          minHeight: '100vh',
+          color: primaryTextColor,
+        }}
+      >
+        <Box sx={{ mb: 4, textAlign: 'center' }}>
+          <Skeleton
+            variant="text"
+            width={280}
+            height={52}
+            sx={{ mx: 'auto', bgcolor: skeletonBaseColor }}
+            animation="wave"
+          />
+          <Skeleton
+            variant="text"
+            width={360}
+            height={28}
+            sx={{ mx: 'auto', mt: 1, bgcolor: skeletonBaseColor }}
+            animation="wave"
+          />
+        </Box>
+
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {statsSkeleton.map((_, index) => (
+            <Grid item xs={12} sm={4} key={`stats-skeleton-${index}`}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: cardBackground,
+                  border: `1px solid ${surfaceBorder}`,
+                }}
+              >
+                <Skeleton
+                  variant="text"
+                  height={44}
+                  width="50%"
+                  sx={{ bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="text"
+                  height={24}
+                  width="70%"
+                  sx={{ bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Grid container spacing={3}>
+          {cardsSkeleton.map((_, index) => (
+            <Grid item xs={12} md={6} key={`progress-skeleton-${index}`}>
+              <Card
+                sx={{
+                  height: '100%',
+                  borderRadius: 4,
+                  background: cardBackground,
+                  border: `1px solid ${surfaceBorder}`,
+                  p: 3,
+                }}
+              >
+                <Skeleton
+                  variant="circular"
+                  width={52}
+                  height={52}
+                  sx={{ mb: 2, bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="text"
+                  height={32}
+                  width="80%"
+                  sx={{ bgcolor: skeletonBaseColor, mb: 1 }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="text"
+                  height={24}
+                  width="60%"
+                  sx={{ bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="rectangular"
+                  height={12}
+                  sx={{ mt: 3, borderRadius: 2, bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="rectangular"
+                  height={12}
+                  sx={{ mt: 1, borderRadius: 2, bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="rectangular"
+                  height={44}
+                  sx={{ mt: 4, borderRadius: 2, bgcolor: skeletonBaseColor }}
+                  animation="wave"
+                />
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
     );
+  };
+
+  if (loading) {
+    return renderLoadingSkeleton();
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+      <Box
+        sx={{
+          p: 3,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Alert
+          severity="error"
+          sx={{
+            px: 3,
+            py: 2,
+            borderRadius: 2,
+            fontWeight: 500,
+          }}
+        >
+          {error}
+        </Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box
+      sx={{
+        p: { xs: 2, md: 3 },
+        minHeight: '100vh',
+        color: primaryTextColor,
+      }}
+    >
       {/* Header */}
       <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography 
-          variant="h4" 
-          sx={{ 
-            fontWeight: 700, 
-            mb: 1, 
-            background: darkMode 
-              ? 'linear-gradient(45deg, #8BC34A, #4CAF50)'
-              : 'linear-gradient(45deg, #4CAF50, #8BC34A)',
-            backgroundClip: 'text', 
-            WebkitBackgroundClip: 'text', 
-            WebkitTextFillColor: 'transparent'
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            mb: 1,
+            color: primaryTextColor,
+            textShadow: darkMode
+              ? '0px 12px 32px rgba(15,23,42,0.55)'
+              : '0px 12px 32px rgba(79,70,229,0.28)',
           }}
         >
           📊 Tiến độ học tập
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" sx={{ color: secondaryTextColor }}>
           Theo dõi quá trình học tập và thành tích của bạn
         </Typography>
       </Box>
@@ -109,62 +282,77 @@ export default function StudentProgress() {
       {/* Overall Stats */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
               textAlign: 'center',
-              background: darkMode 
+              borderRadius: 3,
+              background: darkMode
                 ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
                 : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
-              color: 'white',
-              borderRadius: 3
+              color: '#ffffff',
+              boxShadow: darkMode
+                ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                : '0 20px 45px rgba(236, 72, 153, 0.3)',
             }}
           >
-            <Typography variant="h3" fontWeight="bold">
+            <Typography variant="h3" fontWeight="bold" sx={{ color: '#ffffff' }}>
               {progressData.length}
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.85, color: '#ffffff' }}>
               Môn học đã đăng ký
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
               textAlign: 'center',
-              background: 'linear-gradient(135deg, #AED6E6 0%, #87CEEB 100%)',
-              color: 'white',
-              borderRadius: 3
+              borderRadius: 3,
+              background: darkMode
+                ? 'linear-gradient(135deg, #AED6E6 0%, #87CEEB 100%)'
+                : 'linear-gradient(135deg, #9BC4E6 0%, #7BB3E6 100%)',
+              color: '#ffffff',
+              boxShadow: darkMode
+                ? '0 20px 40px rgba(37, 99, 235, 0.25)'
+                : '0 20px 45px rgba(96, 165, 250, 0.3)',
             }}
           >
-            <Typography variant="h3" fontWeight="bold">
-              {progressData.filter(p => p.progress.percentage === 100).length}
+            <Typography variant="h3" fontWeight="bold" sx={{ color: '#ffffff' }}>
+              {progressData.filter((p) => p.progress.percentage === 100).length}
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.85, color: '#ffffff' }}>
               Môn học hoàn thành
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
               textAlign: 'center',
-              background: darkMode 
-                ? 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)'
-                : 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-              color: 'white',
-              borderRadius: 3
+              borderRadius: 3,
+              background: darkMode
+                ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+              color: '#ffffff',
+              boxShadow: darkMode
+                ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                : '0 20px 45px rgba(236, 72, 153, 0.3)',
             }}
           >
-            <Typography variant="h3" fontWeight="bold">
-              {Math.round(progressData.reduce((sum, p) => sum + p.progress.percentage, 0) / (progressData.length || 1))}%
+            <Typography variant="h3" fontWeight="bold" sx={{ color: '#ffffff' }}>
+              {Math.round(
+                progressData.reduce((sum, p) => sum + p.progress.percentage, 0) /
+                  (progressData.length || 1),
+              )}
+              %
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.85, color: '#ffffff' }}>
               Tiến độ trung bình
             </Typography>
           </Paper>
@@ -175,70 +363,107 @@ export default function StudentProgress() {
       {progressData.length > 0 ? (
         <Grid container spacing={3}>
           {progressData.map((progress, index) => (
-            <Grid item xs={12} md={6} key={progress.courseId}>
-              <Card 
-                sx={{ 
+            <Grid
+              item
+              xs={12}
+              md={6}
+              key={String(
+                typeof progress.courseId === 'object' && progress.courseId
+                  ? progress.courseId._id
+                  : progress.courseId || `progress-${index}`,
+              )}
+            >
+              <Card
+                sx={{
                   height: '100%',
                   borderRadius: 4,
-                  border: '2px solid',
-                  borderColor: getProgressColor(progress.progress.percentage),
-                  background: darkMode 
-                    ? 'linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%)'
-                    : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                  border: `1px solid ${surfaceBorder}`,
+                  background: cardBackground,
+                  color: primaryTextColor,
                   transition: 'all 0.3s ease',
+                  boxShadow: darkMode
+                    ? '1px solid rgba(255, 123, 123, 0.2)'
+                    : '1px solid rgba(239, 91, 91, 0.1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 'inherit',
+                    border: `2px solid ${getProgressColor(progress.progress.percentage)}`,
+                    opacity: 0.35,
+                    pointerEvents: 'none',
+                  },
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                  }
+                    boxShadow: darkMode
+                      ? '1px solid rgba(255, 123, 123, 0.2)'
+                      : '1px solid rgba(239, 91, 91, 0.1)',
+                  },
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
+                <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
                   <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
-                    <Avatar 
-                      sx={{ 
+                    <Avatar
+                      sx={{
                         bgcolor: getProgressColor(progress.progress.percentage),
                         width: 50,
-                        height: 50
+                        height: 50,
                       }}
                     >
                       <SchoolIcon />
                     </Avatar>
                     <Box flex={1}>
-                      <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
-                        {typeof progress.courseId === 'object' ? progress.courseId.title : 'Môn học'}
+                      <Typography
+                        variant="h6"
+                        fontWeight={600}
+                        sx={{ mb: 0.5, color: primaryTextColor }}
+                      >
+                        {typeof progress.courseId === 'object' && progress.courseId
+                          ? progress.courseId.title || 'Môn học'
+                          : 'Môn học'}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: secondaryTextColor }}>
                         Đăng ký: {new Date(progress.enrolledAt).toLocaleDateString('vi-VN')}
                       </Typography>
                     </Box>
                   </Box>
 
                   <Box sx={{ mb: 3 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                      <Typography variant="body2" fontWeight={600}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ mb: 1 }}
+                    >
+                      <Typography variant="body2" fontWeight={600} sx={{ color: '#ffffff' }}>
                         Tiến độ: {progress.progress.percentage}%
                       </Typography>
-                      <Chip 
+                      <Chip
                         label={getProgressText(progress.progress.percentage)}
                         size="small"
-                        sx={{ 
+                        sx={{
                           bgcolor: getProgressColor(progress.progress.percentage),
                           color: 'white',
-                          fontWeight: 600
+                          fontWeight: 600,
+                          boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
                         }}
                       />
                     </Box>
-                    <LinearProgress 
-                      variant="determinate" 
+                    <LinearProgress
+                      variant="determinate"
                       value={progress.progress.percentage}
-                      sx={{ 
-                        height: 8, 
+                      sx={{
+                        height: 8,
                         borderRadius: 4,
-                        bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        bgcolor: darkMode
+                          ? 'rgba(148, 163, 184, 0.16)'
+                          : 'rgba(148, 163, 184, 0.2)',
                         '& .MuiLinearProgress-bar': {
                           bgcolor: getProgressColor(progress.progress.percentage),
-                          borderRadius: 4
-                        }
+                          borderRadius: 4,
+                        },
                       }}
                     />
                   </Box>
@@ -246,20 +471,20 @@ export default function StudentProgress() {
                   <Grid container spacing={2} sx={{ mb: 2 }}>
                     <Grid item xs={6}>
                       <Box textAlign="center">
-                        <Typography variant="h6" fontWeight="bold" color="primary">
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: '#ffffff' }}>
                           {progress.progress.completedLessons.length}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: secondaryTextColor }}>
                           Bài học hoàn thành
                         </Typography>
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
                       <Box textAlign="center">
-                        <Typography variant="h6" fontWeight="bold" color="secondary">
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: '#ffffff' }}>
                           {progress.progress.totalLessons}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: secondaryTextColor }}>
                           Tổng bài học
                         </Typography>
                       </Box>
@@ -268,10 +493,10 @@ export default function StudentProgress() {
 
                   {progress.rating && (
                     <Box sx={{ mb: 2 }}>
-                      <Divider sx={{ mb: 1 }} />
+                      <Divider sx={{ mb: 1, borderColor: surfaceBorder }} />
                       <Box display="flex" alignItems="center" gap={1}>
                         <StarIcon sx={{ color: '#FFD700', fontSize: 20 }} />
-                        <Typography variant="body2">
+                        <Typography variant="body2" sx={{ color: '#ffffff' }}>
                           Đánh giá: {progress.rating}/5
                         </Typography>
                       </Box>
@@ -280,10 +505,10 @@ export default function StudentProgress() {
 
                   {progress.completedAt && (
                     <Box sx={{ mb: 2 }}>
-                      <Divider sx={{ mb: 1 }} />
+                      <Divider sx={{ mb: 1, borderColor: surfaceBorder }} />
                       <Box display="flex" alignItems="center" gap={1}>
                         <CheckCircleIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
-                        <Typography variant="body2">
+                        <Typography variant="body2" sx={{ color: primaryTextColor }}>
                           Hoàn thành: {new Date(progress.completedAt).toLocaleDateString('vi-VN')}
                         </Typography>
                       </Box>
@@ -293,15 +518,36 @@ export default function StudentProgress() {
                   <Button
                     variant="contained"
                     fullWidth
-                    onClick={() => navigate(`/courses/${progress.courseId}`)}
-                    sx={{ 
-                      borderRadius: 2,
-                      background: darkMode 
-                ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
-                : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+                    onClick={() => {
+                      const course =
+                        typeof progress.courseId === 'object' && progress.courseId
+                          ? progress.courseId
+                          : null;
+                      const slugOrId =
+                        course?.slug || course?._id || String(progress.courseId || '');
+                      if (slugOrId) {
+                        navigate(`/courses/${slugOrId}`);
                       }
+                    }}
+                    sx={{
+                      borderRadius: 2,
+                      background: darkMode
+                        ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                        : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      boxShadow: darkMode
+                        ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                        : '0 20px 45px rgba(236, 72, 153, 0.3)',
+                      '&:hover': {
+                        background: darkMode
+                          ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                          : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                        boxShadow: darkMode
+                          ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                          : '0 20px 45px rgba(236, 72, 153, 0.3)',
+                      },
+                      transition: 'all 0.3s ease',
                     }}
                   >
                     {progress.progress.percentage === 100 ? 'Xem lại khóa học' : 'Tiếp tục học'}
@@ -312,44 +558,55 @@ export default function StudentProgress() {
           ))}
         </Grid>
       ) : (
-        <Paper 
-          elevation={2} 
-          sx={{ 
+        <Paper
+          elevation={0}
+          sx={{
             borderRadius: 4,
             textAlign: 'center',
-            p: 6,
-            background: darkMode 
-              ? 'linear-gradient(135deg, #f5576c 0%, #f093fb 100%)'
-              : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            color: 'white'
+            p: { xs: 4, md: 6 },
+            background: cardBackground,
+            color: primaryTextColor,
+            border: `1px solid ${surfaceBorder}`,
+            boxShadow: darkMode
+              ? '0 24px 48px rgba(15, 23, 42, 0.5)'
+              : '0 28px 52px rgba(148, 163, 184, 0.3)',
           }}
         >
-          <Typography variant="h2" sx={{ mb: 2 }}>
+          <Typography variant="h2" sx={{ mb: 2, color: primaryTextColor }}>
             📚
           </Typography>
-          <Typography variant="h5" fontWeight={600} sx={{ mb: 2 }}>
+          <Typography variant="h5" fontWeight={600} sx={{ mb: 2, color: primaryTextColor }}>
             Chưa có tiến độ học tập
           </Typography>
-          <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
+          <Typography variant="body1" sx={{ mb: 3, color: secondaryTextColor }}>
             Hãy đăng ký các khóa học để bắt đầu hành trình học tập của bạn!
           </Typography>
           <Button
             variant="contained"
             size="large"
             onClick={() => navigate('/student/courses')}
-            sx={{ 
+            sx={{
               borderRadius: 3,
               py: 1.5,
               px: 4,
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              border: '2px solid rgba(255,255,255,0.3)',
+              background: darkMode
+                ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+              color: '#ffffff',
+              fontWeight: 600,
+              boxShadow: darkMode
+                ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                : '0 20px 45px rgba(236, 72, 153, 0.3)',
               '&:hover': {
-                background: 'rgba(255,255,255,0.3)',
+                background: darkMode
+                  ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                  : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
                 transform: 'translateY(-2px)',
-                boxShadow: '0 8px 25px rgba(0,0,0,0.2)'
+                boxShadow: darkMode
+                  ? '0 20px 40px rgba(190, 24, 93, 0.25)'
+                  : '0 20px 45px rgba(236, 72, 153, 0.3)',
               },
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
             }}
           >
             Khám phá khóa học

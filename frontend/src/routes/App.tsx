@@ -27,6 +27,7 @@ import StudentCourses from '../features/student/pages/Courses';
 import StudentClassrooms from '../features/student/pages/Classrooms';
 import StudentProgress from '../features/student/pages/Progress';
 import StudentBadges from '../features/student/pages/Badges';
+import StudentAssignments from '../features/student/pages/Assignments';
 import JoinClassPage from '../pages/JoinClassPage';
 import ChangePasswordPage from '../pages/ChangePasswordPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -197,6 +198,16 @@ export default function App() {
           <ProtectedRoute requiredRole="student">
             <StudentLayout>
               <StudentCourses />
+            </StudentLayout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/student/assignments" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentLayout>
+              <StudentAssignments />
             </StudentLayout>
           </ProtectedRoute>
         } 

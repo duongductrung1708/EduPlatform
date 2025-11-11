@@ -1,9 +1,16 @@
 import { apiClient } from './client';
 
 export interface ProgressData {
-  courseId: string;
-  enrolledAt: Date;
-  completedAt?: Date;
+  courseId:
+    | string
+    | {
+        _id: string;
+        title: string;
+        slug: string;
+        thumbnail?: string;
+      };
+  enrolledAt: string;
+  completedAt?: string;
   progress: {
     completedLessons: string[];
     completedModules: string[];
@@ -61,13 +68,79 @@ export const progressApi = {
   },
 
   async getStudentProgress(): Promise<ProgressData[]> {
-    const res = await apiClient.get('/api/progress/student-progress');
-    return res.data;
+    const res = await apiClient.get('/api/progress/student-progress', {
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      params: {
+        _: Date.now(),
+      },
+    });
+
+    const payload = res.data ?? [];
+
+    if (Array.isArray(payload)) {
+      return payload as ProgressData[];
+    }
+
+    if (Array.isArray(payload.data)) {
+      return payload.data as ProgressData[];
+    }
+
+    if (Array.isArray(payload.items)) {
+      return payload.items as ProgressData[];
+    }
+
+    if (payload.data && Array.isArray(payload.data.items)) {
+      return payload.data.items as ProgressData[];
+    }
+
+    if (Array.isArray(payload.progress)) {
+      return payload.progress as ProgressData[];
+    }
+
+    if (payload.data && Array.isArray(payload.data.progress)) {
+      return payload.data.progress as ProgressData[];
+    }
+
+    return [];
   },
 
   async getStudentBadges(): Promise<BadgeData[]> {
-    const res = await apiClient.get('/api/progress/student-badges');
-    return res.data;
+    try {
+      const res = await apiClient.get('/api/progress/student-badges', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+        params: {
+          _: Date.now(),
+        },
+      });
+      
+      const payload = res.data ?? [];
+
+      if (Array.isArray(payload)) {
+        return payload as BadgeData[];
+      }
+
+      if (Array.isArray(payload.data)) {
+        return payload.data as BadgeData[];
+      }
+
+      if (Array.isArray(payload.items)) {
+        return payload.items as BadgeData[];
+      }
+
+      if (Array.isArray(payload.badges)) {
+        return payload.badges as BadgeData[];
+      }
+
+      return [];
+    } catch (error: any) {
+      throw error;
+    }
   },
 
   async createBadge(badgeData: {

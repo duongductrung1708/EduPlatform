@@ -13,19 +13,19 @@ export class ProgressController {
   @UseGuards(RolesGuard)
   @Roles('student')
   async enrollInCourse(@Param('courseId') courseId: string, @Request() req) {
-    return await this.progressService.enrollInCourse(req.user._id, courseId);
+    return await this.progressService.enrollInCourse(req.user.id, courseId);
   }
 
   @Get('enrollment/:courseId')
   async checkEnrollment(@Param('courseId') courseId: string, @Request() req) {
-    return await this.progressService.checkEnrollment(req.user._id, courseId);
+    return await this.progressService.checkEnrollment(req.user.id, courseId);
   }
 
   @Post('complete-lesson/:lessonId')
   @UseGuards(RolesGuard)
   @Roles('student')
   async completeLesson(@Param('lessonId') lessonId: string, @Request() req) {
-    return await this.progressService.completeLesson(req.user._id, lessonId);
+    return await this.progressService.completeLesson(req.user.id, lessonId);
   }
 
   @Post('rate-course/:courseId')
@@ -36,21 +36,21 @@ export class ProgressController {
     @Body() body: { rating: number; review?: string },
     @Request() req,
   ) {
-    return await this.progressService.rateCourse(req.user._id, courseId, body.rating, body.review);
+    return await this.progressService.rateCourse(req.user.id, courseId, body.rating, body.review);
   }
 
   @Get('student-progress')
   @UseGuards(RolesGuard)
   @Roles('student')
   async getStudentProgress(@Request() req) {
-    return await this.progressService.getStudentProgress(req.user._id);
+    return await this.progressService.getStudentProgress(req.user.id);
   }
 
   @Get('student-badges')
   @UseGuards(RolesGuard)
   @Roles('student')
   async getStudentBadges(@Request() req) {
-    return await this.progressService.getStudentBadges(req.user._id);
+    return await this.progressService.getStudentBadges(req.user.id);
   }
 
   @Post('badges')
