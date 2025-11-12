@@ -72,13 +72,14 @@ export class AuthService {
       const otpSent = await this.otpService.sendOtpEmail(email.toLowerCase(), 'registration');
       
       if (!otpSent) {
-        // If email sending fails, delete the user and throw error
-        await this.userModel.findByIdAndDelete(user._id);
-        throw new BadRequestException('Không thể gửi email xác thực. Vui lòng kiểm tra email và thử lại.');
+        // If email sending fails, log error but still allow user to register
+        // They can use resend OTP feature later
       }
 
       return {
-        message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+        message: otpSent 
+          ? 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.'
+          : 'Đăng ký thành công! Vui lòng sử dụng chức năng "Gửi lại mã OTP" nếu chưa nhận được email.',
         email: email.toLowerCase(),
         requiresVerification: true,
       };
@@ -220,32 +221,12 @@ export class AuthService {
     // Send reset email with link
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
-    try {
-      // Reuse OTP template content style with password_reset type when available, else send a simple email
-      await this.emailService['transporter']?.sendMail?.({
-        from: `"EduLearn" <${process.env.SMTP_USER || 'no-reply@edulearn.local'}>`,
-        to: email,
-        subject: 'Đặt lại mật khẩu EduLearn',
-        html: `
-          <div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#333;">
-            <h2>Yêu cầu đặt lại mật khẩu</h2>
-            <p>Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản EduLearn.</p>
-            <p>Nhấn vào nút bên dưới để đặt lại mật khẩu. Liên kết có hiệu lực trong 30 phút.</p>
-            <p>
-              <a href="${resetUrl}"
-                 style="display:inline-block;background:#EF5B5B;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:600">
-                Đặt lại mật khẩu
-              </a>
-            </p>
-            <p>Nếu nút không hoạt động, hãy sao chép liên kết này vào trình duyệt:</p>
-            <p><a href="${resetUrl}">${resetUrl}</a></p>
-            <hr />
-            <small>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</small>
-          </div>
-        `,
-      });
-    } catch (e) {
-      // Log and still respond success without exposing details
+    
+    // Send password reset email with reset link
+    const emailSent = await this.emailService.sendPasswordResetEmail(email, resetUrl);
+    
+    if (!emailSent) {
+      // If email fails, log the error but still return success message for security
     }
     return { message: 'Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu' };
   }

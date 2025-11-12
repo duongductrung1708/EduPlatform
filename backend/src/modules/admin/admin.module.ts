@@ -8,7 +8,7 @@ import { AdminEventsService } from './admin-events.service';
 import { User, UserSchema } from '../../models/user.model';
 import { Course, CourseSchema } from '../../models/course.model';
 import { Classroom, ClassroomSchema } from '../../models/classroom.model';
-import { Assignment, AssignmentSchema } from '../../models/assignment.model';
+import { Assignment, AssignmentSchema, Submission, SubmissionSchema } from '../../models/assignment.model';
 
 @Module({
   imports: [
@@ -17,6 +17,7 @@ import { Assignment, AssignmentSchema } from '../../models/assignment.model';
       { name: Course.name, schema: CourseSchema },
       { name: Classroom.name, schema: ClassroomSchema },
       { name: Assignment.name, schema: AssignmentSchema },
+      { name: Submission.name, schema: SubmissionSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',

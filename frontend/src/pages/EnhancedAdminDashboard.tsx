@@ -20,9 +20,11 @@ import {
   Fab,
   Badge,
   Alert,
-  Skeleton,
   Fade,
-  Zoom,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -36,44 +38,55 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Notifications as NotificationsIcon,
-  Security as SecurityIcon,
-  Storage as StorageIcon,
-  Speed as SpeedIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi, DashboardStats, RecentActivity, TopCourse } from '../api/admin';
+import { adminApi, DashboardStats, TopCourse } from '../api/admin';
 import StatsChart from '../components/charts/StatsChart';
 import AdminLayout from '../components/AdminLayout';
+import { useTheme } from '../contexts/ThemeContext';
+import { ShimmerBox, DarkShimmerBox } from '../components/LoadingSkeleton';
 
 const EnhancedAdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { darkMode } = useTheme();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [topCourses, setTopCourses] = useState<TopCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>('30days');
 
+  // Theme colors
+  const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
+  const secondaryTextColor = darkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(16, 42, 67, 0.64)';
+  const cardBackground = darkMode
+    ? 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)';
+  const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(239, 91, 91, 0.12)';
+
+  // Initial load
   useEffect(() => {
-    fetchDashboardData();
+    fetchInitialData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  // Load chart data when period changes
+  useEffect(() => {
+    if (stats !== null) {
+      fetchChartData();
+    }
+  }, [period]);
+
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const [statsData, activityData, coursesData] = await Promise.all([
-        adminApi.getDashboardStats(),
-        adminApi.getRecentActivity(10),
+
+      const [statsData, coursesData] = await Promise.all([
+        adminApi.getDashboardStats(period),
         adminApi.getTopCourses(10),
       ]);
-      
+
       setStats(statsData);
-      setRecentActivity(activityData);
       setTopCourses(coursesData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -83,92 +96,397 @@ const EnhancedAdminDashboard: React.FC = () => {
     }
   };
 
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'user_registered':
-        return <PeopleIcon color="primary" />;
-      case 'course_created':
-        return <SchoolIcon color="success" />;
-      case 'classroom_joined':
-        return <ClassIcon color="info" />;
-      case 'assignment_submitted':
-        return <AssignmentIcon color="warning" />;
-      default:
-        return <PeopleIcon />;
+  const fetchChartData = async () => {
+    try {
+      setChartLoading(true);
+      const statsData = await adminApi.getDashboardStats(period);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      setError('Không thể tải dữ liệu thống kê. Vui lòng thử lại.');
+    } finally {
+      setChartLoading(false);
     }
   };
 
-  const getActivityColor = (type: string) => {
-    switch (type) {
-      case 'user_registered':
-        return 'primary';
-      case 'course_created':
-        return 'success';
-      case 'classroom_joined':
-        return 'info';
-      case 'assignment_submitted':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
+  // Process real data for charts based on period
+  const chartData =
+    stats?.monthlyStats && stats.monthlyStats.length > 0
+      ? (() => {
+          const isDaily = period === '7days' || period === '30days';
+          
+          if (isDaily) {
+            // For daily stats, format dates as DD/MM
+            return stats.monthlyStats
+              .map((item) => {
+                try {
+                  // Backend returns date as YYYY-MM-DD string
+                  const date = new Date(item.month);
+                  if (isNaN(date.getTime())) return null;
+                  const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+                  return {
+                    date: formattedDate,
+                    users: item.users || 0,
+                    courses: item.courses || 0,
+                    classrooms: item.classrooms || 0,
+                  };
+                } catch {
+                  return null;
+                }
+              })
+              .filter((item) => item !== null)
+              .sort((a, b) => {
+                // Sort by original date string from backend
+                const aOriginal = stats.monthlyStats.find((s) => {
+                  try {
+                    const date = new Date(s.month);
+                    const formatted = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    return formatted === a?.date;
+                  } catch {
+                    return false;
+                  }
+                });
+                const bOriginal = stats.monthlyStats.find((s) => {
+                  try {
+                    const date = new Date(s.month);
+                    const formatted = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    return formatted === b?.date;
+                  } catch {
+                    return false;
+                  }
+                });
+                if (!aOriginal || !bOriginal) return 0;
+                return new Date(aOriginal.month).getTime() - new Date(bOriginal.month).getTime();
+              });
+          } else {
+            // For monthly stats, format as T1, T2, etc.
+            return stats.monthlyStats
+              .map((item) => {
+                // Check if it's already formatted as T1, T2, etc.
+                if (item.month.startsWith('T')) {
+                  return {
+                    date: item.month,
+                    users: item.users || 0,
+                    courses: item.courses || 0,
+                    classrooms: item.classrooms || 0,
+                  };
+                }
+                // Otherwise, try to parse as date and format
+                try {
+                  // If it's YYYY-MM format, extract month number
+                  if (item.month.match(/^\d{4}-\d{2}$/)) {
+                    const monthNum = parseInt(item.month.split('-')[1]);
+                    return {
+                      date: `T${monthNum}`,
+                      users: item.users || 0,
+                      courses: item.courses || 0,
+                      classrooms: item.classrooms || 0,
+                    };
+                  }
+                  const date = new Date(item.month);
+                  if (!isNaN(date.getTime())) {
+                    const monthNum = date.getMonth() + 1;
+                    return {
+                      date: `T${monthNum}`,
+                      users: item.users || 0,
+                      courses: item.courses || 0,
+                      classrooms: item.classrooms || 0,
+                    };
+                  }
+                } catch {
+                  // Fallback
+                }
+                return {
+                  date: item.month,
+                  users: item.users || 0,
+                  courses: item.courses || 0,
+                  classrooms: item.classrooms || 0,
+                };
+              })
+              .sort((a, b) => {
+                // Sort by month number (T1, T2, ...)
+                const aMatch = a.date.match(/^T(\d+)$/);
+                const bMatch = b.date.match(/^T(\d+)$/);
+                if (aMatch && bMatch) {
+                  return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+                }
+                return 0;
+              });
+          }
+        })()
+      : [];
+  
+  const xAxisKey = 'date';
+  const chartTitle = 
+    period === '7days' ? 'Thống kê theo ngày (7 ngày gần nhất)' :
+    period === '30days' ? 'Thống kê theo ngày (30 ngày gần nhất)' :
+    period === '1year' ? 'Thống kê theo tháng (1 năm)' :
+    'Thống kê theo tháng (Tất cả)';
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'success';
-      case 'warning':
-        return 'warning';
-      case 'error':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  // Process real data for charts
-  const monthlyData = stats?.monthlyStats && stats.monthlyStats.length > 0 
-    ? stats.monthlyStats.map(item => ({
-        month: item.month,
-        users: item.users,
-        courses: item.courses,
-        classrooms: item.classrooms
-      }))
-    : [
-        { month: 'T1', users: stats?.totalUsers || 0, courses: stats?.totalCourses || 0, classrooms: stats?.totalClassrooms || 0 },
-        { month: 'T2', users: 0, courses: 0, classrooms: 0 },
-        { month: 'T3', users: 0, courses: 0, classrooms: 0 },
-        { month: 'T4', users: 0, courses: 0, classrooms: 0 },
-        { month: 'T5', users: 0, courses: 0, classrooms: 0 },
-        { month: 'T6', users: 0, courses: 0, classrooms: 0 },
-      ];
-
-  const userRoleData = stats ? [
-    { name: 'Students', value: stats.usersByRole.student, color: '#0088FE' },
-    { name: 'Teachers', value: stats.usersByRole.teacher, color: '#00C49F' },
-    { name: 'Parents', value: stats.usersByRole.parent, color: '#FFBB28' },
-    { name: 'Admins', value: stats.usersByRole.admin, color: '#FF8042' },
-  ].filter(item => item.value > 0) : [];
-
-  const systemHealthData = [
-    { name: 'Server', status: 'active', value: 98 },
-    { name: 'Database', status: 'active', value: 95 },
-    { name: 'Storage', status: 'warning', value: 78 },
-    { name: 'API', status: 'active', value: 99 },
-  ];
+  const userRoleData = stats
+    ? [
+        { name: 'Students', value: stats.usersByRole.student, color: '#0088FE' },
+        { name: 'Teachers', value: stats.usersByRole.teacher, color: '#00C49F' },
+        { name: 'Parents', value: stats.usersByRole.parent, color: '#FFBB28' },
+        { name: 'Admins', value: stats.usersByRole.admin, color: '#FF8042' },
+      ].filter((item) => item.value > 0)
+    : [];
 
   if (loading) {
     return (
       <AdminLayout>
         <Box sx={{ p: 3 }}>
-          <Grid container spacing={3}>
-            {[...Array(8)].map((_, index) => (
+          {/* Header Skeleton */}
+          <Box sx={{ mb: 4 }}>
+            {darkMode ? (
+              <>
+                <Box sx={{ mb: 2 }}>
+                  <DarkShimmerBox height="40px" width="300px" borderRadius="4px" />
+                </Box>
+                <DarkShimmerBox height="20px" width="400px" borderRadius="4px" />
+              </>
+            ) : (
+              <>
+                <Box sx={{ mb: 2 }}>
+                  <ShimmerBox height="40px" width="300px" borderRadius="4px" />
+                </Box>
+                <ShimmerBox height="20px" width="400px" borderRadius="4px" />
+              </>
+            )}
+          </Box>
+
+          {/* Stats Cards Skeleton */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {[...Array(4)].map((_, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
-                <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+                <Card
+                  sx={{
+                    height: 160,
+                    borderRadius: 3,
+                    p: 3,
+                    background: cardBackground,
+                    border: `1px solid ${surfaceBorder}`,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ mr: 2 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      ) : (
+                        <ShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      {darkMode ? (
+                        <>
+                          <Box sx={{ mb: 1 }}>
+                            <DarkShimmerBox height="16px" width="80%" borderRadius="4px" />
+                          </Box>
+                          <DarkShimmerBox height="32px" width="60%" borderRadius="4px" />
+                        </>
+                      ) : (
+                        <>
+                          <Box sx={{ mb: 1 }}>
+                            <ShimmerBox height="16px" width="80%" borderRadius="4px" />
+                          </Box>
+                          <ShimmerBox height="32px" width="60%" borderRadius="4px" />
+                        </>
+                      )}
+                    </Box>
+                  </Box>
+                  {darkMode ? (
+                    <DarkShimmerBox height="16px" width="50%" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="16px" width="50%" borderRadius="4px" />
+                  )}
+                </Card>
               </Grid>
             ))}
           </Grid>
+
+          {/* Charts Skeleton */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={8}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: cardBackground,
+                  border: `1px solid ${surfaceBorder}`,
+                  height: 380,
+                }}
+              >
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="24px" width="200px" borderRadius="4px" />
+                  )}
+                  {darkMode ? (
+                    <DarkShimmerBox height="40px" width="150px" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="40px" width="150px" borderRadius="4px" />
+                  )}
+                </Box>
+                <Box sx={{ height: 300, position: 'relative' }}>
+                  {/* Grid lines */}
+                  {[...Array(5)].map((_, i) => (
+                    <Box
+                      key={`grid-${i}`}
+                      sx={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: `${(i * 25)}%`,
+                        height: '1px',
+                      }}
+                    >
+                      {darkMode ? (
+                        <DarkShimmerBox height="1px" width="100%" borderRadius="0" />
+                      ) : (
+                        <ShimmerBox height="1px" width="100%" borderRadius="0" />
+                      )}
+                    </Box>
+                  ))}
+                  {/* Chart bars */}
+                  {[45, 60, 35, 75, 50, 65, 40, 55].map((height, i) => (
+                    <Box
+                      key={`bar-${i}`}
+                      sx={{
+                        position: 'absolute',
+                        left: `${(i * 12) + 5}%`,
+                        bottom: 0,
+                        width: '8%',
+                        height: `${height}%`,
+                      }}
+                    >
+                      {darkMode ? (
+                        <DarkShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                      ) : (
+                        <ShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: cardBackground,
+                  border: `1px solid ${surfaceBorder}`,
+                  height: 380,
+                }}
+              >
+                <Box sx={{ mb: 3 }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="24px" width="150px" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="24px" width="150px" borderRadius="4px" />
+                  )}
+                </Box>
+                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="250px" width="250px" borderRadius="50%" />
+                  ) : (
+                    <ShimmerBox height="250px" width="250px" borderRadius="50%" />
+                  )}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Overview Chart Skeleton */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: cardBackground,
+                  border: `1px solid ${surfaceBorder}`,
+                }}
+              >
+                <Box sx={{ mb: 3 }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="24px" width="150px" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="24px" width="150px" borderRadius="4px" />
+                  )}
+                </Box>
+                <Box sx={{ height: 250, position: 'relative' }}>
+                  {[60, 45, 70, 55, 50, 65].map((height, i) => (
+                    <Box
+                      key={`overview-bar-${i}`}
+                      sx={{
+                        position: 'absolute',
+                        left: `${(i * 15) + 5}%`,
+                        bottom: 0,
+                        width: '12%',
+                        height: `${height}%`,
+                      }}
+                    >
+                      {darkMode ? (
+                        <DarkShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                      ) : (
+                        <ShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Top Courses Table Skeleton */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: cardBackground,
+              border: `1px solid ${surfaceBorder}`,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+              {darkMode ? (
+                <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
+              ) : (
+                <ShimmerBox height="24px" width="200px" borderRadius="4px" />
+              )}
+            </Box>
+            {/* Table header */}
+            <Box sx={{ display: 'flex', mb: 2, gap: 2 }}>
+              {[...Array(5)].map((_, i) => (
+                <Box key={`header-${i}`} sx={{ flex: 1 }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="20px" width="80%" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="20px" width="80%" borderRadius="4px" />
+                  )}
+                </Box>
+              ))}
+            </Box>
+            {/* Table rows */}
+            {[...Array(5)].map((_, rowIndex) => (
+              <Box key={`row-${rowIndex}`} sx={{ display: 'flex', mb: 2, gap: 2, alignItems: 'center' }}>
+                {[...Array(5)].map((_, colIndex) => (
+                  <Box key={`cell-${rowIndex}-${colIndex}`} sx={{ flex: 1 }}>
+                    {darkMode ? (
+                      <DarkShimmerBox height="40px" width="90%" borderRadius="4px" />
+                    ) : (
+                      <ShimmerBox height="40px" width="90%" borderRadius="4px" />
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            ))}
+          </Paper>
         </Box>
       </AdminLayout>
     );
@@ -180,8 +498,8 @@ const EnhancedAdminDashboard: React.FC = () => {
         {/* Error Alert */}
         {error && (
           <Fade in={!!error}>
-            <Alert 
-              severity="error" 
+            <Alert
+              severity="error"
               sx={{ mb: 3 }}
               action={
                 <IconButton
@@ -200,394 +518,670 @@ const EnhancedAdminDashboard: React.FC = () => {
         )}
 
         {/* Header with Quick Actions */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 4,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Dashboard Overview
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                color: primaryTextColor,
+                background: darkMode
+                  ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+                  : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Tổng quan Dashboard
             </Typography>
-            <Typography variant="body1" color="textSecondary">
-              Chào mừng trở lại, {user?.name}! Đây là tổng quan về hệ thống.
+            <Typography variant="body1" sx={{ color: secondaryTextColor }}>
+              Chào mừng trở lại, <strong>{user?.name}</strong>! Đây là tổng quan về hệ thống.
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Tooltip title="Làm mới dữ liệu">
-              <IconButton 
-                onClick={fetchDashboardData} 
+              <IconButton
+                onClick={fetchInitialData}
+                disabled={loading || chartLoading}
                 color="primary"
-                sx={{ 
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                  '&:hover': { bgcolor: 'primary.dark' }
+                size="medium"
+                sx={{
+                  bgcolor: darkMode ? 'rgba(239, 91, 91, 0.2)' : 'white',
+                  color: '#EF5B5B',
+                  border: `1px solid ${surfaceBorder}`,
+                  '&:hover': {
+                    bgcolor: darkMode ? 'rgba(239, 91, 91, 0.3)' : 'white',
+                    transform: 'rotate(180deg)',
+                  },
+                  transition: 'all 0.3s ease',
                 }}
               >
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
-            <Fab 
-              color="primary" 
-              size="medium"
-              onClick={() => {/* Navigate to create new item */}}
-            >
-              <AddIcon />
-            </Fab>
           </Box>
         </Box>
 
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Zoom in={true} style={{ transitionDelay: '0ms' }}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  borderRadius: 3,
-                  boxShadow: 3,
-                }}
-              >
-                <CardContent>
+            <Card
+              sx={{
+                height: '100%',
+                background: darkMode
+                  ? 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)'
+                  : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 8px 24px rgba(239, 91, 91, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(239, 91, 91, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+                <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                      <PeopleIcon />
+                    <Avatar
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.25)',
+                        mr: 2,
+                        width: 56,
+                        height: 56,
+                      }}
+                    >
+                      <PeopleIcon sx={{ fontSize: 28, color: 'white' }} />
                     </Avatar>
-                    <Box>
-                      <Typography color="rgba(255,255,255,0.8)" gutterBottom>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'rgba(255,255,255,0.9)',
+                          fontWeight: 500,
+                          mb: 0.5,
+                        }}
+                      >
                         Tổng người dùng
                       </Typography>
-                      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                      <Typography
+                        variant="h4"
+                        component="div"
+                        sx={{ fontWeight: 700, color: 'white' }}
+                      >
                         {stats?.totalUsers.toLocaleString() || 0}
                       </Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <TrendingUpIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.8)' }} />
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                    >
                       +{stats?.newUsersThisMonth || 0} tháng này
                     </Typography>
                   </Box>
                 </CardContent>
               </Card>
-            </Zoom>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Zoom in={true} style={{ transitionDelay: '100ms' }}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  color: 'white',
-                  borderRadius: 3,
-                  boxShadow: 3,
-                }}
-              >
-                <CardContent>
+            <Card
+              sx={{
+                height: '100%',
+                background: darkMode
+                  ? 'linear-gradient(135deg,rgb(155, 210, 232) 0%,rgb(103, 182, 225) 100%)'
+                  : 'linear-gradient(135deg,rgb(155, 210, 232) 0%,rgb(103, 182, 225) 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 8px 24px rgba(174, 214, 230, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(174, 214, 230, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+                <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                      <SchoolIcon />
+                    <Avatar
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.25)',
+                        mr: 2,
+                        width: 56,
+                        height: 56,
+                        color: 'white',
+                      }}
+                    >
+                      <SchoolIcon sx={{ fontSize: 28, color: 'white' }} />
                     </Avatar>
-                    <Box>
-                      <Typography color="rgba(255,255,255,0.8)" gutterBottom>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'rgba(255,255,255,0.9)',
+                          fontWeight: 500,
+                          mb: 0.5,
+                        }}
+                      >
                         Khóa học
                       </Typography>
-                      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                      <Typography
+                        variant="h4"
+                        component="div"
+                        sx={{ fontWeight: 700, color: 'white' }}
+                      >
                         {stats?.totalCourses || 0}
                       </Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <TrendingUpIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.8)' }} />
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                    >
                       +12 tuần này
                     </Typography>
                   </Box>
                 </CardContent>
               </Card>
-            </Zoom>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Zoom in={true} style={{ transitionDelay: '200ms' }}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                  color: 'white',
-                  borderRadius: 3,
-                  boxShadow: 3,
-                }}
-              >
-                <CardContent>
+            <Card
+              sx={{
+                height: '100%',
+                background: darkMode
+                  ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
+                  : 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+                <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                      <ClassIcon />
+                    <Avatar
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.25)',
+                        mr: 2,
+                        width: 56,
+                        height: 56,
+                      }}
+                    >
+                      <ClassIcon sx={{ fontSize: 28, color: 'white' }} />
                     </Avatar>
-                    <Box>
-                      <Typography color="rgba(255,255,255,0.8)" gutterBottom>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'rgba(255,255,255,0.9)',
+                          fontWeight: 500,
+                          mb: 0.5,
+                        }}
+                      >
                         Lớp học
                       </Typography>
-                      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                      <Typography
+                        variant="h4"
+                        component="div"
+                        sx={{ fontWeight: 700, color: 'white' }}
+                      >
                         {stats?.totalClassrooms || 0}
                       </Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <TrendingUpIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.8)' }} />
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                    >
                       +8 tuần này
                     </Typography>
                   </Box>
                 </CardContent>
               </Card>
-            </Zoom>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Zoom in={true} style={{ transitionDelay: '300ms' }}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                  color: 'white',
-                  borderRadius: 3,
-                  boxShadow: 3,
-                }}
-              >
-                <CardContent>
+            <Card
+              sx={{
+                height: '100%',
+                background: darkMode
+                  ? 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
+                  : 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 8px 24px rgba(255, 152, 0, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(255, 152, 0, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+                <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                      <AssignmentIcon />
+                    <Avatar
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.25)',
+                        mr: 2,
+                        width: 56,
+                        height: 56,
+                      }}
+                    >
+                      <AssignmentIcon sx={{ fontSize: 28, color: 'white' }} />
                     </Avatar>
-                    <Box>
-                      <Typography color="rgba(255,255,255,0.8)" gutterBottom>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'rgba(255,255,255,0.9)',
+                          fontWeight: 500,
+                          mb: 0.5,
+                        }}
+                      >
                         Bài tập
                       </Typography>
-                      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                      <Typography
+                        variant="h4"
+                        component="div"
+                        sx={{ fontWeight: 700, color: 'white' }}
+                      >
                         {stats?.totalAssignments || 0}
                       </Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <TrendingUpIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.8)' }} />
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                    >
                       +23 tuần này
                     </Typography>
                   </Box>
                 </CardContent>
               </Card>
-            </Zoom>
           </Grid>
         </Grid>
 
         {/* Charts Section */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={8}>
-            <StatsChart
-              data={monthlyData}
-              title="Thống kê theo tháng"
-              type="area"
-              dataKey="users"
-              xAxisKey="month"
-              color="#667eea"
-              height={300}
-            />
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: cardBackground,
+                border: `1px solid ${surfaceBorder}`,
+                height: '100%',
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                  {chartTitle}
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ color: primaryTextColor }}>Khoảng thời gian</InputLabel>
+                  <Select
+                    value={period}
+                    label="Khoảng thời gian"
+                    onChange={(e) => setPeriod(e.target.value)}
+                    disabled={chartLoading}
+                    sx={{
+                      color: primaryTextColor,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: surfaceBorder,
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#EF5B5B',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#EF5B5B',
+                      },
+                    }}
+                  >
+                    <MenuItem value="7days">7 ngày</MenuItem>
+                    <MenuItem value="30days">30 ngày</MenuItem>
+                    <MenuItem value="1year">1 năm</MenuItem>
+                    <MenuItem value="all">Tất cả</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              {chartLoading ? (
+                <Box sx={{ height: 300, p: 2 }}>
+                  {/* Chart skeleton with shimmer effect */}
+                  <Box sx={{ mb: 2 }}>
+                    {darkMode ? (
+                      <DarkShimmerBox height="20px" width="40%" borderRadius="4px" />
+                    ) : (
+                      <ShimmerBox height="20px" width="40%" borderRadius="4px" />
+                    )}
+                  </Box>
+                  {/* Chart area with lines */}
+                  <Box sx={{ position: 'relative', height: 240 }}>
+                    {/* Grid lines */}
+                    {[...Array(5)].map((_, i) => (
+                      <Box
+                        key={`grid-${i}`}
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          top: `${(i * 25)}%`,
+                          height: '1px',
+                        }}
+                      >
+                        {darkMode ? (
+                          <DarkShimmerBox height="1px" width="100%" borderRadius="0" />
+                        ) : (
+                          <ShimmerBox height="1px" width="100%" borderRadius="0" />
+                        )}
+                      </Box>
+                    ))}
+                    {/* Chart bars/lines simulation */}
+                    {[45, 60, 35, 75, 50, 65, 40, 55].map((height, i) => (
+                      <Box
+                        key={`bar-${i}`}
+                        sx={{
+                          position: 'absolute',
+                          left: `${(i * 12) + 5}%`,
+                          bottom: 0,
+                          width: '8%',
+                          height: `${height}%`,
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        {darkMode ? (
+                          <DarkShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                        ) : (
+                          <ShimmerBox height="100%" width="100%" borderRadius="4px 4px 0 0" />
+                        )}
+                      </Box>
+                    ))}
+                    {/* X-axis labels */}
+                    <Box sx={{ position: 'absolute', bottom: -20, left: 0, right: 0, display: 'flex', justifyContent: 'space-around' }}>
+                      {[...Array(6)].map((_, i) => (
+                        <Box key={`label-${i}`} sx={{ width: '15%' }}>
+                          {darkMode ? (
+                            <DarkShimmerBox height="12px" width="60%" borderRadius="2px" />
+                          ) : (
+                            <ShimmerBox height="12px" width="60%" borderRadius="2px" />
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                </Box>
+              ) : (
+                <StatsChart
+                  data={chartData}
+                  title=""
+                  type="area"
+                  dataKey="users"
+                  xAxisKey={xAxisKey}
+                  color="#EF5B5B"
+                  height={300}
+                />
+              )}
+            </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
-            <StatsChart
-              data={userRoleData}
-              title="Phân bố người dùng"
-              type="pie"
-              dataKey="value"
-              height={300}
-            />
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: cardBackground,
+                border: `1px solid ${surfaceBorder}`,
+                height: '100%',
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: primaryTextColor }}>
+                Phân bố người dùng
+              </Typography>
+              <StatsChart data={userRoleData} title="" type="pie" dataKey="value" height={300} />
+            </Paper>
           </Grid>
         </Grid>
 
         {/* Overview Chart */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
-            <StatsChart
-              data={[
-                { name: 'Users', value: stats?.totalUsers || 0, color: '#0088FE' },
-                { name: 'Courses', value: stats?.totalCourses || 0, color: '#00C49F' },
-                { name: 'Classrooms', value: stats?.totalClassrooms || 0, color: '#FFBB28' },
-                { name: 'Assignments', value: stats?.totalAssignments || 0, color: '#FF8042' },
-              ]}
-              title="Tổng quan hệ thống"
-              type="bar"
-              dataKey="value"
-              xAxisKey="name"
-              color="#8884d8"
-              height={250}
-            />
-          </Grid>
-        </Grid>
-
-        {/* System Health & Recent Activity */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
                 borderRadius: 3,
-                background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                background: cardBackground,
+                border: `1px solid ${surfaceBorder}`,
               }}
             >
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'medium', mb: 3 }}>
-                <SecurityIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Tình trạng hệ thống
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: primaryTextColor }}>
+                Tổng quan hệ thống
               </Typography>
-              {systemHealthData.map((item, index) => (
-                <Box key={`health-${item.name}-${index}`} sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" fontWeight="medium">
-                      {item.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {item.status === 'active' && <CheckCircleIcon color="success" sx={{ mr: 1, fontSize: 16 }} />}
-                      {item.status === 'warning' && <WarningIcon color="warning" sx={{ mr: 1, fontSize: 16 }} />}
-                      {item.status === 'error' && <ErrorIcon color="error" sx={{ mr: 1, fontSize: 16 }} />}
-                      <Typography variant="body2" color="textSecondary">
-                        {item.value}%
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.value}
-                    color={getStatusColor(item.status) as any}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                </Box>
-              ))}
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                borderRadius: 3,
-                background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-              }}
-            >
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'medium', mb: 3 }}>
-                <NotificationsIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Hoạt động gần đây
-              </Typography>
-              <TableContainer>
-                <Table size="small">
-                  <TableBody>
-                    {recentActivity.slice(0, 5).map((activity, index) => (
-                      <Fade in={true} key={`activity-${activity.id}-${index}`} style={{ transitionDelay: `${index * 100}ms` }}>
-                        <TableRow>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              {getActivityIcon(activity.type)}
-                              <Box sx={{ ml: 2 }}>
-                                <Typography variant="body2" fontWeight="medium">
-                                  {activity.user}
-                                </Typography>
-                                <Typography variant="caption" color="textSecondary">
-                                  {activity.description}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Chip
-                              label={activity.timestamp}
-                              size="small"
-                              color={getActivityColor(activity.type) as any}
-                              variant="outlined"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      </Fade>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <StatsChart
+                data={[
+                  { name: 'Người dùng', value: stats?.totalUsers || 0, color: '#EF5B5B' },
+                  { name: 'Khóa học', value: stats?.totalCourses || 0, color: '#AED6E6' },
+                  { name: 'Lớp học', value: stats?.totalClassrooms || 0, color: '#4CAF50' },
+                  { name: 'Bài tập', value: stats?.totalAssignments || 0, color: '#FF9800' },
+                ]}
+                title=""
+                type="bar"
+                dataKey="value"
+                xAxisKey="name"
+                color="#EF5B5B"
+                height={250}
+              />
             </Paper>
           </Grid>
         </Grid>
 
         {/* Top Courses */}
-        <Paper 
-          elevation={2} 
-          sx={{ 
-            p: 3, 
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            background: cardBackground,
+            border: `1px solid ${surfaceBorder}`,
           }}
         >
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'medium', mb: 3 }}>
-            <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              fontWeight: 600,
+              mb: 3,
+              color: primaryTextColor,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <SchoolIcon sx={{ mr: 1, color: '#EF5B5B' }} />
             Khóa học phổ biến
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Khóa học</TableCell>
-                  <TableCell align="right">Học sinh</TableCell>
-                  <TableCell align="right">Hoàn thành</TableCell>
-                  <TableCell align="right">Đánh giá</TableCell>
-                  <TableCell align="right">Thao tác</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Khóa học</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Học sinh
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Hoàn thành
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Đánh giá
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Thao tác
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {topCourses.map((course, index) => (
-                  <Fade in={true} key={`course-${course.id}-${index}`} style={{ transitionDelay: `${index * 100}ms` }}>
-                    <TableRow>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {course.title}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Badge badgeContent={course.students} color="primary">
-                          <PeopleIcon />
-                        </Badge>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          <Typography variant="body2" sx={{ mr: 1 }}>
-                            {course.completionRate}%
+                {topCourses.length > 0 ? (
+                  topCourses.map((course, index) => (
+                    <Fade
+                      in={true}
+                      key={`course-${course.id}-${index}`}
+                      style={{ transitionDelay: `${index * 100}ms` }}
+                    >
+                      <TableRow
+                        sx={{
+                          '&:hover': {
+                            bgcolor: darkMode
+                              ? 'rgba(239, 91, 91, 0.1)'
+                              : 'rgba(239, 91, 91, 0.05)',
+                          },
+                        }}
+                      >
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 600, color: primaryTextColor }}
+                          >
+                            {course.title}
                           </Typography>
-                          <LinearProgress
-                            variant="determinate"
-                            value={course.completionRate}
-                            sx={{ width: 50, height: 6, borderRadius: 3 }}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Badge
+                            badgeContent={course.students}
+                            sx={{
+                              '& .MuiBadge-badge': {
+                                bgcolor: '#EF5B5B',
+                                color: 'white',
+                              },
+                            }}
+                          >
+                            <PeopleIcon sx={{ color: secondaryTextColor }} />
+                          </Badge>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-end',
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              sx={{ mr: 1, fontWeight: 600, color: primaryTextColor }}
+                            >
+                              {course.completionRate}%
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={course.completionRate}
+                              sx={{
+                                width: 60,
+                                height: 8,
+                                borderRadius: 4,
+                                bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                '& .MuiLinearProgress-bar': {
+                                  bgcolor: '#EF5B5B',
+                                },
+                              }}
+                            />
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            label={`${course.rating} ⭐`}
+                            size="small"
+                            sx={{
+                              bgcolor: darkMode
+                                ? 'rgba(255, 152, 0, 0.2)'
+                                : 'rgba(255, 152, 0, 0.1)',
+                              color: '#FF9800',
+                              fontWeight: 600,
+                              border: `1px solid ${surfaceBorder}`,
+                            }}
                           />
-                        </Box>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Chip
-                          label={`${course.rating} ⭐`}
-                          size="small"
-                          color="warning"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Xem chi tiết">
-                          <IconButton size="small">
-                            <ViewIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Chỉnh sửa">
-                          <IconButton size="small">
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  </Fade>
-                ))}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Xem chi tiết">
+                            <IconButton
+                              size="small"
+                              sx={{
+                                color: '#EF5B5B',
+                                '&:hover': {
+                                  bgcolor: darkMode
+                                    ? 'rgba(239, 91, 91, 0.2)'
+                                    : 'rgba(239, 91, 91, 0.1)',
+                                },
+                              }}
+                            >
+                              <ViewIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Chỉnh sửa">
+                            <IconButton
+                              size="small"
+                              sx={{
+                                color: '#EF5B5B',
+                                '&:hover': {
+                                  bgcolor: darkMode
+                                    ? 'rgba(239, 91, 91, 0.2)'
+                                    : 'rgba(239, 91, 91, 0.1)',
+                                },
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    </Fade>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                      <SchoolIcon sx={{ fontSize: 48, color: secondaryTextColor, mb: 2 }} />
+                      <Typography variant="body2" sx={{ color: secondaryTextColor }}>
+                        Chưa có khóa học nào
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </TableContainer>

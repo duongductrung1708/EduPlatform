@@ -37,7 +37,12 @@ interface SelectedCourse {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string, role?: string) => Promise<RegisterResponse>;
+  register: (
+    email: string,
+    name: string,
+    password: string,
+    role?: string,
+  ) => Promise<RegisterResponse>;
   logout: () => void;
   loading: boolean;
   token: string | null;
@@ -80,28 +85,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const subjectData = localStorage.getItem('selectedSubject');
     const gradeLevelData = localStorage.getItem('selectedGradeLevel');
     const courseData = localStorage.getItem('selectedCourse');
-    
+
     if (token && userData) {
       try {
         setUser(JSON.parse(userData));
         setToken(token);
-        
+
         // Load selected subject if exists
         if (subjectData) {
           setSelectedSubject(JSON.parse(subjectData));
         }
-        
+
         // Load selected grade level if exists
         if (gradeLevelData) {
           setSelectedGradeLevel(JSON.parse(gradeLevelData));
         }
-        
+
         // Load selected course if exists
         if (courseData) {
           setSelectedCourse(JSON.parse(courseData));
         }
       } catch (error) {
-        console.error('Error parsing user data:', error);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
@@ -116,42 +120,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response: AuthResponse = await authApi.login({ email, password });
-      
+
       localStorage.setItem('accessToken', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
+
       setUser(response.user);
       setToken(response.accessToken);
     } catch (error: any) {
-      console.error('Login error:', error);
       // Extract specific error message from API response
-      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+      // NestJS returns error in error.response.data.message (can be string or array)
+      let errorMessage = 'Đăng nhập thất bại';
+
+      if (error.response?.data?.message) {
+        const message = error.response.data.message;
+        if (Array.isArray(message)) {
+          errorMessage = message[0] || 'Đăng nhập thất bại';
+        } else {
+          errorMessage = message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       throw new Error(errorMessage);
     }
   };
 
-  const register = async (email: string, name: string, password: string, role = 'student'): Promise<RegisterResponse> => {
+  const register = async (
+    email: string,
+    name: string,
+    password: string,
+    role = 'student',
+  ): Promise<RegisterResponse> => {
     try {
       const response: RegisterResponse = await authApi.register({ email, name, password, role });
-      
+
       // If registration requires verification, return the response without setting user/token
       if (response.requiresVerification) {
         return response;
       }
-      
+
       // If direct login (fallback for admin users), handle as before
       const authResponse = response as any as AuthResponse;
       localStorage.setItem('accessToken', authResponse.accessToken);
       localStorage.setItem('refreshToken', authResponse.refreshToken);
       localStorage.setItem('user', JSON.stringify(authResponse.user));
-      
+
       setUser(authResponse.user);
       setToken(authResponse.accessToken);
-      
+
       return response;
     } catch (error: any) {
-      console.error('Register error:', error);
       // Extract specific error message from API response
       const errorMessage = error.response?.data?.message || error.message || 'Đăng ký thất bại';
       throw new Error(errorMessage);
@@ -173,7 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const setUserProfile = (updates: Partial<User>) => {
-    setUser(prev => {
+    setUser((prev) => {
       const next = prev ? { ...prev, ...updates } : (updates as User);
       localStorage.setItem('user', JSON.stringify(next));
       return next;
@@ -211,13 +231,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Refresh user state from localStorage (useful after OTP verification)
     const token = localStorage.getItem('accessToken');
     const userData = localStorage.getItem('user');
-    
+
     if (token && userData) {
       try {
         setUser(JSON.parse(userData));
         setToken(token);
       } catch (error) {
-        console.error('Error refreshing user state:', error);
         // Clear invalid data
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');

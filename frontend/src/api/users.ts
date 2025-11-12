@@ -31,7 +31,7 @@ export interface CurrentUserResponse {
 
 export interface UpdateMePayload {
   name?: string;
-  avatar?: string;
+  avatarUrl?: string;
   phone?: string;
   address?: string;
   gender?: string;
@@ -40,11 +40,21 @@ export interface UpdateMePayload {
 export const usersApi = {
   async getMe(): Promise<CurrentUserResponse> {
     const res = await apiClient.get('/api/users/me');
-    return res.data;
+    const data = res.data;
+    // Map avatarUrl from backend to avatar for frontend compatibility
+    return {
+      ...data,
+      avatar: data.avatarUrl || data.avatar,
+    };
   },
   async updateMe(payload: UpdateMePayload): Promise<CurrentUserResponse> {
     const res = await apiClient.put('/api/users/me', payload);
-    return res.data;
+    const data = res.data;
+    // Map avatarUrl from backend to avatar for frontend compatibility
+    return {
+      ...data,
+      avatar: data.avatarUrl || data.avatar,
+    };
   },
 };
 

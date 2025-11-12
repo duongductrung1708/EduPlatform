@@ -12,19 +12,73 @@ export class EmailService {
   }
 
   private createTransporter() {
+    const smtpHost = this.configService.get('SMTP_HOST', 'smtp.gmail.com');
+    const smtpPort = this.configService.get('SMTP_PORT', 587);
+    const smtpUser = this.configService.get('SMTP_USER');
+    let smtpPass = this.configService.get('SMTP_PASS');
+
+    // Remove spaces from App Password (Gmail App Passwords may have spaces)
+    if (smtpPass) {
+      smtpPass = smtpPass.replace(/\s+/g, '');
+    }
+
+    if (!smtpUser || !smtpPass) {
+      this.logger.warn('SMTP credentials not configured. Email sending will fail.');
+      this.logger.warn('Please set SMTP_USER and SMTP_PASS environment variables.');
+      this.logger.warn(`SMTP_USER: ${smtpUser ? '✓ Set' : '✗ Not set'}`);
+      this.logger.warn(`SMTP_PASS: ${smtpPass ? '✓ Set (length: ' + smtpPass.length + ')' : '✗ Not set'}`);
+    } else {
+      // Log partial info for debugging (hide most of the password)
+      const maskedPass = smtpPass.length > 4 
+        ? smtpPass.substring(0, 2) + '***' + smtpPass.substring(smtpPass.length - 2)
+        : '***';
+      this.logger.log(`SMTP configured: ${smtpUser} / ${maskedPass} (${smtpPass.length} chars)`);
+    }
+
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get('SMTP_PORT', 587),
+      host: smtpHost,
+      port: smtpPort,
       secure: false, // true for 465, false for other ports
       auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
+        user: smtpUser,
+        pass: smtpPass,
       },
+    });
+
+    // Verify transporter configuration
+    this.transporter.verify((error, success) => {
+      if (error) {
+        this.logger.error('SMTP connection verification failed:', error.message || error);
+        this.logger.error('Please check your SMTP configuration in .env file');
+        if (error.code === 'EAUTH') {
+          this.logger.error('');
+          this.logger.error('═══════════════════════════════════════════════════════════');
+          this.logger.error('GMAIL AUTHENTICATION ERROR');
+          this.logger.error('═══════════════════════════════════════════════════════════');
+          this.logger.error('Common issues:');
+          this.logger.error('1. Make sure you are using App Password, not regular password');
+          this.logger.error('2. App Password should be 16 characters (spaces are auto-removed)');
+          this.logger.error('3. Make sure 2-Step Verification is enabled');
+          this.logger.error('4. Check that SMTP_USER and SMTP_PASS are set correctly in .env');
+          this.logger.error('5. Restart the server after changing .env file');
+          this.logger.error('═══════════════════════════════════════════════════════════');
+          this.logger.error('');
+        }
+      } else {
+        this.logger.log(`✓ SMTP server ready: ${smtpHost}:${smtpPort}`);
+        this.logger.log(`✓ Authenticated as: ${smtpUser}`);
+      }
     });
   }
 
   async sendOtpEmail(email: string, otp: string, type: 'registration' | 'password_reset'): Promise<boolean> {
     try {
+      const smtpUser = this.configService.get('SMTP_USER');
+      if (!smtpUser) {
+        this.logger.error('SMTP_USER not configured. Cannot send email.');
+        return false;
+      }
+
       const subject = type === 'registration' 
         ? 'Xác nhận đăng ký tài khoản EduLearn' 
         : 'Đặt lại mật khẩu EduLearn';
@@ -32,17 +86,45 @@ export class EmailService {
       const htmlContent = this.generateOtpEmailTemplate(otp, type);
 
       const mailOptions = {
-        from: `"EduLearn" <${this.configService.get('SMTP_USER')}>`,
+        from: `"EduLearn" <${smtpUser}>`,
         to: email,
         subject,
         html: htmlContent,
       };
 
+      this.logger.log(`Attempting to send OTP email to ${email}...`);
       const result = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`OTP email sent to ${email}: ${result.messageId}`);
+      this.logger.log(`OTP email sent successfully to ${email}: ${result.messageId}`);
       return true;
-    } catch (error) {
-      this.logger.error(`Failed to send OTP email to ${email}:`, error);
+    } catch (error: any) {
+      this.logger.error(`Failed to send OTP email to ${email}:`, error.message || error);
+      if (error.code) {
+        this.logger.error(`Error code: ${error.code}`);
+      }
+      if (error.response) {
+        this.logger.error(`SMTP response: ${JSON.stringify(error.response)}`);
+      }
+      
+      // Provide helpful error message for Gmail authentication issues
+      if (error.code === 'EAUTH' || (error.response && error.response.includes('BadCredentials'))) {
+        this.logger.error('');
+        this.logger.error('═══════════════════════════════════════════════════════════');
+        this.logger.error('GMAIL SMTP AUTHENTICATION ERROR');
+        this.logger.error('═══════════════════════════════════════════════════════════');
+        this.logger.error('To fix this issue, you need to:');
+        this.logger.error('1. Enable 2-Step Verification on your Google account');
+        this.logger.error('2. Generate an App Password:');
+        this.logger.error('   - Go to: https://myaccount.google.com/apppasswords');
+        this.logger.error('   - Select "Mail" and "Other (Custom name)"');
+        this.logger.error('   - Enter "EduLearn" as the app name');
+        this.logger.error('   - Copy the 16-character password');
+        this.logger.error('3. Update your .env file:');
+        this.logger.error('   SMTP_USER=your-email@gmail.com');
+        this.logger.error('   SMTP_PASS=xxxx xxxx xxxx xxxx  (the 16-char App Password)');
+        this.logger.error('═══════════════════════════════════════════════════════════');
+        this.logger.error('');
+      }
+      
       return false;
     }
   }
@@ -134,6 +216,154 @@ export class EmailService {
                     <li>Mã OTP này chỉ có hiệu lực trong <strong>10 phút</strong></li>
                     <li>Không chia sẻ mã này với bất kỳ ai</li>
                     <li>Nếu bạn không yêu cầu ${action}, vui lòng bỏ qua email này</li>
+                </ul>
+            </div>
+            
+            <p>Nếu bạn gặp bất kỳ vấn đề nào, vui lòng liên hệ với chúng tôi qua email hỗ trợ.</p>
+            
+            <div class="footer">
+                <p>Trân trọng,<br>Đội ngũ EduLearn</p>
+                <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+  }
+
+  async sendPasswordResetEmail(email: string, resetUrl: string): Promise<boolean> {
+    try {
+      const smtpUser = this.configService.get('SMTP_USER');
+      if (!smtpUser) {
+        this.logger.error('SMTP_USER not configured. Cannot send email.');
+        return false;
+      }
+
+      const subject = 'Đặt lại mật khẩu EduLearn';
+      const htmlContent = this.generatePasswordResetEmailTemplate(resetUrl);
+
+      const mailOptions = {
+        from: `"EduLearn" <${smtpUser}>`,
+        to: email,
+        subject,
+        html: htmlContent,
+      };
+
+      this.logger.log(`Attempting to send password reset email to ${email}...`);
+      const result = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Password reset email sent successfully to ${email}: ${result.messageId}`);
+      return true;
+    } catch (error: any) {
+      this.logger.error(`Failed to send password reset email to ${email}:`, error.message || error);
+      if (error.code) {
+        this.logger.error(`Error code: ${error.code}`);
+      }
+      if (error.response) {
+        this.logger.error(`SMTP response: ${JSON.stringify(error.response)}`);
+      }
+      return false;
+    }
+  }
+
+  private generatePasswordResetEmailTemplate(resetUrl: string): string {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Đặt lại mật khẩu</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                background-color: #ffffff;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .logo {
+                font-size: 28px;
+                font-weight: bold;
+                background: linear-gradient(45deg, #EF5B5B, #FF7B7B);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .button {
+                display: inline-block;
+                background: linear-gradient(45deg, #EF5B5B, #FF7B7B);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-weight: 600;
+                margin: 20px 0;
+                box-shadow: 0 4px 15px rgba(239, 91, 91, 0.3);
+            }
+            .warning {
+                background-color: #fff3cd;
+                border: 1px solid #ffeaa7;
+                color: #856404;
+                padding: 15px;
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .footer {
+                text-align: center;
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+                color: #666;
+                font-size: 14px;
+            }
+            .url-box {
+                background-color: #f8f9fa;
+                padding: 10px;
+                border-radius: 5px;
+                word-break: break-all;
+                font-size: 12px;
+                margin: 10px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">EduLearn</div>
+                <h2>Đặt lại mật khẩu</h2>
+            </div>
+            
+            <p>Xin chào!</p>
+            
+            <p>Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản EduLearn của bạn.</p>
+            
+            <p>Nhấn vào nút bên dưới để đặt lại mật khẩu. Liên kết có hiệu lực trong <strong>30 phút</strong>.</p>
+            
+            <div style="text-align: center; color: white;">
+                <a href="${resetUrl}" class="button" style="color: white;">Đặt lại mật khẩu</a>
+            </div>
+            
+            <p>Nếu nút không hoạt động, hãy sao chép và dán liên kết sau vào trình duyệt:</p>
+            <div class="url-box">${resetUrl}</div>
+            
+            <div class="warning">
+                <strong>⚠️ Lưu ý quan trọng:</strong>
+                <ul>
+                    <li>Liên kết này chỉ có hiệu lực trong <strong>30 phút</strong></li>
+                    <li>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này</li>
+                    <li>Để bảo mật, không chia sẻ liên kết này với bất kỳ ai</li>
                 </ul>
             </div>
             

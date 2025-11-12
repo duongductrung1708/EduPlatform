@@ -14,6 +14,7 @@ import {
   Cell,
   AreaChart,
   Area,
+  Legend,
 } from 'recharts';
 import { Box, Typography, Paper, useTheme } from '@mui/material';
 
@@ -133,20 +134,44 @@ export const StatsChart: React.FC<ChartProps> = ({
         );
       
       case 'pie':
+        const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+          // Chỉ hiển thị label nếu phần trăm >= 5% để tránh chồng chéo
+          if (percent < 0.05) return null;
+          
+          const RADIAN = Math.PI / 180;
+          // Đặt labels ra ngoài pie chart hơn (tăng radius)
+          const radius = outerRadius + 20;
+          const x = cx + radius * Math.cos(-midAngle * RADIAN);
+          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+          return (
+            <text
+              x={x}
+              y={y}
+              fill={theme.palette.text.primary}
+              textAnchor={x > cx ? 'start' : 'end'}
+              dominantBaseline="central"
+              fontSize={12}
+              fontWeight={500}
+            >
+              {`${name} ${(percent * 100).toFixed(0)}%`}
+            </text>
+          );
+        };
         return (
           <PieChart>
             <Pie
               data={data}
               cx="50%"
-              cy="50%"
+              cy="45%"
               labelLine={false}
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={renderCustomLabel}
               outerRadius={80}
               fill="#8884d8"
               dataKey={dataKey}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip 
@@ -154,6 +179,18 @@ export const StatsChart: React.FC<ChartProps> = ({
                 backgroundColor: theme.palette.background.paper,
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 8,
+                color: theme.palette.text.primary,
+              }}
+            />
+            <Legend
+              wrapperStyle={{
+                paddingTop: '10px',
+              }}
+              formatter={(value: string) => {
+                const entry = data.find((d) => d.name === value);
+                const total = data.reduce((sum, d) => sum + d.value, 0);
+                const percentage = entry ? ((entry.value / total) * 100).toFixed(0) : '0';
+                return `${value} ${percentage}%`;
               }}
             />
           </PieChart>

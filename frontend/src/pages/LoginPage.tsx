@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -27,15 +27,26 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
-  
+  const formRef = useRef<HTMLFormElement>(null);
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/dashboard';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    // Prevent login if already loading
+    if (loading) {
+      return;
+    }
+
+    // Basic validation
+    if (!email.trim() || !password.trim()) {
+      setError('Vui lòng nhập đầy đủ email và mật khẩu');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -43,10 +54,28 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err: any) {
-      const errorMessage = err.message || 'Đăng nhập thất bại';
-      
+      // Extract error message from different possible locations
+      let errorMessage = 'Đăng nhập thất bại';
+
+      // NestJS returns error in error.response.data.message (can be string or array)
+      if (err.response?.data?.message) {
+        const message = err.response.data.message;
+        if (Array.isArray(message)) {
+          errorMessage = message[0] || 'Đăng nhập thất bại';
+        } else {
+          errorMessage = message;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+
       // Check if error is about unverified account
-      if (errorMessage.includes('chưa được xác thực') || errorMessage.includes('chưa được kích hoạt')) {
+      if (
+        errorMessage.includes('chưa được xác thực') ||
+        errorMessage.includes('chưa được kích hoạt')
+      ) {
         setPendingEmail(email);
         setOtpDialogOpen(true);
         setError('Tài khoản chưa được xác thực. Vui lòng nhập mã OTP để kích hoạt tài khoản.');
@@ -71,37 +100,54 @@ export const LoginPage: React.FC = () => {
 
   return (
     <>
-      <Box sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: (t) => t.palette.mode === 'dark'
-          ? 'linear-gradient(135deg, #0f172a 0%, #111827 100%)'
-          : 'linear-gradient(135deg, #e3f2fd 0%, #f5f7ff 100%)',
-        p: 2,
-        position: 'relative',
-      }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: (t) =>
+            t.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, #0f172a 0%, #111827 100%)'
+              : 'linear-gradient(135deg, #e3f2fd 0%, #f5f7ff 100%)',
+          p: 2,
+          position: 'relative',
+        }}
+      >
         <Box sx={{ position: 'absolute', top: 16, left: 16 }}>
           <Logo height={48} />
         </Box>
-      <Container maxWidth="sm">
-        <Paper elevation={8} sx={{ p: 4, borderRadius: 3 }}>
-          <Box textAlign="center" sx={{ mb: 3 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom>
-              Đăng nhập
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Chào mừng bạn quay trở lại với EduLearn
-            </Typography>
-          </Box>
+        <Container maxWidth="sm">
+          <Paper elevation={8} sx={{ p: 4, borderRadius: 3 }}>
+            <Box textAlign="center" sx={{ mb: 3 }}>
+              <Typography variant="h5" fontWeight={700} gutterBottom>
+                Đăng nhập
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Chào mừng bạn quay trở lại với EduLearn
+              </Typography>
+            </Box>
 
-            {error && <ErrorAlert error={error} onClose={() => setError('')} />}
+            {error && (
+              <Box sx={{ mb: 2 }}>
+                <ErrorAlert error={error} onClose={() => setError('')} />
+              </Box>
+            )}
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+            <Box
+              component="div"
+              ref={formRef}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLogin();
+                }
+              }}
+              sx={{ mt: 2 }}
+            >
               <TextField
                 margin="normal"
-                required
                 fullWidth
                 id="email"
                 label="Email"
@@ -121,7 +167,6 @@ export const LoginPage: React.FC = () => {
               />
               <TextField
                 margin="normal"
-                required
                 fullWidth
                 name="password"
                 label="Mật khẩu"
@@ -140,8 +185,13 @@ export const LoginPage: React.FC = () => {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
+                        type="button"
                         aria-label="toggle password visibility"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowPassword(!showPassword);
+                        }}
                         edge="end"
                         size="small"
                       >
@@ -152,9 +202,10 @@ export const LoginPage: React.FC = () => {
                 }}
               />
               <Button
-                type="submit"
+                type="button"
                 fullWidth
                 variant="contained"
+                onClick={handleLogin}
                 sx={{ mt: 3, mb: 2, py: 1.2, fontWeight: 600 }}
                 disabled={loading}
               >

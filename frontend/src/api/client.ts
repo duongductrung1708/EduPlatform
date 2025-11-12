@@ -32,7 +32,15 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't handle 401 for public auth endpoints (login, register, etc.)
+    const isPublicAuthEndpoint = originalRequest?.url?.includes('/api/auth/login') ||
+                                 originalRequest?.url?.includes('/api/auth/register') ||
+                                 originalRequest?.url?.includes('/api/auth/forgot-password') ||
+                                 originalRequest?.url?.includes('/api/auth/reset-password') ||
+                                 originalRequest?.url?.includes('/api/auth/verify-otp') ||
+                                 originalRequest?.url?.includes('/api/auth/resend-otp');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
@@ -50,12 +58,18 @@ apiClient.interceptors.response.use(
         } else {
           // No refresh token, clear everything and redirect
           clearAuth();
-          window.location.href = '/auth/login';
+          // Only redirect if not already on login page
+          if (!window.location.pathname.includes('/auth/login')) {
+            window.location.href = '/auth/login';
+          }
         }
       } catch (refreshError) {
         // Refresh failed, redirect to login
         clearAuth();
-        window.location.href = '/auth/login';
+        // Only redirect if not already on login page
+        if (!window.location.pathname.includes('/auth/login')) {
+          window.location.href = '/auth/login';
+        }
       }
     }
 

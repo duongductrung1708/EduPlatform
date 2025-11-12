@@ -45,9 +45,10 @@ export interface TopCourse {
 
 export const adminApi = {
   // Dashboard stats
-  getDashboardStats: async (): Promise<DashboardStats> => {
+  getDashboardStats: async (period?: string): Promise<DashboardStats> => {
     try {
-      const response = await apiClient.get('/api/admin/dashboard/stats');
+      const params = period ? { period } : {};
+      const response = await apiClient.get('/api/admin/dashboard/stats', { params });
       return response.data;
     } catch (error) {
       console.error('Admin API - Dashboard stats error:', error);
@@ -135,8 +136,8 @@ export const adminApi = {
       page: page.toString(),
       limit: limit.toString(),
     });
-    if (status) params.append('status', status);
-    if (search) params.append('search', search);
+    if (status && status.trim() !== '') params.append('status', status);
+    if (search && search.trim() !== '') params.append('search', search);
     
     const response = await apiClient.get(`/api/admin/classrooms?${params}`);
     return response.data;

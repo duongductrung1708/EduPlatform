@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { User } from '../../models/user.model';
 import { Course } from '../../models/course.model';
 import { Classroom } from '../../models/classroom.model';
-import { Assignment } from '../../models/assignment.model';
+import { Assignment, Submission } from '../../models/assignment.model';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -57,13 +57,40 @@ export class AdminService {
     @InjectModel(Course.name) private courseModel: Model<Course>,
     @InjectModel(Classroom.name) private classroomModel: Model<Classroom>,
     @InjectModel(Assignment.name) private assignmentModel: Model<Assignment>,
+    @InjectModel(Submission.name) private submissionModel: Model<Submission>,
   ) {}
 
-  async getDashboardStats(): Promise<DashboardStats> {
+  async getDashboardStats(period: string = '30days'): Promise<DashboardStats> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // Calculate start date based on period
+    let startDate: Date;
+    let useDailyStats = false;
+    
+    switch (period) {
+      case '7days':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        useDailyStats = true;
+        break;
+      case '30days':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        useDailyStats = true;
+        break;
+      case '1year':
+        startDate = startOfYear;
+        useDailyStats = false;
+        break;
+      case 'all':
+        startDate = new Date(0); // Beginning of time
+        useDailyStats = false;
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        useDailyStats = true;
+    }
 
     try {
       // Basic counts with error handling
@@ -130,132 +157,293 @@ export class AdminService {
         },
       ]).catch(() => []);
 
-      // Monthly stats for the current year
-      const monthlyStats = await this.userModel.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: startOfYear },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
+      // Stats based on period - daily or monthly
+      let timeStats: any[] = [];
+      let courseTimeStats: any[] = [];
+      let classroomTimeStats: any[] = [];
+
+      if (useDailyStats) {
+        // Daily stats
+        const daysCount = period === '7days' ? 7 : 30;
+        timeStats = await this.userModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
             },
-            users: { $sum: 1 },
           },
-        },
-        {
-          $project: {
-            month: {
-              $dateToString: {
-                format: '%Y-%m',
-                date: {
-                  $dateFromParts: {
-                    year: '$_id.year',
-                    month: '$_id.month',
-                    day: 1,
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                day: { $dayOfMonth: '$createdAt' },
+              },
+              users: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: '$_id.day',
+                    },
                   },
                 },
               },
+              users: 1,
+              _id: 0,
             },
-            users: 1,
-            _id: 0,
           },
-        },
-        {
-          $sort: { month: 1 },
-        },
-      ]).catch(() => []);
+          {
+            $sort: { date: 1 },
+          },
+        ]).catch(() => []);
 
-      // Add courses and classrooms to monthly stats
-      const courseMonthlyStats = await this.courseModel.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: startOfYear },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
+        courseTimeStats = await this.courseModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
             },
-            courses: { $sum: 1 },
           },
-        },
-        {
-          $project: {
-            month: {
-              $dateToString: {
-                format: '%Y-%m',
-                date: {
-                  $dateFromParts: {
-                    year: '$_id.year',
-                    month: '$_id.month',
-                    day: 1,
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                day: { $dayOfMonth: '$createdAt' },
+              },
+              courses: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: '$_id.day',
+                    },
                   },
                 },
               },
+              courses: 1,
+              _id: 0,
             },
-            courses: 1,
-            _id: 0,
           },
-        },
-      ]).catch(() => []);
+        ]).catch(() => []);
 
-      const classroomMonthlyStats = await this.classroomModel.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: startOfYear },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
+        classroomTimeStats = await this.classroomModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
             },
-            classrooms: { $sum: 1 },
           },
-        },
-        {
-          $project: {
-            month: {
-              $dateToString: {
-                format: '%Y-%m',
-                date: {
-                  $dateFromParts: {
-                    year: '$_id.year',
-                    month: '$_id.month',
-                    day: 1,
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                day: { $dayOfMonth: '$createdAt' },
+              },
+              classrooms: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: '$_id.day',
+                    },
                   },
                 },
               },
+              classrooms: 1,
+              _id: 0,
             },
-            classrooms: 1,
-            _id: 0,
           },
-        },
-      ]).catch(() => []);
+        ]).catch(() => []);
+      } else {
+        // Monthly stats
+        timeStats = await this.userModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+              },
+              users: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              month: {
+                $dateToString: {
+                  format: '%Y-%m',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: 1,
+                    },
+                  },
+                },
+              },
+              users: 1,
+              _id: 0,
+            },
+          },
+          {
+            $sort: { month: 1 },
+          },
+        ]).catch(() => []);
 
-      // Merge monthly stats
-      const monthlyStatsMap = new Map();
-      [...monthlyStats, ...courseMonthlyStats, ...classroomMonthlyStats].forEach((stat) => {
-        if (!monthlyStatsMap.has(stat.month)) {
-          monthlyStatsMap.set(stat.month, {
-            month: stat.month,
-            users: 0,
-            courses: 0,
-            classrooms: 0,
-          });
+        courseTimeStats = await this.courseModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+              },
+              courses: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              month: {
+                $dateToString: {
+                  format: '%Y-%m',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: 1,
+                    },
+                  },
+                },
+              },
+              courses: 1,
+              _id: 0,
+            },
+          },
+        ]).catch(() => []);
+
+        classroomTimeStats = await this.classroomModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+              },
+              classrooms: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              month: {
+                $dateToString: {
+                  format: '%Y-%m',
+                  date: {
+                    $dateFromParts: {
+                      year: '$_id.year',
+                      month: '$_id.month',
+                      day: 1,
+                    },
+                  },
+                },
+              },
+              classrooms: 1,
+              _id: 0,
+            },
+          },
+        ]).catch(() => []);
+      }
+
+      // Merge stats based on period type
+      const statsMap = new Map();
+      
+      if (useDailyStats) {
+        // Merge daily stats
+        [...timeStats, ...courseTimeStats, ...classroomTimeStats].forEach((stat) => {
+          if (!statsMap.has(stat.date)) {
+            statsMap.set(stat.date, {
+              month: stat.date,
+              users: 0,
+              courses: 0,
+              classrooms: 0,
+            });
+          }
+          const existing = statsMap.get(stat.date);
+          if (stat.users !== undefined) existing.users = stat.users;
+          if (stat.courses !== undefined) existing.courses = stat.courses;
+          if (stat.classrooms !== undefined) existing.classrooms = stat.classrooms;
+        });
+
+        // Fill in missing days with 0 values
+        const daysCount = period === '7days' ? 7 : 30;
+        const finalStats: Array<{ month: string; users: number; courses: number; classrooms: number }> = [];
+        for (let i = daysCount - 1; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          const dateStr = date.toISOString().split('T')[0];
+          finalStats.push(
+            statsMap.get(dateStr) || {
+              month: dateStr,
+              users: 0,
+              courses: 0,
+              classrooms: 0,
+            }
+          );
         }
-        const existing = monthlyStatsMap.get(stat.month);
-        if (stat.users !== undefined) existing.users = stat.users;
-        if (stat.courses !== undefined) existing.courses = stat.courses;
-        if (stat.classrooms !== undefined) existing.classrooms = stat.classrooms;
-      });
+        statsMap.clear();
+        finalStats.forEach(stat => statsMap.set(stat.month, stat));
+      } else {
+        // Merge monthly stats and format month to "T1", "T2", etc.
+        [...timeStats, ...courseTimeStats, ...classroomTimeStats].forEach((stat) => {
+          // Convert YYYY-MM to T1, T2, etc. (month number)
+          const monthNum = parseInt(stat.month.split('-')[1]);
+          const monthKey = `T${monthNum}`;
+          
+          if (!statsMap.has(monthKey)) {
+            statsMap.set(monthKey, {
+              month: monthKey,
+              users: 0,
+              courses: 0,
+              classrooms: 0,
+            });
+          }
+          const existing = statsMap.get(monthKey);
+          if (stat.users !== undefined) existing.users = stat.users;
+          if (stat.courses !== undefined) existing.courses = stat.courses;
+          if (stat.classrooms !== undefined) existing.classrooms = stat.classrooms;
+        });
+      }
 
       // Calculate completion rate
       const coursesWithStudents = await this.courseModel.aggregate([
@@ -300,7 +488,7 @@ export class AdminService {
         averageCompletionRate,
         usersByRole: roleStats,
         coursesByCategory,
-        monthlyStats: Array.from(monthlyStatsMap.values()),
+        monthlyStats: Array.from(statsMap.values()),
       };
     } catch (error) {
       console.error('Error in getDashboardStats:', error);
@@ -521,52 +709,75 @@ export class AdminService {
 
   async getTopCourses(limit: number = 10): Promise<TopCourse[]> {
     try {
-      const topCourses = await this.courseModel.aggregate([
-        {
-          $lookup: {
-            from: 'classrooms',
-            localField: '_id',
-            foreignField: 'courseId',
-            as: 'classrooms',
-          },
-        },
-        {
-          $unwind: '$classrooms',
-        },
-        {
-          $lookup: {
-            from: 'users',
-            localField: 'classrooms.students',
-            foreignField: '_id',
-            as: 'students',
-          },
-        },
-        {
-          $group: {
-            _id: '$_id',
-            title: { $first: '$title' },
-            students: { $sum: { $size: '$students' } },
-            rating: { $avg: '$rating' },
-          },
-        },
-        {
-          $project: {
-            _id: '$_id',
-            title: 1,
-            students: 1,
-            completionRate: { $add: [{ $multiply: [{ $rand: {} }, 30] }, 70] }, // Random between 70-100
-            rating: { $ifNull: ['$rating', 4.5] },
-          },
-        },
-        {
-          $sort: { students: -1 },
-        },
-        {
-          $limit: limit,
-        },
-      ]);
+      // Get all courses with their classrooms and students
+      const courses = await this.courseModel.find().lean();
+      
+      const topCoursesData = await Promise.all(
+        courses.map(async (course: any) => {
+          // Get classrooms for this course
+          const classrooms = await this.classroomModel
+            .find({ courseId: course._id })
+            .select('studentIds students')
+            .lean();
 
-      return topCourses;
+          // Count total students across all classrooms
+          let totalStudents = 0;
+          const studentIds = new Set<string>();
+          
+          classrooms.forEach((classroom: any) => {
+            const students = classroom.studentIds || classroom.students || [];
+            students.forEach((sid: any) => {
+              const idStr = String(sid);
+              if (!studentIds.has(idStr)) {
+                studentIds.add(idStr);
+                totalStudents++;
+              }
+            });
+          });
+
+          // Count submissions for assignments in these classrooms
+          const classroomIds = classrooms.map((c: any) => c._id);
+          const assignments = await this.assignmentModel
+            .find({ classroomId: { $in: classroomIds } })
+            .select('_id')
+            .lean();
+          
+          const assignmentIds = assignments.map((a: any) => a._id);
+          const totalSubmissions = await this.submissionModel.countDocuments({
+            assignmentId: { $in: assignmentIds },
+          });
+
+          // Calculate completion rate: submissions / (assignments * students)
+          // If no assignments, use a default based on student engagement
+          let completionRate = 0;
+          if (assignmentIds.length > 0 && totalStudents > 0) {
+            const totalPossibleSubmissions = assignmentIds.length * totalStudents;
+            completionRate = Math.round((totalSubmissions / totalPossibleSubmissions) * 100);
+            // Cap at 100%
+            completionRate = Math.min(completionRate, 100);
+          } else if (totalStudents > 0) {
+            // If course has students but no assignments, show engagement indicator
+            completionRate = 50; // Neutral engagement
+          }
+
+          // Get average rating from course or default
+          const rating = course.rating || 4.5;
+
+          return {
+            id: String(course._id),
+            title: course.title,
+            students: totalStudents,
+            completionRate,
+            rating: typeof rating === 'number' ? rating : 4.5,
+          };
+        })
+      );
+
+      // Sort by student count and limit
+      return topCoursesData
+        .filter(course => course.students > 0) // Only courses with students
+        .sort((a, b) => b.students - a.students)
+        .slice(0, limit);
     } catch (error) {
       console.error('Error in getTopCourses:', error);
       // Return empty array if no courses exist or error occurs
@@ -756,6 +967,11 @@ export class AdminService {
     try {
       const skip = (page - 1) * limit;
       const filter: any = {};
+
+      // Filter by status if provided
+      if (status) {
+        filter.status = status;
+      }
 
       // Best-effort search on either legacy name/description or new title
       if (search) {

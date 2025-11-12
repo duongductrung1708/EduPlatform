@@ -52,6 +52,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../api/admin';
 import AdminLayout from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
+import { ShimmerBox, DarkShimmerBox } from '../components/LoadingSkeleton';
 
 interface Course {
   _id: string;
@@ -83,6 +85,7 @@ interface CoursePaginationResponse {
 
 const CourseManagement: React.FC = () => {
   const { user } = useAuth();
+  const { darkMode } = useTheme();
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,8 +118,24 @@ const CourseManagement: React.FC = () => {
     thumbnail: '',
     tags: '' as any, // comma separated in UI
   });
-  const PRIMARY_CATEGORIES = ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'];
+  const PRIMARY_CATEGORIES = [
+    'Toán',
+    'Tiếng Việt',
+    'Tiếng Anh',
+    'Khoa học',
+    'Tin học',
+    'Mỹ thuật',
+    'Âm nhạc',
+  ];
   const PRIMARY_LEVELS = ['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'];
+
+  // Theme colors
+  const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
+  const secondaryTextColor = darkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(16, 42, 67, 0.64)';
+  const cardBackground = darkMode
+    ? 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)';
+  const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(239, 91, 91, 0.12)';
 
   // Debounce search input
   // Initial load
@@ -161,22 +180,27 @@ const CourseManagement: React.FC = () => {
         setIsFetching(true);
       }
       setError(null);
-      const response = await adminApi.getAllCourses(page, 10, statusFilter || undefined, searchTerm || undefined);
-      
+      const response = await adminApi.getAllCourses(
+        page,
+        10,
+        statusFilter || undefined,
+        searchTerm || undefined,
+      );
+
       // Validate response structure
       if (!response || !response.courses || !Array.isArray(response.courses)) {
         throw new Error('Invalid response structure from API');
       }
-      
+
       // Validate each course has required fields
-      const validCourses = response.courses.filter(course => {
+      const validCourses = response.courses.filter((course: Course) => {
         if (!course || !course._id) {
           console.warn('Invalid course found:', course);
           return false;
         }
         return true;
       });
-      
+
       setCourses(validCourses);
       setTotalPages(response.pagination?.pages || 1);
     } catch (err: any) {
@@ -194,7 +218,9 @@ const CourseManagement: React.FC = () => {
     if (!selectedCourse || !newStatus) return;
     // Optimistic update
     const prevCourses = [...courses];
-    setCourses((cs) => cs.map(c => c._id === selectedCourse._id ? { ...c, status: newStatus as any } : c));
+    setCourses((cs) =>
+      cs.map((c) => (c._id === selectedCourse._id ? { ...c, status: newStatus as any } : c)),
+    );
     try {
       await adminApi.updateCourseStatus(selectedCourse._id, newStatus);
       setStatusDialogOpen(false);
@@ -271,15 +297,55 @@ const CourseManagement: React.FC = () => {
     return (
       <AdminLayout>
         <Box sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-              Quản lý khóa học
-            </Typography>
-            <Skeleton variant="rectangular" width={150} height={40} sx={{ borderRadius: 2 }} />
+          <Box sx={{ mb: 4 }}>
+            {darkMode ? (
+              <DarkShimmerBox height="40px" width="300px" borderRadius="4px" />
+            ) : (
+              <ShimmerBox height="40px" width="300px" borderRadius="4px" />
+            )}
           </Box>
-          {[...Array(5)].map((_, index) => (
-            <Skeleton key={index} variant="rectangular" height={80} sx={{ mb: 2, borderRadius: 2 }} />
-          ))}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {[...Array(4)].map((_, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
+                <Card
+                  sx={{
+                    height: 160,
+                    borderRadius: 3,
+                    p: 3,
+                    background: cardBackground,
+                    border: `1px solid ${surfaceBorder}`,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ mr: 2 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      ) : (
+                        <ShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      {darkMode ? (
+                        <>
+                          <Box sx={{ mb: 1 }}>
+                            <DarkShimmerBox height="16px" width="80%" borderRadius="4px" />
+                          </Box>
+                          <DarkShimmerBox height="32px" width="60%" borderRadius="4px" />
+                        </>
+                      ) : (
+                        <>
+                          <Box sx={{ mb: 1 }}>
+                            <ShimmerBox height="16px" width="80%" borderRadius="4px" />
+                          </Box>
+                          <ShimmerBox height="32px" width="60%" borderRadius="4px" />
+                        </>
+                      )}
+                    </Box>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
         </Box>
       </AdminLayout>
     );
@@ -288,15 +354,55 @@ const CourseManagement: React.FC = () => {
   return (
     <AdminLayout>
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-            Quản lý khóa học
-          </Typography>
-          {/* Removed create course button per requirements */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 4,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                color: primaryTextColor,
+                background: darkMode
+                  ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+                  : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Quản lý khóa học
+            </Typography>
+            <Typography variant="body1" sx={{ color: secondaryTextColor }}>
+              Quản lý và theo dõi tất cả các khóa học trong hệ thống
+            </Typography>
+          </Box>
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert
+            severity="error"
+            sx={{ mb: 3 }}
+            action={
+              <IconButton
+                aria-label="close"
+                color="inherit"
+                size="small"
+                onClick={() => setError(null)}
+              >
+                <FilterIcon />
+              </IconButton>
+            }
+          >
             {error}
           </Alert>
         )}
@@ -304,77 +410,273 @@ const CourseManagement: React.FC = () => {
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 3, background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)', color: 'white' }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <SchoolIcon sx={{ fontSize: 40 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {courses.filter(c => c.status === 'published').length}
-                  </Typography>
+            <Card
+              sx={{
+                height: '100%',
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+                color: 'white',
+                boxShadow: '0 8px 24px rgba(33, 150, 243, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(33, 150, 243, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <SchoolIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
+                    >
+                      Đã xuất bản
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {courses.filter((c) => c.status === 'published').length}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="subtitle1">Đã xuất bản</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 3, background: 'linear-gradient(45deg, #FF9800 30%, #FFB74D 90%)', color: 'white' }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <PendingIcon sx={{ fontSize: 40 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {courses.filter(c => c.status === 'draft').length}
-                  </Typography>
+            <Card
+              sx={{
+                height: '100%',
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)',
+                color: 'white',
+                boxShadow: '0 8px 24px rgba(255, 152, 0, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(255, 152, 0, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <PendingIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
+                    >
+                      Bản nháp
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {courses.filter((c) => c.status === 'draft').length}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="subtitle1">Bản nháp</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 3, background: 'linear-gradient(45deg, #4CAF50 30%, #81C784 90%)', color: 'white' }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <PersonIcon sx={{ fontSize: 40 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {courses.length > 0 ? new Set(courses.map(c => c.createdBy?._id).filter(Boolean)).size : 0}
-                  </Typography>
+            <Card
+              sx={{
+                height: '100%',
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+                color: 'white',
+                boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <PersonIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
+                    >
+                      Giảng viên
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {courses.length > 0
+                        ? new Set(courses.map((c) => c.createdBy?._id).filter(Boolean)).size
+                        : 0}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="subtitle1">Giảng viên</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 3, background: 'linear-gradient(45deg, #9C27B0 30%, #BA68C8 90%)', color: 'white' }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <CalendarIcon sx={{ fontSize: 40 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {courses.length}
-                  </Typography>
+            <Card
+              sx={{
+                height: '100%',
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%)',
+                color: 'white',
+                boxShadow: '0 8px 24px rgba(156, 39, 176, 0.3)',
+                border: 'none',
+                position: 'relative',
+                transform: 'translateZ(0)',
+                willChange: 'auto',
+                '&:hover': {
+                  boxShadow: '0 8px 24px rgba(156, 39, 176, 0.3)',
+                  transform: 'translateZ(0)',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <CalendarIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
+                    >
+                      Tổng khóa học
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {courses.length}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="subtitle1">Tổng khóa học</Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
         {/* Filters */}
-        <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: 3,
+            background: cardBackground,
+            border: `1px solid ${surfaceBorder}`,
+          }}
+        >
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <TextField
               placeholder="Tìm kiếm khóa học..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                startAdornment: <SearchIcon sx={{ mr: 1, color: secondaryTextColor }} />,
               }}
-              sx={{ minWidth: 300 }}
+              sx={{
+                minWidth: 300,
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: surfaceBorder,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#EF5B5B',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#EF5B5B',
+                  },
+                },
+              }}
             />
             <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>Trạng thái</InputLabel>
+              <InputLabel sx={{ color: primaryTextColor }}>Trạng thái</InputLabel>
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 label="Trạng thái"
+                sx={{
+                  color: primaryTextColor,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: surfaceBorder,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#EF5B5B',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#EF5B5B',
+                  },
+                }}
               >
                 <MenuItem value="">Tất cả</MenuItem>
                 <MenuItem value="published">Đã xuất bản</MenuItem>
@@ -385,7 +687,15 @@ const CourseManagement: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<FilterIcon />}
-              onClick={fetchCourses}
+              onClick={() => fetchCourses(false)}
+              sx={{
+                borderColor: surfaceBorder,
+                color: primaryTextColor,
+                '&:hover': {
+                  borderColor: '#EF5B5B',
+                  bgcolor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                },
+              }}
             >
               Lọc
             </Button>
@@ -393,57 +703,102 @@ const CourseManagement: React.FC = () => {
         </Paper>
 
         {/* Courses Table */}
-        <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            overflow: 'hidden',
+            background: cardBackground,
+            border: `1px solid ${surfaceBorder}`,
+          }}
+        >
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Khóa học</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Giảng viên</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Trạng thái</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Ngày tạo</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Thao tác</TableCell>
+                <TableRow
+                  sx={{
+                    backgroundColor: darkMode
+                      ? 'rgba(148, 163, 184, 0.1)'
+                      : 'rgba(239, 91, 91, 0.05)',
+                  }}
+                >
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Khóa học</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Giảng viên
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Trạng thái
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Ngày tạo</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Thao tác</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {courses.length > 0 ? (
                   courses.map((course) => (
-                    <TableRow key={course._id} hover>
+                    <TableRow
+                      key={course._id}
+                      sx={{
+                        '&:hover': {
+                          bgcolor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                        },
+                      }}
+                    >
                       <TableCell>
                         <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 600, color: primaryTextColor }}
+                          >
                             {course.title}
                           </Typography>
-                          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" sx={{ mt: 0.5, color: secondaryTextColor }}>
                             {course.description?.substring(0, 100)}...
                           </Typography>
                           {course.category && (
                             <Chip
                               label={course.category}
                               size="small"
-                              sx={{ mt: 1, mr: 1 }}
+                              sx={{
+                                mt: 1,
+                                mr: 1,
+                                bgcolor: darkMode
+                                  ? 'rgba(239, 91, 91, 0.2)'
+                                  : 'rgba(239, 91, 91, 0.1)',
+                                color: '#EF5B5B',
+                                border: `1px solid ${surfaceBorder}`,
+                              }}
                             />
                           )}
                           {course.level && (
                             <Chip
                               label={course.level}
                               size="small"
-                              color="secondary"
-                              sx={{ mt: 1 }}
+                              sx={{
+                                mt: 1,
+                                bgcolor: darkMode
+                                  ? 'rgba(156, 39, 176, 0.2)'
+                                  : 'rgba(156, 39, 176, 0.1)',
+                                color: '#9C27B0',
+                                border: `1px solid ${surfaceBorder}`,
+                              }}
                             />
                           )}
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
+                          <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: '#EF5B5B' }}>
                             {course.createdBy?.name?.[0] || '?'}
                           </Avatar>
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 600, color: primaryTextColor }}
+                            >
                               {course.createdBy?.name || 'Unknown'}
                             </Typography>
-                            <Typography variant="caption" color="textSecondary">
+                            <Typography variant="caption" sx={{ color: secondaryTextColor }}>
                               {course.createdBy?.email || 'No email'}
                             </Typography>
                           </Box>
@@ -455,10 +810,16 @@ const CourseManagement: React.FC = () => {
                           label={getStatusText(course.status)}
                           color={getStatusColor(course.status) as any}
                           size="small"
+                          sx={{
+                            color: 'white',
+                            '& .MuiChip-icon': {
+                              color: 'white',
+                            },
+                          }}
                         />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">
+                        <Typography variant="body2" sx={{ color: primaryTextColor }}>
                           {formatDate(course.createdAt)}
                         </Typography>
                       </TableCell>
@@ -466,6 +827,14 @@ const CourseManagement: React.FC = () => {
                         <IconButton
                           onClick={(e) => handleMenuOpen(e, course)}
                           size="small"
+                          sx={{
+                            color: primaryTextColor,
+                            '&:hover': {
+                              bgcolor: darkMode
+                                ? 'rgba(239, 91, 91, 0.2)'
+                                : 'rgba(239, 91, 91, 0.1)',
+                            },
+                          }}
                         >
                           <MoreVertIcon />
                         </IconButton>
@@ -475,7 +844,7 @@ const CourseManagement: React.FC = () => {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body1" color="textSecondary">
+                      <Typography variant="body1" sx={{ color: secondaryTextColor }}>
                         Không có khóa học nào
                       </Typography>
                     </TableCell>
@@ -527,18 +896,19 @@ const CourseManagement: React.FC = () => {
         </Dialog>
 
         {/* Action Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
           <MenuItem onClick={() => handleStatusClick(actionCourse!)}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Thay đổi trạng thái</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { setDetailOpen(true); handleMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              setDetailOpen(true);
+              handleMenuClose();
+            }}
+          >
             <ListItemIcon>
               <ViewIcon fontSize="small" />
             </ListItemIcon>
@@ -552,27 +922,44 @@ const CourseManagement: React.FC = () => {
           <DialogContent dividers>
             {actionCourse ? (
               <Box>
-                <Typography variant="h6" sx={{ mb: 1 }}>{actionCourse.title}</Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>{actionCourse.description}</Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  {actionCourse.title}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  {actionCourse.description}
+                </Typography>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Trạng thái</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Trạng thái
+                    </Typography>
                     <Typography variant="body2">{actionCourse.status}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Giảng viên</Typography>
-                    <Typography variant="body2">{actionCourse.createdBy?.name || 'Unknown'} ({actionCourse.createdBy?.email || 'N/A'})</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Giảng viên
+                    </Typography>
+                    <Typography variant="body2">
+                      {actionCourse.createdBy?.name || 'Unknown'} (
+                      {actionCourse.createdBy?.email || 'N/A'})
+                    </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Danh mục</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Danh mục
+                    </Typography>
                     <Typography variant="body2">{actionCourse.category || '—'}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Cấp độ</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Cấp độ
+                    </Typography>
                     <Typography variant="body2">{actionCourse.level || '—'}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Tạo lúc</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Tạo lúc
+                    </Typography>
                     <Typography variant="body2">{formatDate(actionCourse.createdAt)}</Typography>
                   </Box>
                 </Box>

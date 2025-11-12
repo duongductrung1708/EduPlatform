@@ -17,6 +17,21 @@ export class UpdateUserDto {
   @IsString()
   avatarUrl?: string;
 
+  @ApiProperty({ example: '0123456789', required: false })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiProperty({ example: '123 Main Street', required: false })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({ example: 'Nam', required: false, enum: ['Nam', 'Nữ', 'Khác'] })
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
   @ApiProperty({ example: true, required: false })
   @IsOptional()
   @IsBoolean()
@@ -51,6 +66,15 @@ export class UserResponseDto {
 
   @ApiProperty()
   organization?: string;
+
+  @ApiProperty()
+  phone?: string;
+
+  @ApiProperty()
+  address?: string;
+
+  @ApiProperty()
+  gender?: string;
 
   @ApiProperty()
   verified!: boolean;

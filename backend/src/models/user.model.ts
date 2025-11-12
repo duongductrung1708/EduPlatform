@@ -11,6 +11,9 @@ export interface IUser {
   role: 'admin' | 'teacher' | 'student' | 'parent' | 'guest';
   avatarUrl?: string;
   organization?: string;
+  phone?: string;
+  address?: string;
+  gender?: string;
   verified: boolean;
   lastLoginAt?: Date;
   settings?: {
@@ -41,6 +44,15 @@ export class User {
 
   @Prop()
   organization?: string;
+
+  @Prop()
+  phone?: string;
+
+  @Prop()
+  address?: string;
+
+  @Prop()
+  gender?: string;
 
   @Prop({ default: false })
   verified!: boolean;

@@ -32,7 +32,6 @@ import {
   Notifications as NotificationsIcon,
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
-  Analytics as AnalyticsIcon,
   Storage as StorageIcon,
   Security as SecurityIcon,
   Brightness4 as DarkModeIcon,
@@ -54,13 +53,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin' },
-    { text: 'Analytics', icon: <AnalyticsIcon />, path: '/admin/analytics' },
     { text: 'Users', icon: <PeopleIcon />, path: '/admin/users' },
     { text: 'Courses', icon: <SchoolIcon />, path: '/admin/courses' },
     { text: 'Classrooms', icon: <ClassIcon />, path: '/admin/classrooms' },
@@ -103,9 +101,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* User Info */}
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-            {user?.name?.charAt(0) || 'A'}
-          </Avatar>
+          <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>{user?.name?.charAt(0) || 'A'}</Avatar>
           <Box>
             <Typography variant="subtitle2" fontWeight="medium">
               {user?.name || 'Admin User'}
@@ -131,50 +127,78 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </Box>
 
       {/* Navigation Menu */}
-      <List sx={{ px: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => {
-                navigate(item.path);
-                if (isMobile) setMobileOpen(false);
-              }}
-              sx={{
-                borderRadius: 2,
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'primary.contrastText',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: 'primary.contrastText',
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: 'action.hover',
-                },
-              }}
-            >
-              <ListItemIcon
+      <List sx={{ px: 2, py: 1 }}>
+        {menuItems.map((item) => {
+          const isSelected =
+            location.pathname === item.path ||
+            (item.path === '/admin' && location.pathname === '/dashboard') ||
+            (item.path !== '/admin' && location.pathname.startsWith(item.path));
+
+          return (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton
+                selected={isSelected}
+                onClick={() => {
+                  navigate(item.path);
+                  if (isMobile) setMobileOpen(false);
+                }}
                 sx={{
-                  minWidth: 40,
-                  color: location.pathname === item.path ? 'primary.contrastText' : 'inherit',
+                  borderRadius: 3,
+                  py: 1.5,
+                  px: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(239, 91, 91, 0.1)',
+                    '& .MuiListItemIcon-root': {
+                      color: '#EF5B5B',
+                      transform: 'scale(1.1)',
+                    },
+                    '& .MuiListItemText-primary': {
+                      color: '#EF5B5B',
+                      fontWeight: 600,
+                    },
+                  },
+                  '&.Mui-selected': {
+                    background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(239, 91, 91, 0.3)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+                      boxShadow: '0 6px 20px rgba(239, 91, 91, 0.4)',
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'white',
+                      transform: 'scale(1.1)',
+                    },
+                    '& .MuiListItemText-primary': {
+                      color: 'white',
+                      fontWeight: 600,
+                    },
+                  },
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: location.pathname === item.path ? 'medium' : 'normal',
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
+                <ListItemIcon
+                  sx={{
+                    minWidth: 44,
+                    transition: 'all 0.3s ease',
+                    color: isSelected ? 'white' : darkMode ? '#b0b0b0' : '#777777',
+                    '& svg': { fontSize: 24 },
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.text}
+                  primaryTypographyProps={{
+                    fontSize: '0.95rem',
+                    fontWeight: isSelected ? 600 : 400,
+                    color: isSelected ? 'white' : 'inherit',
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );
@@ -204,9 +228,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          
+
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
 
           {/* Notifications */}
@@ -242,13 +266,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+            <MenuItem
+              onClick={() => {
+                navigate('/profile');
+                handleMenuClose();
+              }}
+            >
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
               Profile
             </MenuItem>
-            <MenuItem onClick={() => { navigate('/admin/settings'); handleMenuClose(); }}>
+            <MenuItem
+              onClick={() => {
+                navigate('/admin/settings');
+                handleMenuClose();
+              }}
+            >
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
               </ListItemIcon>
@@ -265,10 +299,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </AppBar>
 
       {/* Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-      >
+      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -278,8 +309,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           }}
           sx={{
             display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
               width: drawerWidth,
               backgroundColor: 'background.paper',
             },
@@ -291,8 +322,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           variant="permanent"
           sx={{
             display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
               width: drawerWidth,
               backgroundColor: 'background.paper',
               borderRight: 1,

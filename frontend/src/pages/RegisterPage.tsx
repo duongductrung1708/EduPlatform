@@ -62,7 +62,7 @@ export const RegisterPage: React.FC = () => {
       const result = await register(email, name, password, role);
       
       // Check if registration requires OTP verification
-      if (result.requiresVerification) {
+      if (result && result.requiresVerification) {
         setRegistrationSuccess(true);
         setOtpDialogOpen(true);
       } else {
@@ -70,7 +70,13 @@ export const RegisterPage: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại');
+      const errorMessage = err.message || 'Đăng ký thất bại';
+      setError(errorMessage);
+      
+      // If registration failed but user was created, still show OTP dialog
+      if (errorMessage.includes('gửi email') || errorMessage.includes('xác thực')) {
+        setOtpDialogOpen(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -269,12 +275,14 @@ export const RegisterPage: React.FC = () => {
       </Container>
 
       {/* OTP Verification Dialog */}
-      <OtpVerificationDialog
-        open={otpDialogOpen}
-        onClose={handleOtpDialogClose}
-        email={email}
-        onVerificationSuccess={handleOtpVerificationSuccess}
-      />
+      {otpDialogOpen && (
+        <OtpVerificationDialog
+          open={otpDialogOpen}
+          onClose={handleOtpDialogClose}
+          email={email}
+          onVerificationSuccess={handleOtpVerificationSuccess}
+        />
+      )}
     </Box>
   );
 };

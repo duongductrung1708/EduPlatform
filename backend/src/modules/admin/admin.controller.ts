@@ -66,8 +66,11 @@ export class AdminController {
       },
     },
   })
-  async getDashboardStats(@CurrentUser() user: User): Promise<DashboardStats> {
-    return this.adminService.getDashboardStats();
+  async getDashboardStats(
+    @CurrentUser() user: User,
+    @Query('period') period?: string,
+  ): Promise<DashboardStats> {
+    return this.adminService.getDashboardStats(period || '30days');
   }
 
   @Get('dashboard/activity')
