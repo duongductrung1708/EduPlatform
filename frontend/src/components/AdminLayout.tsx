@@ -58,14 +58,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin' },
-    { text: 'Users', icon: <PeopleIcon />, path: '/admin/users' },
-    { text: 'Courses', icon: <SchoolIcon />, path: '/admin/courses' },
-    { text: 'Classrooms', icon: <ClassIcon />, path: '/admin/classrooms' },
-    { text: 'Assignments', icon: <AssignmentIcon />, path: '/admin/assignments' },
-    { text: 'Storage', icon: <StorageIcon />, path: '/admin/storage' },
-    { text: 'Security', icon: <SecurityIcon />, path: '/admin/security' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
+    { text: 'Bảng điều khiển', icon: <DashboardIcon />, path: '/admin' },
+    { text: 'Người dùng', icon: <PeopleIcon />, path: '/admin/users' },
+    { text: 'Khóa học', icon: <SchoolIcon />, path: '/admin/courses' },
+    { text: 'Lớp học', icon: <ClassIcon />, path: '/admin/classrooms' },
+    { text: 'Bài tập', icon: <AssignmentIcon />, path: '/admin/assignments' },
+    { text: 'Lưu trữ', icon: <StorageIcon />, path: '/admin/storage' },
+    { text: 'Bảo mật', icon: <SecurityIcon />, path: '/admin/security' },
+    { text: 'Cài đặt', icon: <SettingsIcon />, path: '/admin/settings' },
   ];
 
   const handleDrawerToggle = () => {
@@ -94,7 +94,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           EduLearn
         </Typography>
         <Typography variant="caption" color="textSecondary">
-          Admin Panel
+          Bảng quản trị
         </Typography>
       </Box>
 
@@ -121,7 +121,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               size="small"
             />
           }
-          label="Dark Mode"
+          label="Chế độ tối"
           sx={{ ml: 0 }}
         />
       </Box>
@@ -230,7 +230,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </IconButton>
 
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find((item) => item.path === location.pathname)?.text || 'Bảng điều khiển'}
           </Typography>
 
           {/* Notifications */}
@@ -275,7 +275,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
-              Profile
+              Hồ sơ
             </MenuItem>
             <MenuItem
               onClick={() => {
@@ -286,13 +286,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
               </ListItemIcon>
-              Settings
+              Cài đặt
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
-              Logout
+              Đăng xuất
             </MenuItem>
           </Menu>
         </Toolbar>

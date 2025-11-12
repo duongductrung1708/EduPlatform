@@ -15,11 +15,14 @@ import {
   CircularProgress,
   Paper,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../api/client';
 
 const CreateUserPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,9 +93,32 @@ const CreateUserPage: React.FC = () => {
   return (
     <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
       <Paper sx={{ p: 3, borderRadius: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
-          Tạo Tài Khoản Mới
-        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+            Tạo Tài Khoản Mới
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/admin/users')}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Quay lại quản lý người dùng
+          </Button>
+        </Box>
 
         {success && (
           <Alert severity="success" sx={{ mb: 3 }}>

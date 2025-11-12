@@ -106,6 +106,12 @@ const CourseManagement: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [teachers, setTeachers] = useState<Array<{ _id: string; name: string; email: string }>>([]);
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    publishedCourses: 0,
+    draftCourses: 0,
+    totalTeachers: 0,
+  });
   const [form, setForm] = useState({
     title: '',
     slug: '',
@@ -141,6 +147,7 @@ const CourseManagement: React.FC = () => {
   // Initial load
   useEffect(() => {
     fetchCourses(true);
+    fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -211,6 +218,15 @@ const CourseManagement: React.FC = () => {
       setLoading(false);
       setIsFetching(false);
       setInitialized(true);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await adminApi.getCourseStats();
+      setStats(response);
+    } catch (error) {
+      console.error('Error fetching course stats:', error);
     }
   };
 
@@ -455,7 +471,7 @@ const CourseManagement: React.FC = () => {
                       component="div"
                       sx={{ fontWeight: 700, color: 'white' }}
                     >
-                      {courses.filter((c) => c.status === 'published').length}
+                      {stats.publishedCourses}
                     </Typography>
                   </Box>
                 </Box>
@@ -508,7 +524,7 @@ const CourseManagement: React.FC = () => {
                       component="div"
                       sx={{ fontWeight: 700, color: 'white' }}
                     >
-                      {courses.filter((c) => c.status === 'draft').length}
+                      {stats.draftCourses}
                     </Typography>
                   </Box>
                 </Box>
@@ -561,9 +577,7 @@ const CourseManagement: React.FC = () => {
                       component="div"
                       sx={{ fontWeight: 700, color: 'white' }}
                     >
-                      {courses.length > 0
-                        ? new Set(courses.map((c) => c.createdBy?._id).filter(Boolean)).size
-                        : 0}
+                      {stats.totalTeachers}
                     </Typography>
                   </Box>
                 </Box>
@@ -616,7 +630,7 @@ const CourseManagement: React.FC = () => {
                       component="div"
                       sx={{ fontWeight: 700, color: 'white' }}
                     >
-                      {courses.length}
+                      {stats.totalCourses}
                     </Typography>
                   </Box>
                 </Box>

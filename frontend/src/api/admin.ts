@@ -153,6 +153,16 @@ export const adminApi = {
     return response.data;
   },
 
+  getUserStats: async () => {
+    const response = await apiClient.get('/api/admin/users/stats');
+    return response.data;
+  },
+
+  getCourseStats: async () => {
+    const response = await apiClient.get('/api/admin/courses/stats');
+    return response.data;
+  },
+
   // Analytics
   getAnalyticsData: async () => {
     const response = await apiClient.get('/api/admin/analytics');

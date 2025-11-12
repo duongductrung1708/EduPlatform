@@ -148,6 +148,12 @@ export class AdminController {
     );
   }
 
+  @Get('users/stats')
+  @ApiOperation({ summary: 'Lấy thống kê người dùng' })
+  async getUserStats(@CurrentUser() user: User) {
+    return this.adminService.getUserStats();
+  }
+
   @Get('users/:id')
   @ApiOperation({ summary: 'Lấy thông tin chi tiết người dùng' })
   async getUserById(@CurrentUser() user: User, @Param('id') id: string) {
@@ -258,6 +264,12 @@ export class AdminController {
   @ApiOperation({ summary: 'Lấy thống kê lớp học' })
   async getClassroomStats(@CurrentUser() user: User) {
     return this.adminService.getClassroomStats();
+  }
+
+  @Get('courses/stats')
+  @ApiOperation({ summary: 'Lấy thống kê khóa học' })
+  async getCourseStats(@CurrentUser() user: User) {
+    return this.adminService.getCourseStats();
   }
 
   @Get('analytics')

@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const items = [
-  { to: '/admin', icon: <Dashboard />, label: 'Dashboard' },
+  { to: '/admin', icon: <Dashboard />, label: 'Bảng điều khiển' },
   { to: '/admin/users', icon: <People />, label: 'Người dùng' },
   { to: '/admin/courses', icon: <School />, label: 'Khóa học' },
   { to: '/admin/classrooms', icon: <Class />, label: 'Lớp học' },

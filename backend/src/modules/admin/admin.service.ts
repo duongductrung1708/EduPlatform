@@ -1102,6 +1102,69 @@ export class AdminService {
     }
   }
 
+  async getUserStats() {
+    try {
+      const [totalUsers, activeUsers, usersByRole] = await Promise.all([
+        this.userModel.countDocuments(),
+        this.userModel.countDocuments({ status: 'active' }),
+        this.userModel.aggregate([
+          {
+            $group: {
+              _id: '$role',
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+      ]);
+
+      const roleStats = {
+        admin: 0,
+        teacher: 0,
+        student: 0,
+        parent: 0,
+      };
+
+      usersByRole.forEach((role) => {
+        if (roleStats.hasOwnProperty(role._id)) {
+          roleStats[role._id as keyof typeof roleStats] = role.count;
+        }
+      });
+
+      return {
+        totalUsers,
+        activeUsers,
+        teachers: roleStats.teacher,
+        students: roleStats.student,
+        admins: roleStats.admin,
+        parents: roleStats.parent,
+      };
+    } catch (error) {
+      console.error('Error in getUserStats:', error);
+      throw new Error('Không thể lấy thống kê người dùng');
+    }
+  }
+
+  async getCourseStats() {
+    try {
+      const [totalCourses, publishedCourses, draftCourses, totalTeachers] = await Promise.all([
+        this.courseModel.countDocuments(),
+        this.courseModel.countDocuments({ status: 'published' }),
+        this.courseModel.countDocuments({ status: 'draft' }),
+        this.courseModel.distinct('createdBy').then(ids => ids.length),
+      ]);
+
+      return {
+        totalCourses,
+        publishedCourses,
+        draftCourses,
+        totalTeachers,
+      };
+    } catch (error) {
+      console.error('Error in getCourseStats:', error);
+      throw new Error('Không thể lấy thống kê khóa học');
+    }
+  }
+
   // Analytics Methods
   async getAnalyticsData() {
     try {
