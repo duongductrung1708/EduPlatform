@@ -38,7 +38,7 @@ const CreateUserPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -46,7 +46,7 @@ const CreateUserPage: React.FC = () => {
 
   const handleSelectChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -60,8 +60,10 @@ const CreateUserPage: React.FC = () => {
 
     try {
       const response = await apiClient.post('/api/auth/register', formData);
-      setSuccess(`✅ Tạo tài khoản thành công! Email: ${formData.email}, Password: ${formData.password}`);
-      
+      setSuccess(
+        `✅ Tạo tài khoản thành công! Email: ${formData.email}, Password: ${formData.password}`,
+      );
+
       // Reset form
       setFormData({
         name: '',
@@ -256,9 +258,12 @@ const CreateUserPage: React.FC = () => {
             📋 Tài khoản mẫu để test:
           </Typography>
           <Typography variant="body2" component="div">
-            <strong>Giáo viên:</strong> teacher1@example.com / password123<br />
-            <strong>Học sinh:</strong> student1@example.com / password123<br />
-            <strong>Phụ huynh:</strong> parent1@example.com / password123<br />
+            <strong>Giáo viên:</strong> teacher1@example.com / password123
+            <br />
+            <strong>Học sinh:</strong> student1@example.com / password123
+            <br />
+            <strong>Phụ huynh:</strong> parent1@example.com / password123
+            <br />
             <strong>Admin:</strong> admin@example.com / password123
           </Typography>
         </Box>

@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
   Pagination,
   Alert,
   Tooltip,
@@ -37,17 +38,20 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   MoreVert as MoreVertIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  Block as BlockIcon,
-  CheckCircle as CheckCircleIcon,
   Person as PersonIcon,
   Add as AddIcon,
   People as PeopleIcon,
   School as SchoolIcon,
   AdminPanelSettings as AdminIcon,
   FamilyRestroom as ParentIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  LocationOn as LocationIcon,
+  CalendarToday as CalendarIcon,
+  AccessTime as AccessTimeIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../api/admin';
@@ -61,10 +65,14 @@ interface User {
   name: string;
   email: string;
   role: string;
-  status: string;
   createdAt: string;
   lastLoginAt?: string;
   avatar?: string;
+  phone?: string;
+  address?: string;
+  gender?: string;
+  organization?: string;
+  verified?: boolean;
 }
 
 interface UserListResponse {
@@ -90,12 +98,14 @@ const UserManagement: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [actionUser, setActionUser] = useState<User | null>(null);
-  const [newStatus, setNewStatus] = useState<string>('');
-  const [updating, setUpdating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [userDetails, setUserDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -145,8 +155,13 @@ const UserManagement: React.FC = () => {
         setIsFetching(true);
       }
       setError(null);
-      
-      const response = await adminApi.getAllUsers(page, 10, roleFilter || undefined, searchTerm || undefined);
+
+      const response = await adminApi.getAllUsers(
+        page,
+        10,
+        roleFilter || undefined,
+        searchTerm || undefined,
+      );
       setUsers(response.users);
       setTotalPages(response.pagination.pages);
     } catch (error) {
@@ -192,42 +207,43 @@ const UserManagement: React.FC = () => {
     setActionUser(null);
   };
 
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setNewStatus(user.status || 'active');
-    setEditDialogOpen(true);
+  const handleViewUser = async (user: User) => {
+    setViewingUser(user);
+    setViewDialogOpen(true);
+    setLoadingDetails(true);
     handleMenuClose();
-  };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedUser || !newStatus) return;
-    
-    setUpdating(true);
     try {
-      await adminApi.updateUser(selectedUser._id, { status: newStatus });
-      setEditDialogOpen(false);
-      setSelectedUser(null);
-      setNewStatus('');
-      fetchUsers(false);
-      fetchStats();
+      const details = await adminApi.getUserById(user._id);
+      setUserDetails(details);
     } catch (error) {
-      console.error('Error updating user status:', error);
-      setError('Không thể cập nhật trạng thái người dùng');
+      console.error('Error fetching user details:', error);
+      setError('Không thể tải thông tin chi tiết người dùng');
     } finally {
-      setUpdating(false);
+      setLoadingDetails(false);
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa người dùng ${user.name}?`)) {
-      try {
-        await adminApi.deleteUser(user._id);
-        fetchUsers();
-        handleMenuClose();
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        setError('Không thể xóa người dùng');
-      }
+  const handleOpenDeleteDialog = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await adminApi.deleteUser(userToDelete._id);
+      fetchUsers();
+      handleCloseDeleteDialog();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      setError('Không thể xóa người dùng');
     }
   };
 
@@ -240,19 +256,6 @@ const UserManagement: React.FC = () => {
       case 'student':
         return 'success';
       case 'parent':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'success';
-      case 'inactive':
-        return 'error';
-      case 'pending':
         return 'warning';
       default:
         return 'default';
@@ -274,19 +277,6 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Hoạt động';
-      case 'inactive':
-        return 'Tạm dừng';
-      case 'pending':
-        return 'Chờ duyệt';
-      default:
-        return status;
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
@@ -295,7 +285,9 @@ const UserManagement: React.FC = () => {
     return (
       <AdminLayout>
         <Box sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box
+            sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}
+          >
             <Box>
               {darkMode ? (
                 <DarkShimmerBox height="40px" width="300px" borderRadius="4px" />
@@ -736,12 +728,15 @@ const UserManagement: React.FC = () => {
                       : 'rgba(239, 91, 91, 0.05)',
                   }}
                 >
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Người dùng</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Người dùng
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Email</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Vai trò</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Trạng thái</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Ngày tạo</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Đăng nhập cuối</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Đăng nhập cuối
+                  </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
                     Thao tác
                   </TableCell>
@@ -771,7 +766,10 @@ const UserManagement: React.FC = () => {
                           )}
                         </Avatar>
                         <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 600, color: primaryTextColor }}
+                          >
                             {user.name}
                           </Typography>
                           <Typography variant="caption" sx={{ color: secondaryTextColor }}>
@@ -798,25 +796,6 @@ const UserManagement: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={getStatusLabel(user.status || 'active')}
-                        color={getStatusColor(user.status || 'active') as any}
-                        size="small"
-                        icon={
-                          user.status === 'active' ? (
-                            <CheckCircleIcon sx={{ color: 'white !important' }} />
-                          ) : (
-                            <BlockIcon sx={{ color: 'white !important' }} />
-                          )
-                        }
-                        sx={{
-                          '& .MuiChip-label': {
-                            color: 'white',
-                          },
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
                       <Typography variant="body2" sx={{ color: primaryTextColor }}>
                         {formatDate(user.createdAt)}
                       </Typography>
@@ -835,7 +814,9 @@ const UserManagement: React.FC = () => {
                             color: secondaryTextColor,
                             '&:hover': {
                               color: '#EF5B5B',
-                              backgroundColor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                              backgroundColor: darkMode
+                                ? 'rgba(239, 91, 91, 0.1)'
+                                : 'rgba(239, 91, 91, 0.05)',
                             },
                           }}
                         >
@@ -863,18 +844,14 @@ const UserManagement: React.FC = () => {
         </Paper>
 
         {/* Action Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <MenuItem onClick={() => actionUser && handleEditUser(actionUser)}>
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+          <MenuItem onClick={() => actionUser && handleViewUser(actionUser)}>
             <ListItemIcon>
-              <EditIcon fontSize="small" />
+              <ViewIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Chỉnh sửa</ListItemText>
+            <ListItemText>Xem chi tiết</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => actionUser && handleDeleteUser(actionUser)}>
+          <MenuItem onClick={() => actionUser && handleOpenDeleteDialog(actionUser)}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" />
             </ListItemIcon>
@@ -882,8 +859,13 @@ const UserManagement: React.FC = () => {
           </MenuItem>
         </Menu>
 
-        {/* Edit User Dialog */}
-        <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        {/* View User Details Dialog */}
+        <Dialog
+          open={viewDialogOpen}
+          onClose={() => setViewDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
           <DialogTitle
             sx={{
               background: darkMode
@@ -895,49 +877,298 @@ const UserManagement: React.FC = () => {
               fontWeight: 700,
             }}
           >
-            Chỉnh sửa trạng thái người dùng
+            Chi tiết người dùng
           </DialogTitle>
           <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 2, color: secondaryTextColor }}>
-                Người dùng: <strong style={{ color: primaryTextColor }}>{selectedUser?.name}</strong>
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 3, color: secondaryTextColor }}>
-                Email: <strong style={{ color: primaryTextColor }}>{selectedUser?.email}</strong>
-              </Typography>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: primaryTextColor }}>Trạng thái</InputLabel>
-                <Select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  label="Trạng thái"
+            {loadingDetails ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: 200,
+                }}
+              >
+                {darkMode ? (
+                  <DarkShimmerBox height="200px" width="100%" borderRadius="8px" />
+                ) : (
+                  <ShimmerBox height="200px" width="100%" borderRadius="8px" />
+                )}
+              </Box>
+            ) : userDetails ? (
+              <Box sx={{ mt: 2 }}>
+                <Box
                   sx={{
-                    color: primaryTextColor,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: surfaceBorder,
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#EF5B5B',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#EF5B5B',
-                    },
+                    display: 'flex',
+                    alignItems: 'center',
+                    mb: 3,
+                    pb: 3,
+                    borderBottom: `1px solid ${surfaceBorder}`,
                   }}
                 >
-                  <MenuItem value="active">Hoạt động</MenuItem>
-                  <MenuItem value="inactive">Tạm dừng</MenuItem>
-                  <MenuItem value="pending">Chờ duyệt</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
+                  <Avatar
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      bgcolor: '#EF5B5B',
+                      mr: 3,
+                    }}
+                  >
+                    {userDetails.avatarUrl ? (
+                      <img
+                        src={userDetails.avatarUrl}
+                        alt={userDetails.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <PersonIcon sx={{ fontSize: 40, color: 'white' }} />
+                    )}
+                  </Avatar>
+                  <Box>
+                    <Typography
+                      variant="h5"
+                      sx={{ fontWeight: 700, color: primaryTextColor, mb: 1 }}
+                    >
+                      {userDetails.name}
+                    </Typography>
+                    <Chip
+                      label={getRoleLabel(userDetails.role)}
+                      color={getRoleColor(userDetails.role) as any}
+                      size="small"
+                      sx={{
+                        '& .MuiChip-label': {
+                          color: 'white',
+                        },
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <EmailIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: secondaryTextColor, display: 'block' }}
+                        >
+                          Email
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ color: primaryTextColor, fontWeight: 500 }}
+                        >
+                          {userDetails.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {userDetails.phone && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <PhoneIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: secondaryTextColor, display: 'block' }}
+                          >
+                            Số điện thoại
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: primaryTextColor, fontWeight: 500 }}
+                          >
+                            {userDetails.phone}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {userDetails.address && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                        <LocationIcon sx={{ mr: 2, color: '#EF5B5B', mt: 0.5 }} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: secondaryTextColor, display: 'block' }}
+                          >
+                            Địa chỉ
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: primaryTextColor, fontWeight: 500 }}
+                          >
+                            {userDetails.address}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {userDetails.gender && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <PersonIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: secondaryTextColor, display: 'block' }}
+                          >
+                            Giới tính
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: primaryTextColor, fontWeight: 500 }}
+                          >
+                            {userDetails.gender === 'male'
+                              ? 'Nam'
+                              : userDetails.gender === 'female'
+                                ? 'Nữ'
+                                : 'Khác'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {userDetails.organization && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <SchoolIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: secondaryTextColor, display: 'block' }}
+                          >
+                            Tổ chức
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: primaryTextColor, fontWeight: 500 }}
+                          >
+                            {userDetails.organization}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CalendarIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: secondaryTextColor, display: 'block' }}
+                        >
+                          Ngày tạo
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ color: primaryTextColor, fontWeight: 500 }}
+                        >
+                          {formatDate(userDetails.createdAt)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {userDetails.lastLoginAt && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <AccessTimeIcon sx={{ mr: 2, color: '#EF5B5B' }} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: secondaryTextColor, display: 'block' }}
+                          >
+                            Đăng nhập cuối
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: primaryTextColor, fontWeight: 500 }}
+                          >
+                            {formatDate(userDetails.lastLoginAt)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CheckCircleIcon
+                        sx={{ mr: 2, color: userDetails.verified ? '#4CAF50' : '#EF5B5B' }}
+                      />
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: secondaryTextColor, display: 'block' }}
+                        >
+                          Xác thực tài khoản
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ color: primaryTextColor, fontWeight: 500 }}
+                        >
+                          {userDetails.verified ? 'Đã xác thực' : 'Chưa xác thực'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            ) : null}
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              onClick={() => {
+                setViewDialogOpen(false);
+                setViewingUser(null);
+                setUserDetails(null);
+              }}
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+                },
+              }}
+            >
+              Đóng
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirm Dialog */}
+        <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
+          <DialogTitle
+            sx={{
+              background: darkMode
+                ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+                : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 700,
+            }}
+          >
+            Xác nhận xóa người dùng
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ color: secondaryTextColor }}>
+              Bạn có chắc chắn muốn xóa người dùng{' '}
+              <strong style={{ color: primaryTextColor }}>{userToDelete?.name}</strong>? Hành động
+              này không thể hoàn tác.
+            </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ p: 2, gap: 1 }}>
             <Button
-              onClick={() => {
-                setEditDialogOpen(false);
-                setSelectedUser(null);
-                setNewStatus('');
-              }}
+              onClick={handleCloseDeleteDialog}
               sx={{
                 color: secondaryTextColor,
                 '&:hover': {
@@ -948,20 +1179,16 @@ const UserManagement: React.FC = () => {
               Hủy
             </Button>
             <Button
-              onClick={handleUpdateStatus}
-              disabled={updating || !newStatus || newStatus === selectedUser?.status}
+              onClick={handleDeleteUser}
               variant="contained"
               sx={{
                 background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
                 '&:hover': {
                   background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
                 },
-                '&:disabled': {
-                  background: darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(239, 91, 91, 0.3)',
-                },
               }}
             >
-              {updating ? 'Đang cập nhật...' : 'Cập nhật'}
+              Xóa
             </Button>
           </DialogActions>
         </Dialog>

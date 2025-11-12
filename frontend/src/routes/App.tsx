@@ -9,6 +9,9 @@ import UserManagement from '../pages/UserManagement';
 import CreateUserPage from '../pages/CreateUserPage';
 import CourseManagement from '../pages/CourseManagement';
 import ClassroomManagement from '../pages/ClassroomManagement';
+import AdminStoragePage from '../pages/AdminStoragePage';
+import AdminSecurityPage from '../pages/AdminSecurityPage';
+import AdminSettingsPage from '../pages/AdminSettingsPage';
 import TeacherLayout from '../components/TeacherLayout';
 import StudentLayout from '../components/StudentLayout';
 import TeacherOverview from '../features/teacher/pages/Overview';
@@ -343,6 +346,30 @@ export default function App() {
         element={
           <ProtectedRoute requiredRole="admin">
             <ClassroomManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/storage"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminStoragePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/security"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminSecurityPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminSettingsPage />
           </ProtectedRoute>
         }
       />

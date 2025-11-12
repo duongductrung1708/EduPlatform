@@ -20,6 +20,13 @@ import {
   useTheme as useMuiTheme,
   useMediaQuery,
   Badge,
+  Tooltip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -36,10 +43,18 @@ import {
   Security as SecurityIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSocket } from '../hooks/useSocket';
+import {
+  deleteNotification,
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../api/notifications';
 
 const drawerWidth = 280;
 
@@ -56,6 +71,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
+  const [notifications, setNotifications] = useState<
+    Array<{ id: string; text: string; ts: string; link?: string; _raw?: any; read?: boolean }>
+  >([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const { on, off, onConnect } = useSocket();
 
   const menuItems = [
     { text: 'Bảng điều khiển', icon: <DashboardIcon />, path: '/admin' },
@@ -84,6 +111,188 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     logout();
     navigate('/auth/login');
     handleMenuClose();
+  };
+
+  // Fetch notifications on mount and location change
+  React.useEffect(() => {
+    (async () => {
+      try {
+        setNotifLoading(true);
+        const res = await fetchNotifications(20);
+        setNotifications(
+          res.items.map((it) => ({
+            id: it._id,
+            text: it.title || it.body,
+            ts: new Date(it.createdAt).toLocaleTimeString(),
+            link: it.meta?.link,
+            _raw: it,
+            read: it.read,
+          })),
+        );
+        setUnreadCount(res.unread ?? 0);
+      } catch {
+      } finally {
+        setNotifLoading(false);
+      }
+    })();
+  }, [location.pathname]);
+
+  // Socket event handlers for real-time notifications
+  React.useEffect(() => {
+    const handleNotificationCreated = (data: any) => {
+      const text = data?.title || data?.body || 'Thông báo mới';
+      setNotifications((prev) =>
+        [
+          {
+            id: data?.id || crypto.randomUUID(),
+            text,
+            ts: new Date().toLocaleTimeString(),
+            link: data?.link,
+            _raw: data,
+            read: false,
+          },
+          ...prev,
+        ].slice(0, 20),
+      );
+      setUnreadCount((c) => c + 1);
+    };
+    const handleUserCreated = (data: any) => {
+      const name = data?.user?.name || 'Người dùng';
+      setNotifications((prev) =>
+        [
+          {
+            id: crypto.randomUUID(),
+            text: `${name} đã đăng ký tài khoản mới`,
+            ts: new Date().toLocaleTimeString(),
+            link: '/admin/users',
+            _raw: data,
+            read: false,
+          },
+          ...prev,
+        ].slice(0, 20),
+      );
+      setUnreadCount((c) => c + 1);
+    };
+    const handleCourseCreated = (data: any) => {
+      const title = data?.course?.title || 'Khóa học';
+      setNotifications((prev) =>
+        [
+          {
+            id: crypto.randomUUID(),
+            text: `Khóa học mới: ${title}`,
+            ts: new Date().toLocaleTimeString(),
+            link: '/admin/courses',
+            _raw: data,
+            read: false,
+          },
+          ...prev,
+        ].slice(0, 20),
+      );
+      setUnreadCount((c) => c + 1);
+    };
+    const handleClassroomCreated = (data: any) => {
+      const name = data?.classroom?.name || data?.classroom?.title || 'Lớp học';
+      setNotifications((prev) =>
+        [
+          {
+            id: crypto.randomUUID(),
+            text: `Lớp học mới: ${name}`,
+            ts: new Date().toLocaleTimeString(),
+            link: '/admin/classrooms',
+            _raw: data,
+            read: false,
+          },
+          ...prev,
+        ].slice(0, 20),
+      );
+      setUnreadCount((c) => c + 1);
+    };
+
+    onConnect(() => {
+      on('notificationCreated', handleNotificationCreated);
+      on('userCreated', handleUserCreated);
+      on('courseCreated', handleCourseCreated);
+      on('classroomCreated', handleClassroomCreated);
+    });
+    return () => {
+      off('notificationCreated', handleNotificationCreated);
+      off('userCreated', handleUserCreated);
+      off('courseCreated', handleCourseCreated);
+      off('classroomCreated', handleClassroomCreated);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNotifOpen = (e: React.MouseEvent<HTMLElement>) => setNotifAnchor(e.currentTarget);
+  const handleNotifClose = () => setNotifAnchor(null);
+
+  const handleClickNotification = async (n: { id: string; link?: string; _raw?: any }) => {
+    try {
+      if (n._raw && !n._raw.read) {
+        const res = await markNotificationRead(n.id);
+        setUnreadCount(res.unread ?? 0);
+      }
+    } catch {}
+    if (n.link) {
+      navigate(n.link);
+    }
+    setNotifAnchor(null);
+  };
+
+  const handleDeleteNotification = (nid: string) => {
+    setDeleteTargetId(nid);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    try {
+      const res = await deleteNotification(deleteTargetId);
+      setNotifications((prev) => prev.filter((p) => p.id !== deleteTargetId));
+      setUnreadCount(res.unread ?? 0);
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    } catch {
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  const handleDeleteAllNotifications = () => {
+    setDeleteAllConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    setDeletingAll(true);
+    try {
+      for (const notification of notifications) {
+        await deleteNotification(notification.id);
+      }
+      setNotifications([]);
+      setUnreadCount(0);
+      setDeleteAllConfirmOpen(false);
+    } catch {
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  const handleCancelDeleteAll = () => {
+    setDeleteAllConfirmOpen(false);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await markAllNotificationsRead();
+      setUnreadCount(res.unread ?? 0);
+      setNotifications((prev) => prev.map((p) => ({ ...p, read: true })));
+    } catch {}
   };
 
   const drawer = (
@@ -234,11 +443,32 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </Typography>
 
           {/* Notifications */}
-          <IconButton color="inherit" sx={{ mr: 1 }}>
-            <Badge badgeContent={4} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
+          <Tooltip title="Thông báo">
+            <IconButton
+              color="inherit"
+              onClick={handleNotifOpen}
+              sx={{
+                mr: 1,
+                '&:hover': {
+                  backgroundColor: 'rgba(239, 91, 91, 0.1)',
+                },
+              }}
+            >
+              <Badge
+                badgeContent={unreadCount}
+                color="error"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    backgroundColor: '#EF5B5B',
+                    color: 'white',
+                    fontWeight: 600,
+                  },
+                }}
+              >
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
           {/* User Menu */}
           <IconButton
@@ -295,6 +525,103 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               Đăng xuất
             </MenuItem>
           </Menu>
+
+          {/* Notifications Menu */}
+          <Menu
+            anchorEl={notifAnchor}
+            open={Boolean(notifAnchor)}
+            onClose={handleNotifClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{ sx: { width: 360, maxHeight: 420 } }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Thông báo
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Tooltip title="Đánh dấu tất cả là đã đọc">
+                  <IconButton size="small" onClick={handleMarkAllRead} aria-label="mark all read">
+                    <Badge color="error" variant="dot" invisible={unreadCount === 0}>
+                      <NotificationsIcon fontSize="small" />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xóa tất cả thông báo">
+                  <IconButton
+                    size="small"
+                    onClick={handleDeleteAllNotifications}
+                    aria-label="delete all notifications"
+                    disabled={notifications.length === 0}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+            <Divider />
+            {notifLoading && (
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                <CircularProgress size={20} />
+              </Box>
+            )}
+            {!notifLoading && notifications.length === 0 && (
+              <MenuItem disabled>
+                <ListItemText primary="Chưa có thông báo" />
+              </MenuItem>
+            )}
+            <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
+              {notifications.map((n) => (
+                <MenuItem
+                  key={n.id}
+                  onClick={() => handleClickNotification(n)}
+                  sx={{ alignItems: 'flex-start', gap: 1, py: 1.5, minHeight: 'auto' }}
+                  aria-label="notification item"
+                >
+                  <Box sx={{ mt: 1 }}>
+                    <Badge color="error" variant="dot" invisible={!!n.read}>
+                      <Box sx={{ width: 8, height: 8 }} />
+                    </Badge>
+                  </Box>
+                  <ListItemText
+                    primaryTypographyProps={{
+                      fontWeight: n.read ? 400 : 700,
+                      whiteSpace: 'pre-wrap',
+                      sx: { wordBreak: 'break-word' },
+                    }}
+                    primary={n.text}
+                    secondary={n.ts}
+                  />
+                  <Tooltip title="Xóa">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteNotification(n.id);
+                      }}
+                      aria-label="delete notification"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </MenuItem>
+              ))}
+            </Box>
+            <Divider />
+            <Box sx={{ px: 2, py: 1, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Nhấn vào thông báo để mở trang chi tiết
+              </Typography>
+            </Box>
+          </Menu>
         </Toolbar>
       </AppBar>
 
@@ -350,6 +677,52 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       >
         {children}
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Xóa thông báo?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Bạn có chắc muốn xóa thông báo này? Hành động không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} disabled={deleting}>
+            Hủy
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Đang xóa...' : 'Xóa'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={deleteAllConfirmOpen} onClose={handleCancelDeleteAll}>
+        <DialogTitle>Xóa tất cả thông báo?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Bạn có chắc muốn xóa tất cả thông báo? Hành động không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDeleteAll} disabled={deletingAll}>
+            Hủy
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDeleteAll}
+            disabled={deletingAll}
+          >
+            {deletingAll ? 'Đang xóa...' : 'Xóa tất cả'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

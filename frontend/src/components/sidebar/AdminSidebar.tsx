@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, List, ListItemButton, ListItemIcon, ListItemText, Toolbar } from '@mui/material';
-import { Dashboard, People, School, Class } from '@mui/icons-material';
+import { Dashboard, People, School, Class, Storage, Security, Settings } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -9,6 +9,9 @@ const items = [
   { to: '/admin/users', icon: <People />, label: 'Người dùng' },
   { to: '/admin/courses', icon: <School />, label: 'Khóa học' },
   { to: '/admin/classrooms', icon: <Class />, label: 'Lớp học' },
+  { to: '/admin/storage', icon: <Storage />, label: 'Lưu trữ' },
+  { to: '/admin/security', icon: <Security />, label: 'Bảo mật' },
+  { to: '/admin/settings', icon: <Settings />, label: 'Cài đặt' },
 ];
 
 export default function AdminSidebar() {
