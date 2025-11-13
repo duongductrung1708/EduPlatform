@@ -345,4 +345,79 @@ export class AdminController {
   async getAnalyticsData(@CurrentUser() user: User) {
     return this.adminService.getAnalyticsData();
   }
+
+  // Storage endpoints
+  @Get('storage/stats')
+  @ApiOperation({ summary: 'Lấy thống kê lưu trữ' })
+  async getStorageStats(@CurrentUser() user: User) {
+    return this.adminService.getStorageStats();
+  }
+
+  @Get('storage/files')
+  @ApiOperation({ summary: 'Lấy danh sách tệp lưu trữ' })
+  async getStorageFiles(
+    @CurrentUser() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getStorageFiles(parseInt(page || '1'), parseInt(limit || '10'));
+  }
+
+  @Delete('storage/files/:fileId')
+  @ApiOperation({ summary: 'Xóa tệp lưu trữ' })
+  async deleteStorageFile(@CurrentUser() user: User, @Param('fileId') fileId: string) {
+    return this.adminService.deleteStorageFile(fileId);
+  }
+
+  @Post('storage/cleanup')
+  @ApiOperation({ summary: 'Dọn dẹp lưu trữ' })
+  async cleanupStorage(@CurrentUser() user: User) {
+    return this.adminService.cleanupStorage();
+  }
+
+  // Security endpoints
+  @Get('security/settings')
+  @ApiOperation({ summary: 'Lấy cài đặt bảo mật' })
+  async getSecuritySettings(@CurrentUser() user: User) {
+    return this.adminService.getSecuritySettings();
+  }
+
+  @Put('security/settings/:settingId')
+  @ApiOperation({ summary: 'Cập nhật cài đặt bảo mật' })
+  async updateSecuritySetting(
+    @CurrentUser() user: User,
+    @Param('settingId') settingId: string,
+    @Body('enabled') enabled: boolean,
+  ) {
+    return this.adminService.updateSecuritySetting(settingId, enabled);
+  }
+
+  @Get('security/logs')
+  @ApiOperation({ summary: 'Lấy nhật ký bảo mật' })
+  async getSecurityLogs(
+    @CurrentUser() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getSecurityLogs(parseInt(page || '1'), parseInt(limit || '10'));
+  }
+
+  @Post('security/audit')
+  @ApiOperation({ summary: 'Chạy kiểm tra bảo mật' })
+  async runSecurityAudit(@CurrentUser() user: User) {
+    return this.adminService.runSecurityAudit();
+  }
+
+  // Settings endpoints
+  @Get('settings')
+  @ApiOperation({ summary: 'Lấy cài đặt hệ thống' })
+  async getSystemSettings(@CurrentUser() user: User) {
+    return this.adminService.getSystemSettings();
+  }
+
+  @Put('settings')
+  @ApiOperation({ summary: 'Cập nhật cài đặt hệ thống' })
+  async updateSystemSettings(@CurrentUser() user: User, @Body() settings: any) {
+    return this.adminService.updateSystemSettings(settings);
+  }
 }

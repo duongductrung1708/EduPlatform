@@ -168,6 +168,117 @@ export const adminApi = {
     const response = await apiClient.get('/api/admin/analytics');
     return response.data;
   },
+
+  // Storage management
+  getStorageStats: async () => {
+    try {
+      const response = await apiClient.get('/api/admin/storage/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Storage stats error:', error);
+      throw error;
+    }
+  },
+
+  getStorageFiles: async (page: number = 1, limit: number = 10) => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      const response = await apiClient.get(`/api/admin/storage/files?${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Storage files error:', error);
+      throw error;
+    }
+  },
+
+  deleteStorageFile: async (fileId: string) => {
+    try {
+      const response = await apiClient.delete(`/api/admin/storage/files/${fileId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Delete file error:', error);
+      throw error;
+    }
+  },
+
+  cleanupStorage: async () => {
+    try {
+      const response = await apiClient.post('/api/admin/storage/cleanup');
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Cleanup storage error:', error);
+      throw error;
+    }
+  },
+
+  // Security management
+  getSecuritySettings: async () => {
+    try {
+      const response = await apiClient.get('/api/admin/security/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Security settings error:', error);
+      throw error;
+    }
+  },
+
+  updateSecuritySetting: async (settingId: string, enabled: boolean) => {
+    try {
+      const response = await apiClient.put(`/api/admin/security/settings/${settingId}`, { enabled });
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Update security setting error:', error);
+      throw error;
+    }
+  },
+
+  getSecurityLogs: async (page: number = 1, limit: number = 10) => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      const response = await apiClient.get(`/api/admin/security/logs?${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Security logs error:', error);
+      throw error;
+    }
+  },
+
+  runSecurityAudit: async () => {
+    try {
+      const response = await apiClient.post('/api/admin/security/audit');
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Security audit error:', error);
+      throw error;
+    }
+  },
+
+  // Settings management
+  getSystemSettings: async () => {
+    try {
+      const response = await apiClient.get('/api/admin/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - System settings error:', error);
+      throw error;
+    }
+  },
+
+  updateSystemSettings: async (settings: any) => {
+    try {
+      const response = await apiClient.put('/api/admin/settings', settings);
+      return response.data;
+    } catch (error) {
+      console.error('Admin API - Update settings error:', error);
+      throw error;
+    }
+  },
 };
 
 // Teacher/Classes APIs (reusing same client, not restricted to admin only)

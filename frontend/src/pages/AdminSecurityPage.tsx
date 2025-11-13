@@ -31,6 +31,8 @@ import WarningIcon from '@mui/icons-material/Warning';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
 import { DarkShimmerBox, ShimmerBox } from '../components/LoadingSkeleton';
+import { adminApi } from '../api/admin';
+import { Snackbar } from '@mui/material';
 
 interface SecuritySetting {
   id: string;
@@ -51,78 +53,61 @@ interface SecurityLog {
 const AdminSecurityPage: React.FC = () => {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [settings, setSettings] = useState<SecuritySetting[]>([]);
   const [logs, setLogs] = useState<SecurityLog[]>([]);
-  const [lastAudit, setLastAudit] = useState<string>('08/11/2025 14:35');
+  const [lastAudit, setLastAudit] = useState<string>('');
+  const [securityLevel, setSecurityLevel] = useState<string>('Cao');
+  const [warningCount, setWarningCount] = useState<number>(0);
+
+  const fetchSecurityData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [settingsData, logsData] = await Promise.all([
+        adminApi.getSecuritySettings(),
+        adminApi.getSecurityLogs(1, 10),
+      ]);
+      const settingsList = settingsData.settings || settingsData || [];
+      // Map settings to include icons
+      const settingsWithIcons = settingsList.map((setting: any) => {
+        let icon = <SecurityIcon />;
+        if (setting.id === 'twoFactor') icon = <FingerprintIcon />;
+        else if (setting.id === 'loginAlerts') icon = <NotificationsActiveIcon />;
+        else if (setting.id === 'apiAccess') icon = <ShieldIcon />;
+        else if (setting.id === 'passwordPolicy') icon = <LockIcon />;
+        return { ...setting, icon };
+      });
+      setSettings(settingsWithIcons);
+      setLogs(logsData.logs || logsData.items || []);
+      if (settingsData.lastAudit) setLastAudit(settingsData.lastAudit);
+
+      // Calculate warning count from logs
+      const warnings = (logsData.logs || logsData.items || []).filter(
+        (log: SecurityLog) => log.status === 'warning' || log.status === 'danger',
+      ).length;
+      setWarningCount(warnings);
+
+      // Calculate security level based on enabled settings
+      const enabledCount = settingsWithIcons.filter((s: SecuritySetting) => s.enabled).length;
+      const totalCount = settingsWithIcons.length;
+      if (totalCount > 0) {
+        const enabledRatio = enabledCount / totalCount;
+        if (enabledRatio >= 0.8) setSecurityLevel('Cao');
+        else if (enabledRatio >= 0.5) setSecurityLevel('Trung bình');
+        else setSecurityLevel('Thấp');
+      }
+    } catch (err: any) {
+      console.error('Error fetching security data:', err);
+      setError('Không thể tải dữ liệu bảo mật. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setSettings([
-        {
-          id: 'twoFactor',
-          title: 'Xác thực hai lớp (2FA)',
-          description: 'Yêu cầu mã xác thực khi đăng nhập vào tài khoản quản trị.',
-          enabled: true,
-          icon: <FingerprintIcon />,
-        },
-        {
-          id: 'loginAlerts',
-          title: 'Cảnh báo đăng nhập bất thường',
-          description: 'Gửi email khi phát hiện đăng nhập từ thiết bị hoặc vị trí lạ.',
-          enabled: true,
-          icon: <NotificationsActiveIcon />,
-        },
-        {
-          id: 'apiAccess',
-          title: 'Giới hạn truy cập API',
-          description: 'Vô hiệu hóa yêu cầu API không hợp lệ sau 5 lần thử.',
-          enabled: true,
-          icon: <ShieldIcon />,
-        },
-        {
-          id: 'passwordPolicy',
-          title: 'Chính sách mật khẩu mạnh',
-          description: 'Yêu cầu mật khẩu tối thiểu 10 ký tự, bao gồm số và ký tự đặc biệt.',
-          enabled: true,
-          icon: <LockIcon />,
-        },
-      ]);
-
-      setLogs([
-        {
-          id: '1',
-          action: 'Thiết lập lại mật khẩu quản trị',
-          user: 'admin@example.com',
-          time: '12/11/2025 09:40',
-          status: 'success',
-        },
-        {
-          id: '2',
-          action: 'Cảnh báo đăng nhập thất bại 5 lần',
-          user: 'teacher1@example.com',
-          time: '11/11/2025 21:14',
-          status: 'warning',
-        },
-        {
-          id: '3',
-          action: 'Chặn truy cập API không hợp lệ',
-          user: 'N/A',
-          time: '11/11/2025 18:02',
-          status: 'success',
-        },
-        {
-          id: '4',
-          action: 'Cảnh báo: đăng nhập từ IP lạ',
-          user: 'admin@example.com',
-          time: '10/11/2025 06:21',
-          status: 'warning',
-        },
-      ]);
-
-      setLoading(false);
-    }, 700);
-
-    return () => clearTimeout(timeout);
+    fetchSecurityData();
   }, []);
 
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
@@ -132,10 +117,22 @@ const AdminSecurityPage: React.FC = () => {
     : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)';
   const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(239, 91, 91, 0.12)';
 
-  const handleToggle = (id: string) => {
-    setSettings((prev) =>
-      prev.map((setting) => (setting.id === id ? { ...setting, enabled: !setting.enabled } : setting)),
-    );
+  const handleToggle = async (id: string) => {
+    const setting = settings.find((s) => s.id === id);
+    if (!setting) return;
+    const newEnabled = !setting.enabled;
+
+    // Optimistic update
+    setSettings((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: newEnabled } : s)));
+
+    try {
+      await adminApi.updateSecuritySetting(id, newEnabled);
+      setSuccess(`Đã ${newEnabled ? 'bật' : 'tắt'} ${setting.title} thành công!`);
+    } catch (err: any) {
+      // Revert on error
+      setSettings((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !newEnabled } : s)));
+      setError(`Không thể ${newEnabled ? 'bật' : 'tắt'} ${setting.title}`);
+    }
   };
 
   return (
@@ -174,6 +171,16 @@ const AdminSecurityPage: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
+            onClick={async () => {
+              try {
+                const result = await adminApi.runSecurityAudit();
+                if (result.securityLevel) setSecurityLevel(result.securityLevel);
+                setSuccess('Đã chạy kiểm tra bảo mật thành công!');
+                fetchSecurityData();
+              } catch (err) {
+                setError('Không thể chạy kiểm tra bảo mật');
+              }
+            }}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
@@ -195,19 +202,161 @@ const AdminSecurityPage: React.FC = () => {
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {[...Array(3)].map((_, index) => (
                 <Grid item xs={12} md={4} key={index}>
-                  {darkMode ? (
-                    <DarkShimmerBox height="200px" width="100%" borderRadius="16px" />
-                  ) : (
-                    <ShimmerBox height="200px" width="100%" borderRadius="16px" />
-                  )}
+                  <Card
+                    sx={{
+                      height: '100%',
+                      borderRadius: 3,
+                      background: cardBackground,
+                      border: `1px solid ${surfaceBorder}`,
+                      p: 3,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      ) : (
+                        <ShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      )}
+                      <Box sx={{ flex: 1, ml: 2 }}>
+                        {darkMode ? (
+                          <>
+                            <Box sx={{ mb: 1 }}>
+                              <DarkShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <DarkShimmerBox height="32px" width="60%" borderRadius="4px" />
+                            <Box sx={{ mt: 1 }}>
+                              <DarkShimmerBox height="14px" width="90%" borderRadius="4px" />
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            <Box sx={{ mb: 1 }}>
+                              <ShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <ShimmerBox height="32px" width="60%" borderRadius="4px" />
+                            <Box sx={{ mt: 1 }}>
+                              <ShimmerBox height="14px" width="90%" borderRadius="4px" />
+                            </Box>
+                          </>
+                        )}
+                      </Box>
+                    </Box>
+                  </Card>
                 </Grid>
               ))}
             </Grid>
-            {darkMode ? (
-              <DarkShimmerBox height="380px" width="100%" borderRadius="24px" />
-            ) : (
-              <ShimmerBox height="380px" width="100%" borderRadius="24px" />
-            )}
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    background: cardBackground,
+                    border: `1px solid ${surfaceBorder}`,
+                    p: 3,
+                  }}
+                >
+                  <Box sx={{ mb: 2 }}>
+                    {darkMode ? (
+                      <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
+                    ) : (
+                      <ShimmerBox height="24px" width="200px" borderRadius="4px" />
+                    )}
+                  </Box>
+                  {[...Array(4)].map((_, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        py: 2,
+                        borderBottom: index < 3 ? `1px solid ${surfaceBorder}` : 'none',
+                      }}
+                    >
+                      {darkMode ? (
+                        <>
+                          <Box sx={{ mr: 2 }}>
+                            <DarkShimmerBox height="40px" width="40px" borderRadius="4px" />
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <DarkShimmerBox height="16px" width="70%" borderRadius="4px" />
+                            </Box>
+                            <DarkShimmerBox height="14px" width="90%" borderRadius="4px" />
+                          </Box>
+                          <DarkShimmerBox height="36px" width="50px" borderRadius="4px" />
+                        </>
+                      ) : (
+                        <>
+                          <Box sx={{ mr: 2 }}>
+                            <ShimmerBox height="40px" width="40px" borderRadius="4px" />
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <ShimmerBox height="16px" width="70%" borderRadius="4px" />
+                            </Box>
+                            <ShimmerBox height="14px" width="90%" borderRadius="4px" />
+                          </Box>
+                          <ShimmerBox height="36px" width="50px" borderRadius="4px" />
+                        </>
+                      )}
+                    </Box>
+                  ))}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    background: cardBackground,
+                    border: `1px solid ${surfaceBorder}`,
+                    p: 3,
+                  }}
+                >
+                  <Box sx={{ mb: 2 }}>
+                    {darkMode ? (
+                      <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
+                    ) : (
+                      <ShimmerBox height="24px" width="200px" borderRadius="4px" />
+                    )}
+                  </Box>
+                  {[...Array(5)].map((_, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        py: 2,
+                        borderBottom: index < 4 ? `1px solid ${surfaceBorder}` : 'none',
+                      }}
+                    >
+                      {darkMode ? (
+                        <>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <DarkShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <DarkShimmerBox height="14px" width="50%" borderRadius="4px" />
+                          </Box>
+                          <DarkShimmerBox height="24px" width="60px" borderRadius="4px" />
+                        </>
+                      ) : (
+                        <>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ mb: 0.5 }}>
+                              <ShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <ShimmerBox height="14px" width="50%" borderRadius="4px" />
+                          </Box>
+                          <ShimmerBox height="24px" width="60px" borderRadius="4px" />
+                        </>
+                      )}
+                    </Box>
+                  ))}
+                </Paper>
+              </Grid>
+            </Grid>
           </Box>
         ) : (
           <>
@@ -234,14 +383,15 @@ const AdminSecurityPage: React.FC = () => {
                     >
                       <SecurityIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Mức độ bảo vệ hiện tại
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                      Cao
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                      {securityLevel}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-                      4/5 biện pháp đang được kích hoạt
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'white' }}>
+                      {settings.filter((s) => s.enabled).length}/{settings.length} biện pháp đang
+                      được kích hoạt
                     </Typography>
                   </CardContent>
                 </Card>
@@ -268,14 +418,14 @@ const AdminSecurityPage: React.FC = () => {
                     >
                       <HistoryIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Lần kiểm tra gần nhất
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                       {lastAudit}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-                      Đã ghi lại 12 sự kiện bảo mật trong 7 ngày qua
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'white' }}>
+                      Đã ghi lại {logs.length} sự kiện bảo mật
                     </Typography>
                   </CardContent>
                 </Card>
@@ -302,11 +452,11 @@ const AdminSecurityPage: React.FC = () => {
                     >
                       <WarningIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Cảnh báo cần chú ý
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                      2 cảnh báo
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                      {warningCount} cảnh báo
                     </Typography>
                     <Chip
                       label="Ưu tiên xử lý"
@@ -334,7 +484,10 @@ const AdminSecurityPage: React.FC = () => {
                   }}
                 >
                   <Box sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: primaryTextColor, mb: 1 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 700, color: primaryTextColor, mb: 1 }}
+                    >
                       Biện pháp bảo mật
                     </Typography>
                     <Typography variant="body2" sx={{ color: secondaryTextColor }}>
@@ -360,7 +513,9 @@ const AdminSecurityPage: React.FC = () => {
                           <ListItemAvatar>
                             <Avatar
                               sx={{
-                                bgcolor: darkMode ? 'rgba(239, 91, 91, 0.22)' : 'rgba(239, 91, 91, 0.12)',
+                                bgcolor: darkMode
+                                  ? 'rgba(239, 91, 91, 0.22)'
+                                  : 'rgba(239, 91, 91, 0.12)',
                                 color: '#EF5B5B',
                               }}
                             >
@@ -400,7 +555,9 @@ const AdminSecurityPage: React.FC = () => {
                             label=""
                           />
                         </ListItem>
-                        {index < settings.length - 1 && <Divider component="li" sx={{ borderColor: surfaceBorder }} />}
+                        {index < settings.length - 1 && (
+                          <Divider component="li" sx={{ borderColor: surfaceBorder }} />
+                        )}
                       </React.Fragment>
                     ))}
                   </List>
@@ -420,9 +577,19 @@ const AdminSecurityPage: React.FC = () => {
                     flexDirection: 'column',
                   }}
                 >
-                  <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box
+                    sx={{
+                      p: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
                     <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 700, color: primaryTextColor, mb: 1 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 700, color: primaryTextColor, mb: 1 }}
+                      >
                         Nhật ký sự kiện
                       </Typography>
                       <Typography variant="body2" sx={{ color: secondaryTextColor }}>
@@ -465,14 +632,14 @@ const AdminSecurityPage: React.FC = () => {
                                 log.status === 'success'
                                   ? 'rgba(76, 175, 80, 0.18)'
                                   : log.status === 'warning'
-                                  ? 'rgba(255, 152, 0, 0.18)'
-                                  : 'rgba(239, 91, 91, 0.18)',
+                                    ? 'rgba(255, 152, 0, 0.18)'
+                                    : 'rgba(239, 91, 91, 0.18)',
                               color:
                                 log.status === 'success'
                                   ? '#4CAF50'
                                   : log.status === 'warning'
-                                  ? '#FF9800'
-                                  : '#EF5B5B',
+                                    ? '#FF9800'
+                                    : '#EF5B5B',
                               mr: 2,
                             }}
                           >
@@ -480,7 +647,10 @@ const AdminSecurityPage: React.FC = () => {
                           </Avatar>
                           <ListItemText
                             primary={
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600, color: primaryTextColor }}
+                              >
                                 {log.action}
                               </Typography>
                             }
@@ -500,8 +670,8 @@ const AdminSecurityPage: React.FC = () => {
                               log.status === 'success'
                                 ? 'Thành công'
                                 : log.status === 'warning'
-                                ? 'Cảnh báo'
-                                : 'Nguy hiểm'
+                                  ? 'Cảnh báo'
+                                  : 'Nguy hiểm'
                             }
                             size="small"
                             sx={{
@@ -509,18 +679,20 @@ const AdminSecurityPage: React.FC = () => {
                                 log.status === 'success'
                                   ? '#2e7d32'
                                   : log.status === 'warning'
-                                  ? '#ed6c02'
-                                  : '#b71c1c',
+                                    ? '#ed6c02'
+                                    : '#b71c1c',
                               backgroundColor:
                                 log.status === 'success'
                                   ? 'rgba(76, 175, 80, 0.15)'
                                   : log.status === 'warning'
-                                  ? 'rgba(255, 152, 0, 0.15)'
-                                  : 'rgba(239, 91, 91, 0.15)',
+                                    ? 'rgba(255, 152, 0, 0.15)'
+                                    : 'rgba(239, 91, 91, 0.15)',
                             }}
                           />
                         </ListItem>
-                        {index < logs.length - 1 && <Divider component="li" sx={{ borderColor: surfaceBorder }} />}
+                        {index < logs.length - 1 && (
+                          <Divider component="li" sx={{ borderColor: surfaceBorder }} />
+                        )}
                       </React.Fragment>
                     ))}
                   </List>
@@ -543,17 +715,45 @@ const AdminSecurityPage: React.FC = () => {
                 Gợi ý bảo mật
               </Typography>
               <Typography variant="body2">
-                Hãy thường xuyên sao lưu dữ liệu, rà soát quyền truy cập và kiểm tra nhật ký để đảm bảo an
-                toàn tuyệt đối cho hệ thống.
+                Hãy thường xuyên sao lưu dữ liệu, rà soát quyền truy cập và kiểm tra nhật ký để đảm
+                bảo an toàn tuyệt đối cho hệ thống.
               </Typography>
             </Alert>
           </>
         )}
+
+        <Snackbar
+          open={!!error}
+          autoHideDuration={5000}
+          onClose={() => setError(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setError(null)}
+            severity="error"
+            sx={{ width: '100%', borderRadius: 2 }}
+          >
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={3000}
+          onClose={() => setSuccess(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSuccess(null)}
+            severity="success"
+            sx={{ width: '100%', borderRadius: 2 }}
+          >
+            {success}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );
 };
 
 export default AdminSecurityPage;
-
-

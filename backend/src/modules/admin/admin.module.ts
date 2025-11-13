@@ -9,6 +9,9 @@ import { User, UserSchema } from '../../models/user.model';
 import { Course, CourseSchema } from '../../models/course.model';
 import { Classroom, ClassroomSchema } from '../../models/classroom.model';
 import { Assignment, AssignmentSchema, Submission, SubmissionSchema } from '../../models/assignment.model';
+import { SecuritySetting, SecuritySettingSchema } from '../../models/security-setting.model';
+import { SecurityLog, SecurityLogSchema } from '../../models/security-log.model';
+import { SystemSetting, SystemSettingSchema } from '../../models/system-setting.model';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { Assignment, AssignmentSchema, Submission, SubmissionSchema } from '../.
       { name: Classroom.name, schema: ClassroomSchema },
       { name: Assignment.name, schema: AssignmentSchema },
       { name: Submission.name, schema: SubmissionSchema },
+      { name: SecuritySetting.name, schema: SecuritySettingSchema },
+      { name: SecurityLog.name, schema: SecurityLogSchema },
+      { name: SystemSetting.name, schema: SystemSettingSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',

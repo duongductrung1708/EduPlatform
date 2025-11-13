@@ -26,6 +26,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
 import { DarkShimmerBox, ShimmerBox } from '../components/LoadingSkeleton';
+import { adminApi } from '../api/admin';
 
 interface SettingsForm {
   organizationName: string;
@@ -42,6 +43,7 @@ const AdminSettingsPage: React.FC = () => {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [form, setForm] = useState<SettingsForm>({
     organizationName: '',
@@ -55,30 +57,39 @@ const AdminSettingsPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setForm({
-        organizationName: 'EduLearn Việt Nam',
-        contactEmail: 'support@edulearn.vn',
-        language: 'vi',
-        timezone: 'Asia/Ho_Chi_Minh',
-        weeklyReport: true,
-        notifyTeacher: true,
-        notifyStudent: false,
-        themeColor: 'default',
-      });
-      setLoading(false);
-    }, 600);
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const data = await adminApi.getSystemSettings();
+        setForm({
+          organizationName: data.organizationName || '',
+          contactEmail: data.contactEmail || '',
+          language: data.language || 'vi',
+          timezone: data.timezone || 'Asia/Ho_Chi_Minh',
+          weeklyReport: data.weeklyReport ?? true,
+          notifyTeacher: data.notifyTeacher ?? true,
+          notifyStudent: data.notifyStudent ?? false,
+          themeColor: data.themeColor || 'default',
+        });
+      } catch (err: any) {
+        console.error('Error fetching settings:', err);
+        setError('Không thể tải cài đặt hệ thống. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timeout);
+    fetchSettings();
   }, []);
 
-  const handleChange = (field: keyof SettingsForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value, checked, type } = event.target;
-    setForm((prev) => ({
-      ...prev,
-      [field]: type === 'checkbox' ? checked : value,
-    }));
-  };
+  const handleChange =
+    (field: keyof SettingsForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const { value, checked, type } = event.target;
+      setForm((prev) => ({
+        ...prev,
+        [field]: type === 'checkbox' ? checked : value,
+      }));
+    };
 
   const handleSelectChange = (field: keyof SettingsForm) => (event: any) => {
     const { value } = event.target;
@@ -90,9 +101,16 @@ const AdminSettingsPage: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setSaving(false);
-    setOpenSnackbar(true);
+    setError(null);
+    try {
+      await adminApi.updateSystemSettings(form);
+      setOpenSnackbar(true);
+    } catch (err: any) {
+      console.error('Error saving settings:', err);
+      setError('Không thể lưu cài đặt. Vui lòng thử lại sau.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
@@ -159,22 +177,125 @@ const AdminSettingsPage: React.FC = () => {
           </Button>
         </Box>
 
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {loading ? (
           <Box>
             <Grid container spacing={3}>
               <Grid item xs={12} md={8}>
-                {darkMode ? (
-                  <DarkShimmerBox height="520px" width="100%" borderRadius="24px" />
-                ) : (
-                  <ShimmerBox height="520px" width="100%" borderRadius="24px" />
-                )}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    background: cardBackground,
+                    border: `1px solid ${surfaceBorder}`,
+                    p: 3,
+                  }}
+                >
+                  <Box sx={{ mb: 3 }}>
+                    {darkMode ? (
+                      <DarkShimmerBox height="28px" width="250px" borderRadius="4px" />
+                    ) : (
+                      <ShimmerBox height="28px" width="250px" borderRadius="4px" />
+                    )}
+                  </Box>
+                  {[...Array(4)].map((_, index) => (
+                    <Box key={index} sx={{ mb: 3 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="56px" width="100%" borderRadius="4px" />
+                      ) : (
+                        <ShimmerBox height="56px" width="100%" borderRadius="4px" />
+                      )}
+                    </Box>
+                  ))}
+                  <Box sx={{ my: 4, borderTop: `1px solid ${surfaceBorder}`, pt: 3 }}>
+                    <Box sx={{ mb: 2 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="28px" width="200px" borderRadius="4px" />
+                      ) : (
+                        <ShimmerBox height="28px" width="200px" borderRadius="4px" />
+                      )}
+                    </Box>
+                    {[...Array(3)].map((_, index) => (
+                      <Box key={index} sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                        {darkMode ? (
+                          <>
+                            <Box sx={{ mr: 2 }}>
+                              <DarkShimmerBox height="36px" width="50px" borderRadius="4px" />
+                            </Box>
+                            <DarkShimmerBox height="20px" width="200px" borderRadius="4px" />
+                          </>
+                        ) : (
+                          <>
+                            <Box sx={{ mr: 2 }}>
+                              <ShimmerBox height="36px" width="50px" borderRadius="4px" />
+                            </Box>
+                            <ShimmerBox height="20px" width="200px" borderRadius="4px" />
+                          </>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </Paper>
               </Grid>
               <Grid item xs={12} md={4}>
-                {darkMode ? (
-                  <DarkShimmerBox height="520px" width="100%" borderRadius="24px" />
-                ) : (
-                  <ShimmerBox height="520px" width="100%" borderRadius="24px" />
-                )}
+                {[...Array(2)].map((_, cardIndex) => (
+                  <Card
+                    key={cardIndex}
+                    sx={{
+                      borderRadius: 3,
+                      background: cardBackground,
+                      border: `1px solid ${surfaceBorder}`,
+                      mb: 3,
+                      p: 3,
+                    }}
+                  >
+                    <Box sx={{ mb: 2 }}>
+                      <Box sx={{ mb: 1 }}>
+                        {darkMode ? (
+                          <DarkShimmerBox height="24px" width="180px" borderRadius="4px" />
+                        ) : (
+                          <ShimmerBox height="24px" width="180px" borderRadius="4px" />
+                        )}
+                      </Box>
+                      {darkMode ? (
+                        <DarkShimmerBox height="16px" width="100%" borderRadius="4px" />
+                      ) : (
+                        <ShimmerBox height="16px" width="100%" borderRadius="4px" />
+                      )}
+                    </Box>
+                    {cardIndex === 0 && (
+                      <Grid container spacing={1.5}>
+                        {[...Array(4)].map((_, index) => (
+                          <Grid item xs={6} key={index}>
+                            {darkMode ? (
+                              <DarkShimmerBox height="36px" width="100%" borderRadius="4px" />
+                            ) : (
+                              <ShimmerBox height="36px" width="100%" borderRadius="4px" />
+                            )}
+                          </Grid>
+                        ))}
+                      </Grid>
+                    )}
+                    {cardIndex === 1 && (
+                      <>
+                        {[...Array(2)].map((_, index) => (
+                          <Box key={index} sx={{ mb: 2 }}>
+                            {darkMode ? (
+                              <DarkShimmerBox height="80px" width="100%" borderRadius="4px" />
+                            ) : (
+                              <ShimmerBox height="80px" width="100%" borderRadius="4px" />
+                            )}
+                          </Box>
+                        ))}
+                      </>
+                    )}
+                  </Card>
+                ))}
               </Grid>
             </Grid>
           </Box>
@@ -216,7 +337,11 @@ const AdminSettingsPage: React.FC = () => {
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ color: secondaryTextColor }}>Ngôn ngữ</InputLabel>
-                      <Select value={form.language} label="Ngôn ngữ" onChange={handleSelectChange('language')}>
+                      <Select
+                        value={form.language}
+                        label="Ngôn ngữ"
+                        onChange={handleSelectChange('language')}
+                      >
                         <MenuItem value="vi">Tiếng Việt</MenuItem>
                         <MenuItem value="en">Tiếng Anh</MenuItem>
                       </Select>
@@ -225,7 +350,11 @@ const AdminSettingsPage: React.FC = () => {
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
                       <InputLabel sx={{ color: secondaryTextColor }}>Múi giờ</InputLabel>
-                      <Select value={form.timezone} label="Múi giờ" onChange={handleSelectChange('timezone')}>
+                      <Select
+                        value={form.timezone}
+                        label="Múi giờ"
+                        onChange={handleSelectChange('timezone')}
+                      >
                         <MenuItem value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (GMT+7)</MenuItem>
                         <MenuItem value="Asia/Bangkok">Asia/Bangkok (GMT+7)</MenuItem>
                         <MenuItem value="Asia/Singapore">Asia/Singapore (GMT+8)</MenuItem>
@@ -325,10 +454,26 @@ const AdminSettingsPage: React.FC = () => {
                   </Typography>
                   <Grid container spacing={1.5}>
                     {[
-                      { key: 'default', label: 'Mặc định', color: 'linear-gradient(135deg, #EF5B5B, #FF7B7B)' },
-                      { key: 'blue', label: 'Xanh dương', color: 'linear-gradient(135deg, #2196F3, #21CBF3)' },
-                      { key: 'green', label: 'Xanh lá', color: 'linear-gradient(135deg, #4CAF50, #81C784)' },
-                      { key: 'purple', label: 'Tím', color: 'linear-gradient(135deg, #9C27B0, #BA68C8)' },
+                      {
+                        key: 'default',
+                        label: 'Mặc định',
+                        color: 'linear-gradient(135deg, #EF5B5B, #FF7B7B)',
+                      },
+                      {
+                        key: 'blue',
+                        label: 'Xanh dương',
+                        color: 'linear-gradient(135deg, #2196F3, #21CBF3)',
+                      },
+                      {
+                        key: 'green',
+                        label: 'Xanh lá',
+                        color: 'linear-gradient(135deg, #4CAF50, #81C784)',
+                      },
+                      {
+                        key: 'purple',
+                        label: 'Tím',
+                        color: 'linear-gradient(135deg, #9C27B0, #BA68C8)',
+                      },
                     ].map((item) => (
                       <Grid item xs={6} key={item.key}>
                         <Chip
@@ -344,8 +489,8 @@ const AdminSettingsPage: React.FC = () => {
                               form.themeColor === item.key
                                 ? 'transparent'
                                 : darkMode
-                                ? 'rgba(148, 163, 184, 0.4)'
-                                : 'rgba(239, 91, 91, 0.3)',
+                                  ? 'rgba(148, 163, 184, 0.4)'
+                                  : 'rgba(239, 91, 91, 0.3)',
                             cursor: 'pointer',
                             fontWeight: 600,
                           }}
@@ -374,7 +519,9 @@ const AdminSettingsPage: React.FC = () => {
                     severity="info"
                     sx={{
                       borderRadius: 2,
-                      backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.12)' : 'rgba(33, 150, 243, 0.08)',
+                      backgroundColor: darkMode
+                        ? 'rgba(33, 150, 243, 0.12)'
+                        : 'rgba(33, 150, 243, 0.08)',
                       mb: 2,
                     }}
                   >
@@ -384,10 +531,13 @@ const AdminSettingsPage: React.FC = () => {
                     severity="warning"
                     sx={{
                       borderRadius: 2,
-                      backgroundColor: darkMode ? 'rgba(255, 152, 0, 0.12)' : 'rgba(255, 152, 0, 0.08)',
+                      backgroundColor: darkMode
+                        ? 'rgba(255, 152, 0, 0.12)'
+                        : 'rgba(255, 152, 0, 0.08)',
                     }}
                   >
-                    Tăng cường tương tác: hãy bật thông báo email cho học sinh để họ không bỏ lỡ thông tin quan trọng.
+                    Tăng cường tương tác: hãy bật thông báo email cho học sinh để họ không bỏ lỡ
+                    thông tin quan trọng.
                   </Alert>
                 </CardContent>
               </Card>
@@ -415,5 +565,3 @@ const AdminSettingsPage: React.FC = () => {
 };
 
 export default AdminSettingsPage;
-
-

@@ -30,6 +30,8 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
 import { DarkShimmerBox, ShimmerBox } from '../components/LoadingSkeleton';
+import { adminApi } from '../api/admin';
+import { Alert, Snackbar } from '@mui/material';
 
 interface StorageStats {
   total: number;
@@ -50,62 +52,36 @@ interface StorageFile {
 const AdminStoragePage: React.FC = () => {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [stats, setStats] = useState<StorageStats>({
-    total: 120,
-    used: 68,
-    files: 482,
-    folders: 32,
+    total: 0,
+    used: 0,
+    files: 0,
+    folders: 0,
   });
   const [files, setFiles] = useState<StorageFile[]>([]);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setFiles([
-        {
-          id: '1',
-          name: 'Bài giảng Toán nâng cao.pdf',
-          type: 'pdf',
-          size: '24 MB',
-          owner: 'Nguyễn Văn A',
-          updatedAt: '12/11/2025',
-        },
-        {
-          id: '2',
-          name: 'Video hướng dẫn lập trình.mp4',
-          type: 'video',
-          size: '145 MB',
-          owner: 'Trần Thị B',
-          updatedAt: '10/11/2025',
-        },
-        {
-          id: '3',
-          name: 'Ảnh minh họa bài học.png',
-          type: 'image',
-          size: '3.6 MB',
-          owner: 'Lê Minh C',
-          updatedAt: '09/11/2025',
-        },
-        {
-          id: '4',
-          name: 'Bảng điểm lớp 9A.xlsx',
-          type: 'document',
-          size: '1.4 MB',
-          owner: 'Admin',
-          updatedAt: '08/11/2025',
-        },
-        {
-          id: '5',
-          name: 'Tài liệu ôn thi.docx',
-          type: 'document',
-          size: '2.2 MB',
-          owner: 'Nguyễn Văn A',
-          updatedAt: '05/11/2025',
-        },
+  const fetchStorageData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [statsData, filesData] = await Promise.all([
+        adminApi.getStorageStats(),
+        adminApi.getStorageFiles(1, 10),
       ]);
+      setStats(statsData);
+      setFiles(filesData.files || filesData.items || []);
+    } catch (err: any) {
+      console.error('Error fetching storage data:', err);
+      setError('Không thể tải dữ liệu lưu trữ. Vui lòng thử lại sau.');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
 
-    return () => clearTimeout(timeout);
+  useEffect(() => {
+    fetchStorageData();
   }, []);
 
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
@@ -189,19 +165,99 @@ const AdminStoragePage: React.FC = () => {
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {[...Array(4)].map((_, index) => (
                 <Grid item xs={12} sm={6} md={3} key={index}>
-                  {darkMode ? (
-                    <DarkShimmerBox height="160px" width="100%" borderRadius="16px" />
-                  ) : (
-                    <ShimmerBox height="160px" width="100%" borderRadius="16px" />
-                  )}
+                  <Card
+                    sx={{
+                      height: '100%',
+                      borderRadius: 3,
+                      background: cardBackground,
+                      border: `1px solid ${surfaceBorder}`,
+                      p: 3,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      ) : (
+                        <ShimmerBox height="56px" width="56px" borderRadius="50%" />
+                      )}
+                      <Box sx={{ flex: 1, ml: 2 }}>
+                        {darkMode ? (
+                          <>
+                            <Box sx={{ mb: 1 }}>
+                              <DarkShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <DarkShimmerBox height="32px" width="60%" borderRadius="4px" />
+                          </>
+                        ) : (
+                          <>
+                            <Box sx={{ mb: 1 }}>
+                              <ShimmerBox height="16px" width="80%" borderRadius="4px" />
+                            </Box>
+                            <ShimmerBox height="32px" width="60%" borderRadius="4px" />
+                          </>
+                        )}
+                      </Box>
+                    </Box>
+                  </Card>
                 </Grid>
               ))}
             </Grid>
-            {darkMode ? (
-              <DarkShimmerBox height="420px" width="100%" borderRadius="24px" />
-            ) : (
-              <ShimmerBox height="420px" width="100%" borderRadius="24px" />
-            )}
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                background: cardBackground,
+                border: `1px solid ${surfaceBorder}`,
+                p: 3,
+              }}
+            >
+              <Box sx={{ mb: 3 }}>
+                {darkMode ? (
+                  <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
+                ) : (
+                  <ShimmerBox height="24px" width="200px" borderRadius="4px" />
+                )}
+              </Box>
+              {[...Array(5)].map((_, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    py: 2,
+                    borderBottom: index < 4 ? `1px solid ${surfaceBorder}` : 'none',
+                  }}
+                >
+                  {darkMode ? (
+                    <>
+                      <Box sx={{ mr: 2 }}>
+                        <DarkShimmerBox height="40px" width="40px" borderRadius="4px" />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{ mb: 1 }}>
+                          <DarkShimmerBox height="16px" width="60%" borderRadius="4px" />
+                        </Box>
+                        <DarkShimmerBox height="14px" width="40%" borderRadius="4px" />
+                      </Box>
+                      <DarkShimmerBox height="32px" width="80px" borderRadius="4px" />
+                    </>
+                  ) : (
+                    <>
+                      <Box sx={{ mr: 2 }}>
+                        <ShimmerBox height="40px" width="40px" borderRadius="4px" />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{ mb: 1 }}>
+                          <ShimmerBox height="16px" width="60%" borderRadius="4px" />
+                        </Box>
+                        <ShimmerBox height="14px" width="40%" borderRadius="4px" />
+                      </Box>
+                      <ShimmerBox height="32px" width="80px" borderRadius="4px" />
+                    </>
+                  )}
+                </Box>
+              ))}
+            </Paper>
           </Box>
         ) : (
           <>
@@ -228,10 +284,10 @@ const AdminStoragePage: React.FC = () => {
                     >
                       <StorageIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Tổng dung lượng
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                       {stats.total} GB
                     </Typography>
                   </CardContent>
@@ -259,10 +315,10 @@ const AdminStoragePage: React.FC = () => {
                     >
                       <FolderIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Đã sử dụng
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                       {stats.used} GB
                     </Typography>
                     <LinearProgress
@@ -278,7 +334,7 @@ const AdminStoragePage: React.FC = () => {
                         },
                       }}
                     />
-                    <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                    <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'white' }}>
                       {usedPercentage}% dung lượng
                     </Typography>
                   </CardContent>
@@ -306,10 +362,10 @@ const AdminStoragePage: React.FC = () => {
                     >
                       <DescriptionIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Tổng số tệp
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                       {stats.files}
                     </Typography>
                   </CardContent>
@@ -337,10 +393,10 @@ const AdminStoragePage: React.FC = () => {
                     >
                       <FolderIcon sx={{ color: 'white' }} />
                     </Avatar>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, color: 'white' }}>
                       Số thư mục
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                       {stats.folders}
                     </Typography>
                   </CardContent>
@@ -380,6 +436,15 @@ const AdminStoragePage: React.FC = () => {
                     variant="outlined"
                     color="inherit"
                     startIcon={<DeleteOutlineIcon />}
+                    onClick={async () => {
+                      try {
+                        await adminApi.cleanupStorage();
+                        setSuccess('Đã dọn dẹp lưu trữ thành công!');
+                        fetchStorageData();
+                      } catch (err) {
+                        setError('Không thể dọn dẹp lưu trữ');
+                      }
+                    }}
                     sx={{
                       borderRadius: 2,
                       textTransform: 'none',
@@ -409,8 +474,12 @@ const AdminStoragePage: React.FC = () => {
                   >
                     <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Tên tệp</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Loại</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Dung lượng</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Người tải lên</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                      Dung lượng
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                      Người tải lên
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
                       Cập nhật gần nhất
                     </TableCell>
@@ -462,18 +531,20 @@ const AdminStoragePage: React.FC = () => {
                             file.type === 'document'
                               ? 'Tài liệu'
                               : file.type === 'image'
-                              ? 'Hình ảnh'
-                              : file.type === 'video'
-                              ? 'Video'
-                              : file.type === 'pdf'
-                              ? 'PDF'
-                              : 'Khác'
+                                ? 'Hình ảnh'
+                                : file.type === 'video'
+                                  ? 'Video'
+                                  : file.type === 'pdf'
+                                    ? 'PDF'
+                                    : 'Khác'
                           }
                           color="default"
                           size="small"
                           sx={{
                             color: darkMode ? '#f8fafc' : '#102a43',
-                            backgroundColor: darkMode ? 'rgba(148,163,184,0.18)' : 'rgba(239,91,91,0.12)',
+                            backgroundColor: darkMode
+                              ? 'rgba(148,163,184,0.18)'
+                              : 'rgba(239,91,91,0.12)',
                             borderRadius: 999,
                           }}
                         />
@@ -510,6 +581,17 @@ const AdminStoragePage: React.FC = () => {
                         <Tooltip title="Xóa tệp">
                           <IconButton
                             size="small"
+                            onClick={async () => {
+                              if (window.confirm(`Bạn có chắc muốn xóa tệp "${file.name}"?`)) {
+                                try {
+                                  await adminApi.deleteStorageFile(file.id);
+                                  setSuccess('Đã xóa tệp thành công!');
+                                  fetchStorageData();
+                                } catch (err) {
+                                  setError('Không thể xóa tệp');
+                                }
+                              }
+                            }}
                             sx={{
                               color: secondaryTextColor,
                               '&:hover': {
@@ -528,11 +610,39 @@ const AdminStoragePage: React.FC = () => {
             </Paper>
           </>
         )}
+
+        <Snackbar
+          open={!!error}
+          autoHideDuration={5000}
+          onClose={() => setError(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setError(null)}
+            severity="error"
+            sx={{ width: '100%', borderRadius: 2 }}
+          >
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={3000}
+          onClose={() => setSuccess(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSuccess(null)}
+            severity="success"
+            sx={{ width: '100%', borderRadius: 2 }}
+          >
+            {success}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );
 };
 
 export default AdminStoragePage;
-
-
