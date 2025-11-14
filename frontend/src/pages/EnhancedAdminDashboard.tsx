@@ -14,17 +14,16 @@ import {
   TableRow,
   Chip,
   Avatar,
-  LinearProgress,
   IconButton,
   Tooltip,
-  Fab,
-  Badge,
   Alert,
   Fade,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
+  Rating,
+  Button,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -38,13 +37,18 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  OpenInNew as OpenInNewIcon,
+  Person as PersonIcon,
+  CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, DashboardStats, TopCourse } from '../api/admin';
+import { coursesApi } from '../api/courses';
 import StatsChart from '../components/charts/StatsChart';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
 import { ShimmerBox, DarkShimmerBox } from '../components/LoadingSkeleton';
+import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
 const EnhancedAdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -55,6 +59,10 @@ const EnhancedAdminDashboard: React.FC = () => {
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<string>('30days');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<TopCourse | null>(null);
+  const [courseDetails, setCourseDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Theme colors
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
@@ -83,7 +91,7 @@ const EnhancedAdminDashboard: React.FC = () => {
 
       const [statsData, coursesData] = await Promise.all([
         adminApi.getDashboardStats(period),
-        adminApi.getTopCourses(10),
+        adminApi.getTopCourses(5),
       ]);
 
       setStats(statsData);
@@ -114,7 +122,7 @@ const EnhancedAdminDashboard: React.FC = () => {
     stats?.monthlyStats && stats.monthlyStats.length > 0
       ? (() => {
           const isDaily = period === '7days' || period === '30days';
-          
+
           if (isDaily) {
             // For daily stats, format dates as DD/MM
             return stats.monthlyStats
@@ -215,13 +223,16 @@ const EnhancedAdminDashboard: React.FC = () => {
           }
         })()
       : [];
-  
+
   const xAxisKey = 'date';
-  const chartTitle = 
-    period === '7days' ? 'Thống kê theo ngày (7 ngày gần nhất)' :
-    period === '30days' ? 'Thống kê theo ngày (30 ngày gần nhất)' :
-    period === '1year' ? 'Thống kê theo tháng (1 năm)' :
-    'Thống kê theo tháng (Tất cả)';
+  const chartTitle =
+    period === '7days'
+      ? 'Thống kê theo ngày (7 ngày gần nhất)'
+      : period === '30days'
+        ? 'Thống kê theo ngày (30 ngày gần nhất)'
+        : period === '1year'
+          ? 'Thống kê theo tháng (1 năm)'
+          : 'Thống kê theo tháng (Tất cả)';
 
   const userRoleData = stats
     ? [
@@ -317,7 +328,14 @@ const EnhancedAdminDashboard: React.FC = () => {
                   height: 380,
                 }}
               >
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    mb: 3,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   {darkMode ? (
                     <DarkShimmerBox height="24px" width="200px" borderRadius="4px" />
                   ) : (
@@ -338,7 +356,7 @@ const EnhancedAdminDashboard: React.FC = () => {
                         position: 'absolute',
                         left: 0,
                         right: 0,
-                        top: `${(i * 25)}%`,
+                        top: `${i * 25}%`,
                         height: '1px',
                       }}
                     >
@@ -355,7 +373,7 @@ const EnhancedAdminDashboard: React.FC = () => {
                       key={`bar-${i}`}
                       sx={{
                         position: 'absolute',
-                        left: `${(i * 12) + 5}%`,
+                        left: `${i * 12 + 5}%`,
                         bottom: 0,
                         width: '8%',
                         height: `${height}%`,
@@ -389,7 +407,14 @@ const EnhancedAdminDashboard: React.FC = () => {
                     <ShimmerBox height="24px" width="150px" borderRadius="4px" />
                   )}
                 </Box>
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box
+                  sx={{
+                    height: 300,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   {darkMode ? (
                     <DarkShimmerBox height="250px" width="250px" borderRadius="50%" />
                   ) : (
@@ -425,7 +450,7 @@ const EnhancedAdminDashboard: React.FC = () => {
                       key={`overview-bar-${i}`}
                       sx={{
                         position: 'absolute',
-                        left: `${(i * 15) + 5}%`,
+                        left: `${i * 15 + 5}%`,
                         bottom: 0,
                         width: '12%',
                         height: `${height}%`,
@@ -474,7 +499,10 @@ const EnhancedAdminDashboard: React.FC = () => {
             </Box>
             {/* Table rows */}
             {[...Array(5)].map((_, rowIndex) => (
-              <Box key={`row-${rowIndex}`} sx={{ display: 'flex', mb: 2, gap: 2, alignItems: 'center' }}>
+              <Box
+                key={`row-${rowIndex}`}
+                sx={{ display: 'flex', mb: 2, gap: 2, alignItems: 'center' }}
+              >
                 {[...Array(5)].map((_, colIndex) => (
                   <Box key={`cell-${rowIndex}-${colIndex}`} sx={{ flex: 1 }}>
                     {darkMode ? (
@@ -596,49 +624,49 @@ const EnhancedAdminDashboard: React.FC = () => {
                 },
               }}
             >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(255,255,255,0.25)',
-                        mr: 2,
-                        width: 56,
-                        height: 56,
-                      }}
-                    >
-                      <PeopleIcon sx={{ fontSize: 28, color: 'white' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'rgba(255,255,255,0.9)',
-                          fontWeight: 500,
-                          mb: 0.5,
-                        }}
-                      >
-                        Tổng người dùng
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        component="div"
-                        sx={{ fontWeight: 700, color: 'white' }}
-                      >
-                        {stats?.totalUsers.toLocaleString() || 0}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <PeopleIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="body2"
-                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
                     >
-                      +{stats?.newUsersThisMonth || 0} tháng này
+                      Tổng người dùng
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {stats?.totalUsers.toLocaleString() || 0}
                     </Typography>
                   </Box>
-                </CardContent>
-              </Card>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                  >
+                    +{stats?.newUsersThisMonth || 0} tháng này
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
@@ -661,50 +689,50 @@ const EnhancedAdminDashboard: React.FC = () => {
                 },
               }}
             >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(255,255,255,0.25)',
-                        mr: 2,
-                        width: 56,
-                        height: 56,
-                        color: 'white',
-                      }}
-                    >
-                      <SchoolIcon sx={{ fontSize: 28, color: 'white' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'rgba(255,255,255,0.9)',
-                          fontWeight: 500,
-                          mb: 0.5,
-                        }}
-                      >
-                        Khóa học
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        component="div"
-                        sx={{ fontWeight: 700, color: 'white' }}
-                      >
-                        {stats?.totalCourses || 0}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                      color: 'white',
+                    }}
+                  >
+                    <SchoolIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="body2"
-                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
                     >
-                      +12 tuần này
+                      Môn học
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {stats?.totalCourses || 0}
                     </Typography>
                   </Box>
-                </CardContent>
-              </Card>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                  >
+                    +12 tuần này
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
@@ -727,49 +755,49 @@ const EnhancedAdminDashboard: React.FC = () => {
                 },
               }}
             >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(255,255,255,0.25)',
-                        mr: 2,
-                        width: 56,
-                        height: 56,
-                      }}
-                    >
-                      <ClassIcon sx={{ fontSize: 28, color: 'white' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'rgba(255,255,255,0.9)',
-                          fontWeight: 500,
-                          mb: 0.5,
-                        }}
-                      >
-                        Lớp học
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        component="div"
-                        sx={{ fontWeight: 700, color: 'white' }}
-                      >
-                        {stats?.totalClassrooms || 0}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <ClassIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="body2"
-                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
                     >
-                      +8 tuần này
+                      Lớp học
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {stats?.totalClassrooms || 0}
                     </Typography>
                   </Box>
-                </CardContent>
-              </Card>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                  >
+                    +8 tuần này
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
@@ -792,49 +820,49 @@ const EnhancedAdminDashboard: React.FC = () => {
                 },
               }}
             >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(255,255,255,0.25)',
-                        mr: 2,
-                        width: 56,
-                        height: 56,
-                      }}
-                    >
-                      <AssignmentIcon sx={{ fontSize: 28, color: 'white' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'rgba(255,255,255,0.9)',
-                          fontWeight: 500,
-                          mb: 0.5,
-                        }}
-                      >
-                        Bài tập
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        component="div"
-                        sx={{ fontWeight: 700, color: 'white' }}
-                      >
-                        {stats?.totalAssignments || 0}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                    <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      mr: 2,
+                      width: 56,
+                      height: 56,
+                    }}
+                  >
+                    <AssignmentIcon sx={{ fontSize: 28, color: 'white' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="body2"
-                      sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontWeight: 500,
+                        mb: 0.5,
+                      }}
                     >
-                      +23 tuần này
+                      Bài tập
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ fontWeight: 700, color: 'white' }}
+                    >
+                      {stats?.totalAssignments || 0}
                     </Typography>
                   </Box>
-                </CardContent>
-              </Card>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <TrendingUpIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.9)' }} />
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}
+                  >
+                    +23 tuần này
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
 
@@ -851,7 +879,14 @@ const EnhancedAdminDashboard: React.FC = () => {
                 height: '100%',
               }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 3,
+                }}
+              >
                 <Typography variant="h6" sx={{ fontWeight: 600, color: primaryTextColor }}>
                   {chartTitle}
                 </Typography>
@@ -902,7 +937,7 @@ const EnhancedAdminDashboard: React.FC = () => {
                           position: 'absolute',
                           left: 0,
                           right: 0,
-                          top: `${(i * 25)}%`,
+                          top: `${i * 25}%`,
                           height: '1px',
                         }}
                       >
@@ -919,7 +954,7 @@ const EnhancedAdminDashboard: React.FC = () => {
                         key={`bar-${i}`}
                         sx={{
                           position: 'absolute',
-                          left: `${(i * 12) + 5}%`,
+                          left: `${i * 12 + 5}%`,
                           bottom: 0,
                           width: '8%',
                           height: `${height}%`,
@@ -935,7 +970,16 @@ const EnhancedAdminDashboard: React.FC = () => {
                       </Box>
                     ))}
                     {/* X-axis labels */}
-                    <Box sx={{ position: 'absolute', bottom: -20, left: 0, right: 0, display: 'flex', justifyContent: 'space-around' }}>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: -20,
+                        left: 0,
+                        right: 0,
+                        display: 'flex',
+                        justifyContent: 'space-around',
+                      }}
+                    >
                       {[...Array(6)].map((_, i) => (
                         <Box key={`label-${i}`} sx={{ width: '15%' }}>
                           {darkMode ? (
@@ -998,7 +1042,7 @@ const EnhancedAdminDashboard: React.FC = () => {
               <StatsChart
                 data={[
                   { name: 'Người dùng', value: stats?.totalUsers || 0, color: '#EF5B5B' },
-                  { name: 'Khóa học', value: stats?.totalCourses || 0, color: '#AED6E6' },
+                  { name: 'Môn học', value: stats?.totalCourses || 0, color: '#AED6E6' },
                   { name: 'Lớp học', value: stats?.totalClassrooms || 0, color: '#4CAF50' },
                   { name: 'Bài tập', value: stats?.totalAssignments || 0, color: '#FF9800' },
                 ]}
@@ -1035,23 +1079,26 @@ const EnhancedAdminDashboard: React.FC = () => {
             }}
           >
             <SchoolIcon sx={{ mr: 1, color: '#EF5B5B' }} />
-            Khóa học phổ biến
+            Môn học phổ biến
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Khóa học</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Môn học</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Giảng viên
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Ngày tạo
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: primaryTextColor }}>
                     Học sinh
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
-                    Hoàn thành
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: primaryTextColor }}>
                     Đánh giá
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: primaryTextColor }}>
                     Thao tác
                   </TableCell>
                 </TableRow>
@@ -1081,91 +1128,103 @@ const EnhancedAdminDashboard: React.FC = () => {
                             {course.title}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">
-                          <Badge
-                            badgeContent={course.students}
-                            sx={{
-                              '& .MuiBadge-badge': {
-                                bgcolor: '#EF5B5B',
-                                color: 'white',
-                              },
-                            }}
-                          >
-                            <PeopleIcon sx={{ color: secondaryTextColor }} />
-                          </Badge>
-                        </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">
                           <Box
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'flex-end',
+                              justifyContent: 'center',
+                              gap: 0.5,
+                            }}
+                          >
+                            <PersonIcon fontSize="small" sx={{ color: secondaryTextColor }} />
+                            <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                              {course.teacherName || 'Không xác định'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 0.5,
+                            }}
+                          >
+                            <CalendarIcon fontSize="small" sx={{ color: secondaryTextColor }} />
+                            <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                              {course.createdAt
+                                ? new Date(course.createdAt).toLocaleDateString('vi-VN')
+                                : 'N/A'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
                           >
                             <Typography
                               variant="body2"
-                              sx={{ mr: 1, fontWeight: 600, color: primaryTextColor }}
+                              sx={{ fontWeight: 600, color: primaryTextColor }}
                             >
-                              {course.completionRate}%
+                              {course.students}
                             </Typography>
-                            <LinearProgress
-                              variant="determinate"
-                              value={course.completionRate}
-                              sx={{
-                                width: 60,
-                                height: 8,
-                                borderRadius: 4,
-                                bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                                '& .MuiLinearProgress-bar': {
-                                  bgcolor: '#EF5B5B',
-                                },
-                              }}
-                            />
                           </Box>
                         </TableCell>
-                        <TableCell align="right">
-                          <Chip
-                            label={`${course.rating} ⭐`}
-                            size="small"
+                        <TableCell align="center">
+                          <Box
                             sx={{
-                              bgcolor: darkMode
-                                ? 'rgba(255, 152, 0, 0.2)'
-                                : 'rgba(255, 152, 0, 0.1)',
-                              color: '#FF9800',
-                              fontWeight: 600,
-                              border: `1px solid ${surfaceBorder}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
-                          />
+                          >
+                            <Rating
+                              value={course.rating}
+                              readOnly
+                              precision={0.1}
+                              size="small"
+                              sx={{ mr: 1 }}
+                            />
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 600, color: primaryTextColor }}
+                            >
+                              {course.rating.toFixed(1)}
+                            </Typography>
+                          </Box>
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">
                           <Tooltip title="Xem chi tiết">
                             <IconButton
                               size="small"
+                              onClick={async () => {
+                                setSelectedCourse(course);
+                                setDetailOpen(true);
+                                setLoadingDetails(true);
+                                try {
+                                  const details = await coursesApi.getById(course.id);
+                                  setCourseDetails(details);
+                                } catch (error) {
+                                  console.error('Error fetching course details:', error);
+                                  setCourseDetails(null);
+                                } finally {
+                                  setLoadingDetails(false);
+                                }
+                              }}
                               sx={{
                                 color: '#EF5B5B',
                                 '&:hover': {
-                                  bgcolor: darkMode
-                                    ? 'rgba(239, 91, 91, 0.2)'
-                                    : 'rgba(239, 91, 91, 0.1)',
+                                  backgroundColor: 'rgba(239, 91, 91, 0.1)',
                                 },
                               }}
                             >
-                              <ViewIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Chỉnh sửa">
-                            <IconButton
-                              size="small"
-                              sx={{
-                                color: '#EF5B5B',
-                                '&:hover': {
-                                  bgcolor: darkMode
-                                    ? 'rgba(239, 91, 91, 0.2)'
-                                    : 'rgba(239, 91, 91, 0.1)',
-                                },
-                              }}
-                            >
-                              <EditIcon />
+                              <OpenInNewIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </TableCell>
@@ -1174,10 +1233,9 @@ const EnhancedAdminDashboard: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
-                      <SchoolIcon sx={{ fontSize: 48, color: secondaryTextColor, mb: 2 }} />
-                      <Typography variant="body2" sx={{ color: secondaryTextColor }}>
-                        Chưa có khóa học nào
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Chưa có môn học nào được đánh giá
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -1186,6 +1244,272 @@ const EnhancedAdminDashboard: React.FC = () => {
             </Table>
           </TableContainer>
         </Paper>
+
+        {/* Course Detail Dialog */}
+        <Dialog
+          open={detailOpen}
+          onClose={() => {
+            setDetailOpen(false);
+            setSelectedCourse(null);
+            setCourseDetails(null);
+          }}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              background: darkMode
+                ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+                : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 700,
+            }}
+          >
+            Chi tiết môn học
+          </DialogTitle>
+          <DialogContent dividers>
+            {loadingDetails ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: 200,
+                }}
+              >
+                {darkMode ? (
+                  <DarkShimmerBox height="200px" width="100%" borderRadius="8px" />
+                ) : (
+                  <ShimmerBox height="200px" width="100%" borderRadius="8px" />
+                )}
+              </Box>
+            ) : selectedCourse && courseDetails ? (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: primaryTextColor, mb: 2 }}>
+                  {courseDetails.title}
+                </Typography>
+                {courseDetails.description && (
+                  <Typography variant="body2" sx={{ color: secondaryTextColor, mb: 3 }}>
+                    {courseDetails.description}
+                  </Typography>
+                )}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 3,
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Giảng viên
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                      {selectedCourse.teacherName ||
+                        courseDetails.createdBy?.name ||
+                        'Không xác định'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Ngày tạo
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                      {selectedCourse.createdAt
+                        ? new Date(selectedCourse.createdAt).toLocaleDateString('vi-VN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : courseDetails.createdAt
+                          ? new Date(courseDetails.createdAt).toLocaleDateString('vi-VN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Danh mục
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                      {courseDetails.category || '—'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Cấp độ
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                      {courseDetails.level || '—'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Số học sinh
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                      {selectedCourse.students}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Đánh giá
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Rating value={selectedCourse.rating} readOnly precision={0.1} size="small" />
+                      <Typography variant="body1" sx={{ color: primaryTextColor, fontWeight: 500 }}>
+                        {selectedCourse.rating.toFixed(1)}/5.0
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Trạng thái
+                    </Typography>
+                    <Chip
+                      sx={{ color: 'white' }}
+                      label={
+                        courseDetails.status === 'published'
+                          ? 'Đã xuất bản'
+                          : courseDetails.status === 'draft'
+                            ? 'Bản nháp'
+                            : 'Đã lưu trữ'
+                      }
+                      color={
+                        courseDetails.status === 'published'
+                          ? 'success'
+                          : courseDetails.status === 'draft'
+                            ? 'default'
+                            : 'default'
+                      }
+                      size="small"
+                    />
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Hiển thị
+                    </Typography>
+                    <Chip
+                      sx={{ color: 'white' }}
+                      label={courseDetails.visibility === 'public' ? 'Công khai' : 'Riêng tư'}
+                      color={courseDetails.visibility === 'public' ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </Box>
+                </Box>
+              </Box>
+            ) : selectedCourse ? (
+              <Box>
+                <Typography variant="h6" sx={{ mb: 1, color: primaryTextColor }}>
+                  {selectedCourse.title}
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    mt: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Giảng viên
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                      {selectedCourse.teacherName || 'Không xác định'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Ngày tạo
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                      {selectedCourse.createdAt
+                        ? new Date(selectedCourse.createdAt).toLocaleDateString('vi-VN')
+                        : 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Số học sinh
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                      {selectedCourse.students}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: secondaryTextColor, display: 'block', mb: 0.5 }}
+                    >
+                      Đánh giá
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Rating value={selectedCourse.rating} readOnly precision={0.1} size="small" />
+                      <Typography variant="body2" sx={{ color: primaryTextColor }}>
+                        {selectedCourse.rating.toFixed(1)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+            ) : (
+              <Typography variant="body2" sx={{ color: secondaryTextColor }}>
+                Không có dữ liệu
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              onClick={() => {
+                setDetailOpen(false);
+                setSelectedCourse(null);
+                setCourseDetails(null);
+              }}
+              variant="outlined"
+            >
+              Đóng
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </AdminLayout>
   );

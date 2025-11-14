@@ -18,8 +18,9 @@ import {
   Button,
   Chip,
   Divider,
+  Pagination,
 } from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DownloadIcon from '@mui/icons-material/Download';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -31,7 +32,15 @@ import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
 import { DarkShimmerBox, ShimmerBox } from '../components/LoadingSkeleton';
 import { adminApi } from '../api/admin';
-import { Alert, Snackbar } from '@mui/material';
+import {
+  Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from '@mui/material';
 
 interface StorageStats {
   total: number;
@@ -47,6 +56,7 @@ interface StorageFile {
   size: string;
   owner: string;
   updatedAt: string;
+  fileUrl?: string;
 }
 
 const AdminStoragePage: React.FC = () => {
@@ -61,6 +71,10 @@ const AdminStoragePage: React.FC = () => {
     folders: 0,
   });
   const [files, setFiles] = useState<StorageFile[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<StorageFile | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchStorageData = async () => {
     try {
@@ -68,10 +82,13 @@ const AdminStoragePage: React.FC = () => {
       setError(null);
       const [statsData, filesData] = await Promise.all([
         adminApi.getStorageStats(),
-        adminApi.getStorageFiles(1, 10),
+        adminApi.getStorageFiles(page, 10),
       ]);
       setStats(statsData);
       setFiles(filesData.files || filesData.items || []);
+      if (filesData.pagination) {
+        setTotalPages(filesData.pagination.pages || 1);
+      }
     } catch (err: any) {
       console.error('Error fetching storage data:', err);
       setError('Không thể tải dữ liệu lưu trữ. Vui lòng thử lại sau.');
@@ -82,7 +99,8 @@ const AdminStoragePage: React.FC = () => {
 
   useEffect(() => {
     fetchStorageData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
   const secondaryTextColor = darkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(16, 42, 67, 0.64)';
@@ -107,6 +125,52 @@ const AdminStoragePage: React.FC = () => {
   };
 
   const usedPercentage = Math.round((stats.used / stats.total) * 100);
+
+  const handleDownloadFile = (file: StorageFile) => {
+    if (!file.fileUrl) {
+      setError('Không tìm thấy URL của tệp');
+      return;
+    }
+    try {
+      const link = document.createElement('a');
+      link.href = file.fileUrl;
+      link.download = file.name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      setError('Không thể tải xuống tệp');
+    }
+  };
+
+  const handleOpenDeleteDialog = (file: StorageFile) => {
+    setFileToDelete(file);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setFileToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    try {
+      await adminApi.deleteStorageFile(fileToDelete.id);
+      setSuccess('Đã xóa tệp thành công!');
+      fetchStorageData();
+      handleCloseDeleteDialog();
+    } catch (err) {
+      setError('Không thể xóa tệp');
+      handleCloseDeleteDialog();
+    }
+  };
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
 
   return (
     <AdminLayout>
@@ -141,23 +205,6 @@ const AdminStoragePage: React.FC = () => {
               Theo dõi dung lượng đã sử dụng, tệp gần đây và tối ưu hóa kho dữ liệu
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<CloudUploadIcon />}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              py: 1.5,
-              background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
-              },
-            }}
-          >
-            Tải lên tệp
-          </Button>
         </Box>
 
         {loading ? (
@@ -478,9 +525,6 @@ const AdminStoragePage: React.FC = () => {
                       Dung lượng
                     </TableCell>
                     <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
-                      Người tải lên
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
                       Cập nhật gần nhất
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600, color: primaryTextColor }}>
@@ -556,46 +600,44 @@ const AdminStoragePage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ color: primaryTextColor }}>
-                          {file.owner}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ color: primaryTextColor }}>
                           {file.updatedAt}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Tooltip title="Tải xuống">
-                          <IconButton
-                            size="small"
-                            sx={{
-                              color: secondaryTextColor,
-                              '&:hover': {
-                                color: '#EF5B5B',
-                              },
-                            }}
-                          >
-                            <CloudUploadIcon fontSize="small" />
-                          </IconButton>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDownloadFile(file)}
+                              disabled={!file.fileUrl}
+                              sx={{
+                                color: secondaryTextColor,
+                                '&:hover': {
+                                  color: '#4CAF50',
+                                  backgroundColor: darkMode
+                                    ? 'rgba(76, 175, 80, 0.1)'
+                                    : 'rgba(76, 175, 80, 0.08)',
+                                },
+                                '&:disabled': {
+                                  color: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.26)',
+                                },
+                              }}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                         <Tooltip title="Xóa tệp">
                           <IconButton
                             size="small"
-                            onClick={async () => {
-                              if (window.confirm(`Bạn có chắc muốn xóa tệp "${file.name}"?`)) {
-                                try {
-                                  await adminApi.deleteStorageFile(file.id);
-                                  setSuccess('Đã xóa tệp thành công!');
-                                  fetchStorageData();
-                                } catch (err) {
-                                  setError('Không thể xóa tệp');
-                                }
-                              }
-                            }}
+                            onClick={() => handleOpenDeleteDialog(file)}
                             sx={{
                               color: secondaryTextColor,
                               '&:hover': {
                                 color: '#EF5B5B',
+                                backgroundColor: darkMode
+                                  ? 'rgba(239, 91, 91, 0.1)'
+                                  : 'rgba(239, 91, 91, 0.08)',
                               },
                             }}
                           >
@@ -608,6 +650,20 @@ const AdminStoragePage: React.FC = () => {
                 </TableBody>
               </Table>
             </Paper>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                  showFirstButton
+                  showLastButton
+                />
+              </Box>
+            )}
           </>
         )}
 
@@ -640,6 +696,55 @@ const AdminStoragePage: React.FC = () => {
             {success}
           </Alert>
         </Snackbar>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
+          <DialogTitle
+            sx={{
+              background: darkMode
+                ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+                : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 700,
+            }}
+          >
+            Xác nhận xóa tệp
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ color: secondaryTextColor }}>
+              Bạn có chắc chắn muốn xóa tệp{' '}
+              <strong style={{ color: primaryTextColor }}>{fileToDelete?.name}</strong>? Hành động
+              này không thể hoàn tác.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, gap: 1 }}>
+            <Button
+              onClick={handleCloseDeleteDialog}
+              sx={{
+                color: secondaryTextColor,
+                '&:hover': {
+                  backgroundColor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                },
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #D94A4A 0%, #EF5B5B 100%)',
+                },
+              }}
+            >
+              Xóa
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </AdminLayout>
   );

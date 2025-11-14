@@ -12,7 +12,6 @@ import {
   Button,
   Divider,
   Alert,
-  Skeleton,
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -20,6 +19,7 @@ import StarIcon from '@mui/icons-material/Star';
 import { progressApi, ProgressData } from '../../../api/progress';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { ShimmerBox, DarkShimmerBox } from '../../../components/LoadingSkeleton';
 
 export default function StudentProgress() {
   const { darkMode } = useTheme();
@@ -28,16 +28,12 @@ export default function StudentProgress() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const backgroundGradient = darkMode
-    ? 'linear-gradient(135deg, #0f172a 0%, #1f2937 100%)'
-    : 'linear-gradient(135deg, #f4f8ff 0%, #f1f5f9 100%)';
   const primaryTextColor = darkMode ? '#f8fafc' : '#102a43';
   const secondaryTextColor = darkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(16, 42, 67, 0.64)';
   const cardBackground = darkMode
     ? 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)'
     : 'linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%)';
-  const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(79, 70, 229, 0.12)';
-  const skeletonBaseColor = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)';
+  const surfaceBorder = darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(239, 91, 91, 0.12)';
 
   useEffect(() => {
     loadProgress();
@@ -109,26 +105,26 @@ export default function StudentProgress() {
     return (
       <Box
         sx={{
-          p: 3,
+          p: { xs: 2, md: 3 },
           minHeight: '100vh',
           color: primaryTextColor,
         }}
       >
         <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Skeleton
-            variant="text"
-            width={280}
-            height={52}
-            sx={{ mx: 'auto', bgcolor: skeletonBaseColor }}
-            animation="wave"
-          />
-          <Skeleton
-            variant="text"
-            width={360}
-            height={28}
-            sx={{ mx: 'auto', mt: 1, bgcolor: skeletonBaseColor }}
-            animation="wave"
-          />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+            {darkMode ? (
+              <DarkShimmerBox height="52px" width="280px" borderRadius="4px" />
+            ) : (
+              <ShimmerBox height="52px" width="280px" borderRadius="4px" />
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            {darkMode ? (
+              <DarkShimmerBox height="28px" width="360px" borderRadius="4px" />
+            ) : (
+              <ShimmerBox height="28px" width="360px" borderRadius="4px" />
+            )}
+          </Box>
         </Box>
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -141,22 +137,31 @@ export default function StudentProgress() {
                   borderRadius: 3,
                   background: cardBackground,
                   border: `1px solid ${surfaceBorder}`,
+                  textAlign: 'center',
                 }}
               >
-                <Skeleton
-                  variant="text"
-                  height={44}
-                  width="50%"
-                  sx={{ bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="text"
-                  height={24}
-                  width="70%"
-                  sx={{ bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                  {darkMode ? (
+                    <Box sx={{ mx: 'auto' }}>
+                      <DarkShimmerBox height="44px" width="60%" borderRadius="4px" />
+                    </Box>
+                  ) : (
+                    <Box sx={{ mx: 'auto' }}>
+                      <ShimmerBox height="44px" width="60%" borderRadius="4px" />
+                    </Box>
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  {darkMode ? (
+                    <Box sx={{ mx: 'auto' }}>
+                      <DarkShimmerBox height="24px" width="70%" borderRadius="4px" />
+                    </Box>
+                  ) : (
+                    <Box sx={{ mx: 'auto' }}>
+                      <ShimmerBox height="24px" width="70%" borderRadius="4px" />
+                    </Box>
+                  )}
+                </Box>
               </Paper>
             </Grid>
           ))}
@@ -174,45 +179,62 @@ export default function StudentProgress() {
                   p: 3,
                 }}
               >
-                <Skeleton
-                  variant="circular"
-                  width={52}
-                  height={52}
-                  sx={{ mb: 2, bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="text"
-                  height={32}
-                  width="80%"
-                  sx={{ bgcolor: skeletonBaseColor, mb: 1 }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="text"
-                  height={24}
-                  width="60%"
-                  sx={{ bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="rectangular"
-                  height={12}
-                  sx={{ mt: 3, borderRadius: 2, bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="rectangular"
-                  height={12}
-                  sx={{ mt: 1, borderRadius: 2, bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
-                <Skeleton
-                  variant="rectangular"
-                  height={44}
-                  sx={{ mt: 4, borderRadius: 2, bgcolor: skeletonBaseColor }}
-                  animation="wave"
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="52px" width="52px" borderRadius="50%" />
+                  ) : (
+                    <ShimmerBox height="52px" width="52px" borderRadius="50%" />
+                  )}
+                  <Box sx={{ flex: 1 }}>
+                    {darkMode ? (
+                      <>
+                        <Box sx={{ mb: 1 }}>
+                          <DarkShimmerBox height="24px" width="80%" borderRadius="4px" />
+                        </Box>
+                        <DarkShimmerBox height="20px" width="60%" borderRadius="4px" />
+                      </>
+                    ) : (
+                      <>
+                        <Box sx={{ mb: 1 }}>
+                          <ShimmerBox height="24px" width="80%" borderRadius="4px" />
+                        </Box>
+                        <ShimmerBox height="20px" width="60%" borderRadius="4px" />
+                      </>
+                    )}
+                  </Box>
+                </Box>
+                <Box sx={{ mb: 3 }}>
+                  {darkMode ? (
+                    <DarkShimmerBox height="8px" width="100%" borderRadius="4px" />
+                  ) : (
+                    <ShimmerBox height="8px" width="100%" borderRadius="4px" />
+                  )}
+                </Box>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="32px" width="80%" borderRadius="4px" />
+                      ) : (
+                        <ShimmerBox height="32px" width="80%" borderRadius="4px" />
+                      )}
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      {darkMode ? (
+                        <DarkShimmerBox height="32px" width="80%" borderRadius="4px" />
+                      ) : (
+                        <ShimmerBox height="32px" width="80%" borderRadius="4px" />
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+                {darkMode ? (
+                  <DarkShimmerBox height="44px" width="100%" borderRadius="8px" />
+                ) : (
+                  <ShimmerBox height="44px" width="100%" borderRadius="8px" />
+                )}
               </Card>
             </Grid>
           ))}
@@ -260,16 +282,20 @@ export default function StudentProgress() {
       }}
     >
       {/* Header */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
+      <Box sx={{ mb: 4 }}>
         <Typography
           variant="h4"
+          component="h1"
           sx={{
             fontWeight: 700,
             mb: 1,
             color: primaryTextColor,
-            textShadow: darkMode
-              ? '0px 12px 32px rgba(15,23,42,0.55)'
-              : '0px 12px 32px rgba(79,70,229,0.28)',
+            background: darkMode
+              ? 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)'
+              : 'linear-gradient(135deg, #EF5B5B 0%, #D94A4A 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}
         >
           📊 Tiến độ học tập
@@ -382,8 +408,8 @@ export default function StudentProgress() {
                   color: primaryTextColor,
                   transition: 'all 0.3s ease',
                   boxShadow: darkMode
-                    ? '1px solid rgba(255, 123, 123, 0.2)'
-                    : '1px solid rgba(239, 91, 91, 0.1)',
+                    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+                    : '0 4px 20px rgba(239, 91, 91, 0.1)',
                   position: 'relative',
                   overflow: 'hidden',
                   '&::before': {
@@ -398,8 +424,8 @@ export default function StudentProgress() {
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: darkMode
-                      ? '1px solid rgba(255, 123, 123, 0.2)'
-                      : '1px solid rgba(239, 91, 91, 0.1)',
+                      ? '0 8px 30px rgba(0, 0, 0, 0.4)'
+                      : '0 8px 30px rgba(239, 91, 91, 0.2)',
                   },
                 }}
               >
@@ -437,7 +463,7 @@ export default function StudentProgress() {
                       alignItems="center"
                       sx={{ mb: 1 }}
                     >
-                      <Typography variant="body2" fontWeight={600} sx={{ color: '#ffffff' }}>
+                      <Typography variant="body2" fontWeight={600} sx={{ color: primaryTextColor }}>
                         Tiến độ: {progress.progress.percentage}%
                       </Typography>
                       <Chip
@@ -471,7 +497,7 @@ export default function StudentProgress() {
                   <Grid container spacing={2} sx={{ mb: 2 }}>
                     <Grid item xs={6}>
                       <Box textAlign="center">
-                        <Typography variant="h6" fontWeight="bold" sx={{ color: '#ffffff' }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: primaryTextColor }}>
                           {progress.progress.completedLessons.length}
                         </Typography>
                         <Typography variant="caption" sx={{ color: secondaryTextColor }}>
@@ -481,7 +507,7 @@ export default function StudentProgress() {
                     </Grid>
                     <Grid item xs={6}>
                       <Box textAlign="center">
-                        <Typography variant="h6" fontWeight="bold" sx={{ color: '#ffffff' }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: primaryTextColor }}>
                           {progress.progress.totalLessons}
                         </Typography>
                         <Typography variant="caption" sx={{ color: secondaryTextColor }}>
@@ -496,7 +522,7 @@ export default function StudentProgress() {
                       <Divider sx={{ mb: 1, borderColor: surfaceBorder }} />
                       <Box display="flex" alignItems="center" gap={1}>
                         <StarIcon sx={{ color: '#FFD700', fontSize: 20 }} />
-                        <Typography variant="body2" sx={{ color: '#ffffff' }}>
+                        <Typography variant="body2" sx={{ color: primaryTextColor }}>
                           Đánh giá: {progress.rating}/5
                         </Typography>
                       </Box>

@@ -41,6 +41,8 @@ export interface TopCourse {
   students: number;
   completionRate: number;
   rating: number;
+  teacherName?: string;
+  createdAt?: string;
 }
 
 export const adminApi = {

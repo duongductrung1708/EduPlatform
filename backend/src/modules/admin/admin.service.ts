@@ -5,9 +5,11 @@ import { User } from '../../models/user.model';
 import { Course } from '../../models/course.model';
 import { Classroom } from '../../models/classroom.model';
 import { Assignment, Submission } from '../../models/assignment.model';
+import { Lesson } from '../../models/lesson.model';
 import { SecuritySetting } from '../../models/security-setting.model';
 import { SecurityLog } from '../../models/security-log.model';
 import { SystemSetting } from '../../models/system-setting.model';
+import { CourseEnrollment } from '../../models/course-enrollment.model';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -51,6 +53,8 @@ export interface TopCourse {
   students: number;
   completionRate: number;
   rating: number;
+  teacherName?: string;
+  createdAt?: Date;
 }
 
 @Injectable()
@@ -61,9 +65,11 @@ export class AdminService {
     @InjectModel(Classroom.name) private classroomModel: Model<Classroom>,
     @InjectModel(Assignment.name) private assignmentModel: Model<Assignment>,
     @InjectModel(Submission.name) private submissionModel: Model<Submission>,
+    @InjectModel(Lesson.name) private lessonModel: Model<Lesson>,
     @InjectModel(SecuritySetting.name) private securitySettingModel: Model<SecuritySetting>,
     @InjectModel(SecurityLog.name) private securityLogModel: Model<SecurityLog>,
     @InjectModel(SystemSetting.name) private systemSettingModel: Model<SystemSetting>,
+    @InjectModel(CourseEnrollment.name) private enrollmentModel: Model<CourseEnrollment>,
   ) {}
 
   async getDashboardStats(period: string = '30days'): Promise<DashboardStats> {
@@ -715,31 +721,22 @@ export class AdminService {
 
   async getTopCourses(limit: number = 10): Promise<TopCourse[]> {
     try {
-      // Get all courses with their classrooms and students
-      const courses = await this.courseModel.find().lean();
+      // Get all courses with their classrooms and students, populate createdBy
+      const courses = await this.courseModel.find().populate('createdBy', 'name email').lean();
       
       const topCoursesData = await Promise.all(
         courses.map(async (course: any) => {
-          // Get classrooms for this course
+          // Count total students from enrollments (more accurate than classrooms)
+          const totalStudents = await this.enrollmentModel.countDocuments({
+            courseId: course._id,
+            isActive: true
+          });
+
+          // Get classrooms for this course to calculate completion rate
           const classrooms = await this.classroomModel
             .find({ courseId: course._id })
-            .select('studentIds students')
+            .select('_id')
             .lean();
-
-          // Count total students across all classrooms
-          let totalStudents = 0;
-          const studentIds = new Set<string>();
-          
-          classrooms.forEach((classroom: any) => {
-            const students = classroom.studentIds || classroom.students || [];
-            students.forEach((sid: any) => {
-              const idStr = String(sid);
-              if (!studentIds.has(idStr)) {
-                studentIds.add(idStr);
-                totalStudents++;
-              }
-            });
-          });
 
           // Count submissions for assignments in these classrooms
           const classroomIds = classrooms.map((c: any) => c._id);
@@ -754,7 +751,7 @@ export class AdminService {
           });
 
           // Calculate completion rate: submissions / (assignments * students)
-          // If no assignments, use a default based on student engagement
+          // If no assignments, use progress from enrollments
           let completionRate = 0;
           if (assignmentIds.length > 0 && totalStudents > 0) {
             const totalPossibleSubmissions = assignmentIds.length * totalStudents;
@@ -762,27 +759,66 @@ export class AdminService {
             // Cap at 100%
             completionRate = Math.min(completionRate, 100);
           } else if (totalStudents > 0) {
-            // If course has students but no assignments, show engagement indicator
-            completionRate = 50; // Neutral engagement
+            // Calculate average progress from enrollments if no assignments
+            const enrollments = await this.enrollmentModel.find({
+              courseId: course._id,
+              isActive: true
+            }).select('progress').lean();
+            
+            if (enrollments.length > 0) {
+              const totalProgress = enrollments.reduce((sum, e) => sum + ((e.progress?.percentage || 0)), 0);
+              completionRate = Math.round(totalProgress / enrollments.length);
+            } else {
+              completionRate = 0;
+            }
           }
 
-          // Get average rating from course or default
-          const rating = course.rating || 4.5;
+          // Calculate averageRating and totalRatings from enrollments
+          const enrollmentsWithRatings = await this.enrollmentModel.find({
+            courseId: course._id,
+            isActive: true,
+            rating: { $exists: true, $ne: null }
+          }).select('rating').lean();
+          
+          const totalRatings = enrollmentsWithRatings.length;
+          let averageRating = 0;
+          if (totalRatings > 0) {
+            const sumRatings = enrollmentsWithRatings.reduce((sum, e) => sum + (e.rating || 0), 0);
+            averageRating = Number((sumRatings / totalRatings).toFixed(2));
+          }
+
+          // Get teacher name
+          const teacher = course.createdBy as any;
+          const teacherName = teacher?.name || 'Không xác định';
 
           return {
             id: String(course._id),
             title: course.title,
             students: totalStudents,
             completionRate,
-            rating: typeof rating === 'number' ? rating : 4.5,
+            rating: averageRating,
+            teacherName,
+            createdAt: course.createdAt,
           };
         })
       );
 
-      // Sort by student count and limit
+      // Sort by rating (descending), then by student count, then by title
+      // Only show courses with ratings > 0, prioritize highest ratings
       return topCoursesData
-        .filter(course => course.students > 0) // Only courses with students
-        .sort((a, b) => b.students - a.students)
+        .filter(course => course.rating > 0) // Only courses with ratings
+        .sort((a, b) => {
+          // First sort by rating (descending)
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating;
+          }
+          // Then by student count (descending)
+          if (b.students !== a.students) {
+            return b.students - a.students;
+          }
+          // Finally by title (ascending)
+          return a.title.localeCompare(b.title);
+        })
         .slice(0, limit);
     } catch (error) {
       console.error('Error in getTopCourses:', error);
@@ -1368,6 +1404,17 @@ export class AdminService {
         .select('attachments')
         .lean();
 
+      // Get all lessons with file attachments
+      const lessons = await this.lessonModel
+        .find({
+          $or: [
+            { 'content.fileUrl': { $exists: true, $ne: null, $ne: '' } },
+            { 'content.videoUrl': { $exists: true, $ne: null, $ne: '' } },
+          ],
+        })
+        .select('content')
+        .lean();
+
       // Calculate total files and total size from submissions
       let totalFiles = 0;
       let totalSizeBytes = 0;
@@ -1388,6 +1435,39 @@ export class AdminService {
             }
           }
         });
+      });
+
+      // Calculate files from lessons
+      lessons.forEach((lesson: any) => {
+        const content = lesson.content || {};
+        // Count fileUrl (documents, images, etc.)
+        if (content.fileUrl) {
+          totalFiles++;
+          // Estimate size if not available (average 2MB for documents)
+          const estimatedSize = content.fileSize || 2 * 1024 * 1024;
+          totalSizeBytes += estimatedSize;
+          // Extract folder from URL
+          try {
+            const urlParts = content.fileUrl.split('/');
+            if (urlParts.length > 2) {
+              folderSet.add(urlParts[urlParts.length - 2]);
+            }
+          } catch {}
+        }
+        // Count videoUrl
+        if (content.videoUrl) {
+          totalFiles++;
+          // Estimate size for videos (average 50MB)
+          const estimatedSize = content.videoSize || 50 * 1024 * 1024;
+          totalSizeBytes += estimatedSize;
+          // Extract folder from URL
+          try {
+            const urlParts = content.videoUrl.split('/');
+            if (urlParts.length > 2) {
+              folderSet.add(urlParts[urlParts.length - 2]);
+            }
+          } catch {}
+        }
       });
 
       // Convert bytes to GB
@@ -1421,29 +1501,81 @@ export class AdminService {
         .sort({ createdAt: -1 })
         .lean();
 
+      // Get lessons with file attachments
+      const lessons = await this.lessonModel
+        .find({
+          $or: [
+            { 'content.fileUrl': { $exists: true, $ne: null, $ne: '' } },
+            { 'content.videoUrl': { $exists: true, $ne: null, $ne: '' } },
+          ],
+        })
+        .select('content title createdAt updatedAt createdBy')
+        .populate('createdBy', 'name email')
+        .sort({ updatedAt: -1 })
+        .lean();
+
       // Flatten all files from all submissions
-      const allFiles = submissions.flatMap((sub: any) => {
+      const submissionFiles = submissions.flatMap((sub: any) => {
         const fileList = sub.attachments || [];
         return fileList.map((file: any, index: number) => ({
-          id: `${sub._id}-${index}`,
+          id: `sub-${sub._id}-${index}`,
           name: file.name || file.originalName || file.filename || 'file',
           type: this.getFileType(file.type || file.mimetype || ''),
           size: this.formatFileSize(file.size || 0),
           owner: sub.studentId?.name || 'Unknown',
           updatedAt: new Date(sub.submittedAt || sub.createdAt).toLocaleDateString('vi-VN'),
+          updatedAtRaw: new Date(sub.submittedAt || sub.createdAt),
+          fileUrl: file.url || file.fileUrl || '',
         }));
       });
 
-      // Sort by updatedAt (most recent first)
-      allFiles.sort((a, b) => {
-        const dateA = new Date(a.updatedAt.split('/').reverse().join('-'));
-        const dateB = new Date(b.updatedAt.split('/').reverse().join('-'));
-        return dateB.getTime() - dateA.getTime();
+      // Flatten all files from lessons
+      const lessonFiles = lessons.flatMap((lesson: any) => {
+        const files: any[] = [];
+        const content = lesson.content || {};
+        
+        // Add fileUrl if exists
+        if (content.fileUrl) {
+          const fileName = content.fileName || content.fileUrl.split('/').pop() || 'file';
+          const fileType = this.getFileTypeFromUrl(content.fileUrl, content.fileType);
+          files.push({
+            id: `lesson-${lesson._id}-file`,
+            name: fileName,
+            type: fileType,
+            size: this.formatFileSize(content.fileSize || 2 * 1024 * 1024), // Estimate 2MB
+            owner: lesson.createdBy?.name || 'Unknown',
+            updatedAt: new Date(lesson.updatedAt || lesson.createdAt).toLocaleDateString('vi-VN'),
+            updatedAtRaw: new Date(lesson.updatedAt || lesson.createdAt),
+            fileUrl: content.fileUrl,
+          });
+        }
+        
+        // Add videoUrl if exists
+        if (content.videoUrl) {
+          const videoName = content.videoUrl.split('/').pop() || 'video';
+          files.push({
+            id: `lesson-${lesson._id}-video`,
+            name: videoName,
+            type: 'video' as const,
+            size: this.formatFileSize(content.videoSize || 50 * 1024 * 1024), // Estimate 50MB
+            owner: lesson.createdBy?.name || 'Unknown',
+            updatedAt: new Date(lesson.updatedAt || lesson.createdAt).toLocaleDateString('vi-VN'),
+            updatedAtRaw: new Date(lesson.updatedAt || lesson.createdAt),
+            fileUrl: content.videoUrl,
+          });
+        }
+        
+        return files;
+      });
+
+      // Combine and sort by updatedAt (most recent first)
+      const allFiles = [...submissionFiles, ...lessonFiles].sort((a, b) => {
+        return b.updatedAtRaw.getTime() - a.updatedAtRaw.getTime();
       });
 
       // Paginate
       const total = allFiles.length;
-      const paginatedFiles = allFiles.slice(skip, skip + limit);
+      const paginatedFiles = allFiles.slice(skip, skip + limit).map(({ updatedAtRaw, ...file }) => file);
 
       return {
         files: paginatedFiles,
@@ -1465,6 +1597,25 @@ export class AdminService {
     if (mimetype.includes('image')) return 'image';
     if (mimetype.includes('video')) return 'video';
     if (mimetype.includes('document') || mimetype.includes('word') || mimetype.includes('excel') || mimetype.includes('sheet')) return 'document';
+    return 'other';
+  }
+
+  private getFileTypeFromUrl(url: string, fileType?: string): 'document' | 'image' | 'video' | 'pdf' | 'other' {
+    if (fileType) {
+      const lowerType = fileType.toLowerCase();
+      if (lowerType.includes('pdf')) return 'pdf';
+      if (lowerType.includes('image') || lowerType.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) return 'image';
+      if (lowerType.includes('video') || lowerType.match(/\.(mp4|webm|ogg|avi|mov)$/i)) return 'video';
+      if (lowerType.includes('document') || lowerType.includes('word') || lowerType.includes('excel') || lowerType.includes('powerpoint') || lowerType.includes('ppt')) return 'document';
+    }
+    
+    // Extract extension from URL
+    const urlLower = url.toLowerCase();
+    if (urlLower.includes('.pdf')) return 'pdf';
+    if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) return 'image';
+    if (urlLower.match(/\.(mp4|webm|ogg|avi|mov)$/)) return 'video';
+    if (urlLower.match(/\.(doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)$/)) return 'document';
+    
     return 'other';
   }
 

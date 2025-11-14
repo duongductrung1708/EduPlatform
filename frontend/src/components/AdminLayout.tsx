@@ -48,6 +48,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import Logo from './Logo';
 import {
   deleteNotification,
   fetchNotifications,
@@ -86,7 +87,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const menuItems = [
     { text: 'Bảng điều khiển', icon: <DashboardIcon />, path: '/admin' },
     { text: 'Người dùng', icon: <PeopleIcon />, path: '/admin/users' },
-    { text: 'Khóa học', icon: <SchoolIcon />, path: '/admin/courses' },
+    { text: 'Môn học', icon: <SchoolIcon />, path: '/admin/courses' },
     { text: 'Lớp học', icon: <ClassIcon />, path: '/admin/classrooms' },
     { text: 'Lưu trữ', icon: <StorageIcon />, path: '/admin/storage' },
     { text: 'Bảo mật', icon: <SecurityIcon />, path: '/admin/security' },
@@ -435,10 +436,34 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'Bảng điều khiển'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Logo height={36} onClick={() => navigate('/admin')} />
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{
+                fontWeight: 800,
+                background: darkMode
+                  ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+                  : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent',
+                flexGrow: 1,
+                ml: 2,
+              }}
+            >
+              {menuItems.find((item) => item.path === location.pathname)?.text || 'Bảng điều khiển'}
+            </Typography>
+          </Box>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ flexGrow: 1, ml: 2, fontWeight: 600 }}
+          ></Typography>
 
           {/* Notifications */}
           <Tooltip title="Thông báo">
@@ -446,6 +471,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               color="inherit"
               onClick={handleNotifOpen}
               sx={{
+                color: '#EF5B5B',
                 mr: 1,
                 '&:hover': {
                   backgroundColor: 'rgba(239, 91, 91, 0.1)',
@@ -476,6 +502,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             aria-haspopup="true"
             onClick={handleMenuOpen}
             color="inherit"
+            sx={{
+              color: '#EF5B5B',
+              '&:hover': {
+                backgroundColor: 'rgba(239, 91, 91, 0.1)',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.3s ease',
+            }}
           >
             <AccountCircleIcon />
           </IconButton>

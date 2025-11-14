@@ -265,15 +265,43 @@ export class CoursesService {
       this.courseModel.countDocuments(query),
     ]);
 
-    // Update enrollment counts for all courses
+    // Update enrollment counts and ratings for all courses
     for (const course of courses) {
       const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
         courseId: course._id,
         isActive: true
       });
       
+      // Calculate averageRating and totalRatings from enrollments
+      const enrollmentsWithRatings = await this.enrollmentModel.find({
+        courseId: course._id,
+        isActive: true,
+        rating: { $exists: true, $ne: null }
+      }).select('rating').lean();
+      
+      const totalRatings = enrollmentsWithRatings.length;
+      let averageRating = 0;
+      if (totalRatings > 0) {
+        const sumRatings = enrollmentsWithRatings.reduce((sum, e) => sum + (e.rating || 0), 0);
+        averageRating = Number((sumRatings / totalRatings).toFixed(2));
+      }
+      
+      // Update course with correct values if different
+      let needsUpdate = false;
       if (course.enrollmentCount !== actualEnrollmentCount) {
         course.enrollmentCount = actualEnrollmentCount;
+        needsUpdate = true;
+      }
+      if (course.totalRatings !== totalRatings) {
+        course.totalRatings = totalRatings;
+        needsUpdate = true;
+      }
+      if (Math.abs((course.averageRating || 0) - averageRating) > 0.01) {
+        course.averageRating = averageRating;
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
         await course.save();
       }
     }
@@ -313,9 +341,36 @@ export class CoursesService {
       isActive: true
     });
     
-    // Update course with correct count if different
+    // Calculate averageRating and totalRatings from enrollments
+    const enrollmentsWithRatings = await this.enrollmentModel.find({
+      courseId: course._id,
+      isActive: true,
+      rating: { $exists: true, $ne: null }
+    }).select('rating').lean();
+    
+    const totalRatings = enrollmentsWithRatings.length;
+    let averageRating = 0;
+    if (totalRatings > 0) {
+      const sumRatings = enrollmentsWithRatings.reduce((sum, e) => sum + (e.rating || 0), 0);
+      averageRating = Number((sumRatings / totalRatings).toFixed(2));
+    }
+    
+    // Update course with correct values if different
+    let needsUpdate = false;
     if (course.enrollmentCount !== actualEnrollmentCount) {
       course.enrollmentCount = actualEnrollmentCount;
+      needsUpdate = true;
+    }
+    if (course.totalRatings !== totalRatings) {
+      course.totalRatings = totalRatings;
+      needsUpdate = true;
+    }
+    if (Math.abs((course.averageRating || 0) - averageRating) > 0.01) {
+      course.averageRating = averageRating;
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
       await course.save();
     }
     
@@ -545,15 +600,20 @@ export class CoursesService {
     // Treat course owner (teacher) as enrolled
     const courseDoc = await this.courseModel.findById(resolvedCourseId).lean();
     if (courseDoc && String(courseDoc.createdBy) === String(studentId)) {
-      return { enrolled: true, progress: 0 };
+      return { enrolled: true, progress: 0, rating: undefined, review: undefined };
     }
     const enrollment = await this.enrollmentModel.findOne({ 
       courseId: resolvedCourseId, 
       studentId: new Types.ObjectId(studentId),
       isActive: true 
     }).lean();
-    if (!enrollment) return { enrolled: false, progress: 0 };
-    return { enrolled: true, progress: enrollment.progress?.percentage ?? 0 };
+    if (!enrollment) return { enrolled: false, progress: 0, rating: undefined, review: undefined };
+    return { 
+      enrolled: true, 
+      progress: enrollment.progress?.percentage ?? 0,
+      rating: enrollment.rating,
+      review: enrollment.review
+    };
   }
 
   async getMyEnrolled(studentId: string) {
@@ -577,6 +637,28 @@ export class CoursesService {
 
     console.log('Filtered published courses:', courses.length);
     
+    // Calculate and update ratings for each course
+    for (const course of courses) {
+      if (!course || !(course as any)._id) continue;
+      
+      const enrollmentsWithRatings = await this.enrollmentModel.find({
+        courseId: (course as any)._id,
+        isActive: true,
+        rating: { $exists: true, $ne: null }
+      }).select('rating').lean();
+      
+      const totalRatings = enrollmentsWithRatings.length;
+      let averageRating = 0;
+      if (totalRatings > 0) {
+        const sumRatings = enrollmentsWithRatings.reduce((sum, e) => sum + (e.rating || 0), 0);
+        averageRating = Number((sumRatings / totalRatings).toFixed(2));
+      }
+      
+      // Update course object with calculated values
+      (course as any).totalRatings = totalRatings;
+      (course as any).averageRating = averageRating;
+    }
+    
     return { courses };
   }
 
@@ -591,18 +673,44 @@ export class CoursesService {
 
     console.log('Found courses:', courses.length);
     
-    // Update enrollment counts for all courses
+    // Update enrollment counts and ratings for all courses
     for (const course of courses) {
       const actualEnrollmentCount = await this.enrollmentModel.countDocuments({
         courseId: course._id,
         isActive: true
       });
       
+      // Calculate averageRating and totalRatings from enrollments
+      const enrollmentsWithRatings = await this.enrollmentModel.find({
+        courseId: course._id,
+        isActive: true,
+        rating: { $exists: true, $ne: null }
+      }).select('rating').lean();
+      
+      const totalRatings = enrollmentsWithRatings.length;
+      let averageRating = 0;
+      if (totalRatings > 0) {
+        const sumRatings = enrollmentsWithRatings.reduce((sum, e) => sum + (e.rating || 0), 0);
+        averageRating = Number((sumRatings / totalRatings).toFixed(2));
+      }
+      
+      // Update course with correct values if different
+      const updates: any = {};
       if (course.enrollmentCount !== actualEnrollmentCount) {
-        await this.courseModel.findByIdAndUpdate(course._id, { 
-          $set: { enrollmentCount: actualEnrollmentCount } 
-        });
+        updates.enrollmentCount = actualEnrollmentCount;
         course.enrollmentCount = actualEnrollmentCount;
+      }
+      if (course.totalRatings !== totalRatings) {
+        updates.totalRatings = totalRatings;
+        course.totalRatings = totalRatings;
+      }
+      if (Math.abs((course.averageRating || 0) - averageRating) > 0.01) {
+        updates.averageRating = averageRating;
+        course.averageRating = averageRating;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await this.courseModel.findByIdAndUpdate(course._id, { $set: updates });
       }
     }
     

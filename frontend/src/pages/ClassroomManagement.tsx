@@ -138,8 +138,12 @@ const ClassroomManagement: React.FC = () => {
   const [addMembersOpen, setAddMembersOpen] = useState(false);
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [allTeachers, setAllTeachers] = useState<Array<{ _id: string; name: string; email: string }>>([]);
-  const [allStudents, setAllStudents] = useState<Array<{ _id: string; name: string; email: string }>>([]);
+  const [allTeachers, setAllTeachers] = useState<
+    Array<{ _id: string; name: string; email: string }>
+  >([]);
+  const [allStudents, setAllStudents] = useState<
+    Array<{ _id: string; name: string; email: string }>
+  >([]);
   const [submittingMembers, setSubmittingMembers] = useState(false);
 
   // Theme colors
@@ -223,7 +227,9 @@ const ClassroomManagement: React.FC = () => {
     if (!selectedClassroom || !newStatus) return;
     // Optimistic update
     const prev = [...classrooms];
-    setClassrooms((ls) => ls.map(l => l._id === selectedClassroom._id ? { ...l, status: newStatus as any } : l));
+    setClassrooms((ls) =>
+      ls.map((l) => (l._id === selectedClassroom._id ? { ...l, status: newStatus as any } : l)),
+    );
     try {
       await adminApi.updateClassroomStatus(selectedClassroom._id, newStatus);
       setStatusDialogOpen(false);
@@ -725,14 +731,19 @@ const ClassroomManagement: React.FC = () => {
               <TableHead>
                 <TableRow
                   sx={{
-                    backgroundColor: darkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(239, 91, 91, 0.05)',
+                    backgroundColor: darkMode
+                      ? 'rgba(148, 163, 184, 0.1)'
+                      : 'rgba(239, 91, 91, 0.05)',
                   }}
                 >
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Lớp học</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Khóa học</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Giảng viên</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Giảng viên
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Học sinh</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Trạng thái</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
+                    Trạng thái
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Mã mời</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Thao tác</TableCell>
                 </TableRow>
@@ -744,9 +755,7 @@ const ClassroomManagement: React.FC = () => {
                       key={classroom._id}
                       sx={{
                         '&:hover': {
-                          bgcolor: darkMode
-                            ? 'rgba(239, 91, 91, 0.1)'
-                            : 'rgba(239, 91, 91, 0.05)',
+                          bgcolor: darkMode ? 'rgba(239, 91, 91, 0.1)' : 'rgba(239, 91, 91, 0.05)',
                         },
                       }}
                     >
@@ -762,17 +771,6 @@ const ClassroomManagement: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <SchoolIcon sx={{ mr: 1, color: '#EF5B5B' }} />
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 600, color: primaryTextColor }}
-                          >
-                            {classroom.courseId?.title || 'N/A'}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: '#EF5B5B' }}>
                             {(classroom.teacherId || classroom.teacherIds?.[0])?.name?.[0] || '?'}
                           </Avatar>
@@ -781,10 +779,12 @@ const ClassroomManagement: React.FC = () => {
                               variant="body2"
                               sx={{ fontWeight: 600, color: primaryTextColor }}
                             >
-                              {(classroom.teacherId || classroom.teacherIds?.[0])?.name || 'Unknown'}
+                              {(classroom.teacherId || classroom.teacherIds?.[0])?.name ||
+                                'Unknown'}
                             </Typography>
                             <Typography variant="caption" sx={{ color: secondaryTextColor }}>
-                              {(classroom.teacherId || classroom.teacherIds?.[0])?.email || 'No email'}
+                              {(classroom.teacherId || classroom.teacherIds?.[0])?.email ||
+                                'No email'}
                             </Typography>
                           </Box>
                         </Box>
@@ -792,14 +792,16 @@ const ClassroomManagement: React.FC = () => {
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <AvatarGroup max={3} sx={{ mr: 1 }}>
-                            {(classroom.students || classroom.studentIds || []).slice(0, 3).map((student) => (
-                              <Avatar
-                                key={student._id}
-                                sx={{ width: 24, height: 24, fontSize: 12, bgcolor: '#EF5B5B' }}
-                              >
-                                {student.name?.[0] || '?'}
-                              </Avatar>
-                            ))}
+                            {(classroom.students || classroom.studentIds || [])
+                              .slice(0, 3)
+                              .map((student) => (
+                                <Avatar
+                                  key={student._id}
+                                  sx={{ width: 24, height: 24, fontSize: 12, bgcolor: '#EF5B5B' }}
+                                >
+                                  {student.name?.[0] || '?'}
+                                </Avatar>
+                              ))}
                           </AvatarGroup>
                           <Box>
                             <Typography
@@ -857,7 +859,7 @@ const ClassroomManagement: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" sx={{ color: secondaryTextColor }}>
                         Không có lớp học nào
                       </Typography>
@@ -877,6 +879,8 @@ const ClassroomManagement: React.FC = () => {
               page={page}
               onChange={(_, newPage) => setPage(newPage)}
               color="primary"
+              showFirstButton
+              showLastButton
             />
           </Box>
         )}
@@ -886,7 +890,8 @@ const ClassroomManagement: React.FC = () => {
           <DialogTitle>Cập nhật trạng thái lớp học</DialogTitle>
           <DialogContent>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              Lớp học: <strong>{selectedClassroom?.name || selectedClassroom?.title || 'Lớp học'}</strong>
+              Lớp học:{' '}
+              <strong>{selectedClassroom?.name || selectedClassroom?.title || 'Lớp học'}</strong>
             </Typography>
             <FormControl fullWidth>
               <InputLabel>Trạng thái mới</InputLabel>
@@ -910,24 +915,30 @@ const ClassroomManagement: React.FC = () => {
         </Dialog>
 
         {/* Action Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
           <MenuItem onClick={() => handleStatusClick(actionClassroom!)}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Thay đổi trạng thái</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { setAddMembersOpen(true); handleMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              setAddMembersOpen(true);
+              handleMenuClose();
+            }}
+          >
             <ListItemIcon>
               <PeopleIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Thêm GV / Học sinh</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { setDetailOpen(true); handleMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              setDetailOpen(true);
+              handleMenuClose();
+            }}
+          >
             <ListItemIcon>
               <ViewIcon fontSize="small" />
             </ListItemIcon>
@@ -941,29 +952,48 @@ const ClassroomManagement: React.FC = () => {
           <DialogContent dividers>
             {actionClassroom ? (
               <Box>
-                <Typography variant="h6" sx={{ mb: 1 }}>{actionClassroom.name || actionClassroom.title || 'Lớp học'}</Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  {actionClassroom.name || actionClassroom.title || 'Lớp học'}
+                </Typography>
                 {actionClassroom.description && (
-                  <Typography variant="body2" sx={{ mb: 2 }}>{actionClassroom.description}</Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    {actionClassroom.description}
+                  </Typography>
                 )}
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Trạng thái</Typography>
-                    <Typography variant="body2">{actionClassroom.status ? getStatusText(actionClassroom.status) : 'N/A'}</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Trạng thái
+                    </Typography>
+                    <Typography variant="body2">
+                      {actionClassroom.status ? getStatusText(actionClassroom.status) : 'N/A'}
+                    </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Giảng viên</Typography>
-                    <Typography variant="body2">{(actionClassroom.teacherId || actionClassroom.teacherIds?.[0])?.name || 'Unknown'} ({(actionClassroom.teacherId || actionClassroom.teacherIds?.[0])?.email || 'N/A'})</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Giảng viên
+                    </Typography>
+                    <Typography variant="body2">
+                      {(actionClassroom.teacherId || actionClassroom.teacherIds?.[0])?.name ||
+                        'Unknown'}{' '}
+                      (
+                      {(actionClassroom.teacherId || actionClassroom.teacherIds?.[0])?.email ||
+                        'N/A'}
+                      )
+                    </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Khóa học</Typography>
-                    <Typography variant="body2">{actionClassroom.courseId?.title || '—'}</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Học sinh
+                    </Typography>
+                    <Typography variant="body2">
+                      {(actionClassroom.students || actionClassroom.studentIds || []).length}
+                    </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="textSecondary">Học sinh</Typography>
-                    <Typography variant="body2">{(actionClassroom.students || actionClassroom.studentIds || []).length}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="textSecondary">Mã mời</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Mã mời
+                    </Typography>
                     <Typography variant="body2">{actionClassroom.inviteCode || '—'}</Typography>
                   </Box>
                 </Box>
@@ -978,7 +1008,12 @@ const ClassroomManagement: React.FC = () => {
         </Dialog>
 
         {/* Add Members Dialog */}
-        <Dialog open={addMembersOpen} onClose={() => setAddMembersOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={addMembersOpen}
+          onClose={() => setAddMembersOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>Thêm giảng viên / học sinh</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body2" sx={{ mb: 2 }}>
@@ -995,7 +1030,7 @@ const ClassroomManagement: React.FC = () => {
                     onChange={(e) => setSelectedTeachers(e.target.value as string[])}
                     renderValue={(selected) => (selected as string[]).length + ' đã chọn'}
                   >
-                    {allTeachers.map(t => (
+                    {allTeachers.map((t) => (
                       <MenuItem key={t._id} value={t._id}>
                         {t.name} ({t.email})
                       </MenuItem>
@@ -1013,7 +1048,7 @@ const ClassroomManagement: React.FC = () => {
                     onChange={(e) => setSelectedStudents(e.target.value as string[])}
                     renderValue={(selected) => (selected as string[]).length + ' đã chọn'}
                   >
-                    {allStudents.map(s => (
+                    {allStudents.map((s) => (
                       <MenuItem key={s._id} value={s._id}>
                         {s.name} ({s.email})
                       </MenuItem>
@@ -1024,7 +1059,9 @@ const ClassroomManagement: React.FC = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setAddMembersOpen(false)} disabled={submittingMembers}>Hủy</Button>
+            <Button onClick={() => setAddMembersOpen(false)} disabled={submittingMembers}>
+              Hủy
+            </Button>
             <Button
               variant="contained"
               disabled={submittingMembers || !actionClassroom}
@@ -1034,10 +1071,12 @@ const ClassroomManagement: React.FC = () => {
                   setSubmittingMembers(true);
                   // TODO: Implement addClassroomMembers API
                   // For now, use classesApi.update to add members
-                  const currentTeacherIds = (actionClassroom.teacherId ? [actionClassroom.teacherId._id] : [])
-                    .concat(actionClassroom.teacherIds?.map(t => t._id) || []);
-                  const currentStudentIds = (actionClassroom.students?.map(s => s._id) || [])
-                    .concat(actionClassroom.studentIds?.map(s => s._id) || []);
+                  const currentTeacherIds = (
+                    actionClassroom.teacherId ? [actionClassroom.teacherId._id] : []
+                  ).concat(actionClassroom.teacherIds?.map((t) => t._id) || []);
+                  const currentStudentIds = (
+                    actionClassroom.students?.map((s) => s._id) || []
+                  ).concat(actionClassroom.studentIds?.map((s) => s._id) || []);
                   await classesApi.update(actionClassroom._id, {
                     teacherIds: [...new Set([...currentTeacherIds, ...selectedTeachers])],
                     studentIds: [...new Set([...currentStudentIds, ...selectedStudents])],

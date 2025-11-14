@@ -9,15 +9,23 @@ import ImageIcon from '@mui/icons-material/Image';
 import MovieIcon from '@mui/icons-material/Movie';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { coursesApi } from '../api/courses';
+import { progressApi } from '../api/progress';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LessonDetailPage() {
   const { id, lessonId } = useParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lesson, setLesson] = useState<any | null>(null);
   const [moduleTitle, setModuleTitle] = useState<string>('');
   const [courseTitle, setCourseTitle] = useState<string>('');
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  const [completionError, setCompletionError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -56,6 +64,43 @@ export default function LessonDetailPage() {
       }
     })();
   }, [id, lessonId]);
+
+  useEffect(() => {
+    const checkLessonCompletion = async () => {
+      if (!lessonId || !user || user.role !== 'student') {
+        setIsCompleted(false);
+        return;
+      }
+      try {
+        const progressList = await progressApi.getStudentProgress();
+        const alreadyCompleted = progressList.some(entry => {
+          const completedLessons = entry?.progress?.completedLessons || [];
+          return completedLessons.some((completedId: any) => String(completedId) === String(lessonId));
+        });
+        setIsCompleted(alreadyCompleted);
+      } catch (err) {
+        console.error('Không thể tải tiến độ bài học', err);
+      }
+    };
+
+    checkLessonCompletion();
+  }, [lessonId, user]);
+
+  const handleMarkLessonCompleted = async () => {
+    if (!lessonId) return;
+    setCompletionError(null);
+    setCompletionMessage(null);
+    setMarkingComplete(true);
+    try {
+      await progressApi.completeLesson(lessonId);
+      setIsCompleted(true);
+      setCompletionMessage('Đã đánh dấu hoàn thành bài học này.');
+    } catch (err: any) {
+      setCompletionError(err?.response?.data?.message || 'Không thể cập nhật tiến độ. Vui lòng thử lại.');
+    } finally {
+      setMarkingComplete(false);
+    }
+  };
 
   const LazyImage: React.FC<{ src: string; alt: string; width?: number | string; height?: number | string; style?: React.CSSProperties }> = ({ src, alt, width = '100%', height = 140, style }) => {
     const [loaded, setLoaded] = useState(false);
@@ -327,6 +372,33 @@ export default function LessonDetailPage() {
                     })}
                   </Stack>
                 </Box>
+              </Box>
+            )}
+            {user?.role === 'student' && (
+              <Box sx={{ mt: 3 }}>
+                {completionMessage && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    {completionMessage}
+                  </Alert>
+                )}
+                {completionError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {completionError}
+                  </Alert>
+                )}
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<CheckCircleIcon />}
+                  disabled={isCompleted || markingComplete}
+                  onClick={handleMarkLessonCompleted}
+                  sx={{ color: 'white' }}
+                >
+                  {isCompleted ? 'Đã hoàn thành' : markingComplete ? 'Đang cập nhật...' : 'Đánh dấu đã hoàn thành'}
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  Tiến độ môn học sẽ được cập nhật sau khi bạn đánh dấu hoàn thành.
+                </Typography>
               </Box>
             )}
           </Box>

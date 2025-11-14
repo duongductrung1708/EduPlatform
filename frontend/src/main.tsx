@@ -10,6 +10,20 @@ import './styles/scrollbar.css';
 
 const queryClient = new QueryClient();
 
+// Suppress findDOMNode warning from react-quill (known issue with the library)
+if (import.meta.env.DEV) {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    if (
+      typeof args[0] === 'string' &&
+      args[0].includes('findDOMNode is deprecated')
+    ) {
+      return; // Suppress this specific warning
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   // Remove StrictMode to avoid double mount/render in dev which causes flicker
   <CustomThemeProvider>

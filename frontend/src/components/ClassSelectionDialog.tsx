@@ -201,19 +201,22 @@ export default function ClassSelectionDialog({
         }
       }}
     >
-      <DialogTitle sx={{ 
-        textAlign: 'center',
-        background: darkMode 
-          ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
-          : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
-        color: '#FFFFFF',
-        borderRadius: '12px 12px 0 0',
-        py: 3
-      }}>
-        <Typography variant="h5" fontWeight={600} sx={{ color: '#FFFFFF' }}>
+      <DialogTitle 
+        component="div"
+        sx={{ 
+          textAlign: 'center',
+          background: darkMode 
+            ? 'linear-gradient(135deg, #FF7B7B 0%, #EF5B5B 100%)'
+            : 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)',
+          color: '#FFFFFF',
+          borderRadius: '12px 12px 0 0',
+          py: 3
+        }}
+      >
+        <Typography variant="h5" component="div" fontWeight={600} sx={{ color: '#FFFFFF' }}>
           {activeStep === 0 ? '📚 Chọn môn học' : '🎓 Chọn cấp lớp'}
         </Typography>
-        <Typography variant="body2" sx={{ mt: 1, opacity: 0.9, color: '#FFFFFF' }}>
+        <Typography variant="body2" component="div" sx={{ mt: 1, opacity: 0.9, color: '#FFFFFF' }}>
           {activeStep === 0 ? 'Chọn môn học bạn muốn học' : 'Chọn cấp lớp phù hợp'}
         </Typography>
         

@@ -212,7 +212,7 @@ const CourseManagement: React.FC = () => {
       setTotalPages(response.pagination?.pages || 1);
     } catch (err: any) {
       console.error('Error fetching courses:', err);
-      setError(err.response?.data?.message || err.message || 'Không thể tải danh sách khóa học');
+      setError(err.response?.data?.message || err.message || 'Không thể tải danh sách môn học');
       setCourses([]); // Set empty array on error
     } finally {
       setLoading(false);
@@ -244,7 +244,7 @@ const CourseManagement: React.FC = () => {
       setNewStatus('');
       fetchCourses(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể cập nhật trạng thái khóa học');
+      setError(err.response?.data?.message || 'Không thể cập nhật trạng thái môn học');
       // rollback
       setCourses(prevCourses);
     }
@@ -396,10 +396,10 @@ const CourseManagement: React.FC = () => {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Quản lý khóa học
+              Quản lý môn học
             </Typography>
             <Typography variant="body1" sx={{ color: secondaryTextColor }}>
-              Quản lý và theo dõi tất cả các khóa học trong hệ thống
+              Quản lý và theo dõi tất cả các môn học trong hệ thống
             </Typography>
           </Box>
         </Box>
@@ -623,7 +623,7 @@ const CourseManagement: React.FC = () => {
                         mb: 0.5,
                       }}
                     >
-                      Tổng khóa học
+                      Tổng môn học
                     </Typography>
                     <Typography
                       variant="h4"
@@ -652,7 +652,7 @@ const CourseManagement: React.FC = () => {
         >
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <TextField
-              placeholder="Tìm kiếm khóa học..."
+              placeholder="Tìm kiếm môn học..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -736,7 +736,7 @@ const CourseManagement: React.FC = () => {
                       : 'rgba(239, 91, 91, 0.05)',
                   }}
                 >
-                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Khóa học</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>Môn học</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: primaryTextColor }}>
                     Giảng viên
                   </TableCell>
@@ -859,7 +859,7 @@ const CourseManagement: React.FC = () => {
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" sx={{ color: secondaryTextColor }}>
-                        Không có khóa học nào
+                        Không có môn học nào
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -883,10 +883,10 @@ const CourseManagement: React.FC = () => {
 
         {/* Status Change Dialog */}
         <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
-          <DialogTitle>Cập nhật trạng thái khóa học</DialogTitle>
+          <DialogTitle>Cập nhật trạng thái môn học</DialogTitle>
           <DialogContent>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              Khóa học: <strong>{selectedCourse?.title}</strong>
+              Môn học: <strong>{selectedCourse?.title}</strong>
             </Typography>
             <FormControl fullWidth>
               <InputLabel>Trạng thái mới</InputLabel>
@@ -932,7 +932,7 @@ const CourseManagement: React.FC = () => {
 
         {/* Course Detail Dialog */}
         <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Chi tiết khóa học</DialogTitle>
+          <DialogTitle>Chi tiết môn học</DialogTitle>
           <DialogContent dividers>
             {actionCourse ? (
               <Box>

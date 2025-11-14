@@ -143,18 +143,81 @@ export class ProgressService {
 
   async getStudentProgress(studentId: string) {
     const enrollments = await this.enrollmentModel
-      .find({ studentId: new Types.ObjectId(studentId) })
+      .find({ 
+        studentId: new Types.ObjectId(studentId),
+        isActive: true 
+      })
       .populate('courseId', 'title slug thumbnail')
       .sort({ enrolledAt: -1 });
 
-    return enrollments.map(enrollment => ({
-      courseId: enrollment.courseId,
-      enrolledAt: enrollment.enrolledAt,
-      completedAt: enrollment.completedAt,
-      progress: enrollment.progress,
-      rating: enrollment.rating,
-      review: enrollment.review,
-    }));
+    const results = await Promise.all(
+      enrollments
+        .filter((enrollment) => enrollment.courseId !== null && enrollment.courseId !== undefined)
+        .map(async (enrollment) => {
+          // Handle both populated and non-populated courseId
+          const courseId = 
+            (enrollment.courseId as any)?._id 
+              ? (enrollment.courseId as any)._id 
+              : enrollment.courseId;
+          
+          if (!courseId) {
+            return null;
+          }
+          
+          // Get current course modules and lessons to recalculate totals
+          const modules = await this.moduleModel.find({ 
+            courseId: new Types.ObjectId(courseId.toString()) 
+          });
+          const totalModules = modules.length;
+          
+          const totalLessons = await this.lessonModel.countDocuments({
+            moduleId: { $in: modules.map(m => m._id) }
+          });
+
+          // Recalculate percentage based on completed lessons and current total
+          const completedLessonsCount = enrollment.progress.completedLessons.length;
+          const percentage = totalLessons > 0 
+            ? Math.round((completedLessonsCount / totalLessons) * 100)
+            : 0;
+
+          // Update enrollment if totals have changed
+          if (
+            enrollment.progress.totalLessons !== totalLessons ||
+            enrollment.progress.totalModules !== totalModules ||
+            enrollment.progress.percentage !== percentage
+          ) {
+            enrollment.progress.totalLessons = totalLessons;
+            enrollment.progress.totalModules = totalModules;
+            enrollment.progress.percentage = percentage;
+            
+            // Check if course is completed
+            if (percentage === 100 && !enrollment.completedAt) {
+              enrollment.completedAt = new Date();
+              await this.checkAndAwardBadges(studentId, courseId.toString());
+            }
+            
+            await enrollment.save();
+          }
+
+          return {
+            courseId: enrollment.courseId,
+            enrolledAt: enrollment.enrolledAt,
+            completedAt: enrollment.completedAt,
+            progress: {
+              completedLessons: enrollment.progress.completedLessons,
+              completedModules: enrollment.progress.completedModules,
+              totalLessons,
+              totalModules,
+              percentage,
+            },
+            rating: enrollment.rating,
+            review: enrollment.review,
+          };
+        })
+    );
+
+    // Filter out null results (enrollments with deleted courses)
+    return results.filter((result) => result !== null);
   }
 
   async getStudentBadges(studentId: string) {

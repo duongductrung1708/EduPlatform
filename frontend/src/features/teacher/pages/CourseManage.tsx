@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Card, 
-  CardContent, 
-  Stack, 
-  IconButton, 
+import {
+  Box,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  Stack,
+  IconButton,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -20,7 +20,7 @@ import {
   AccordionDetails,
   Chip,
   Divider,
-  Paper
+  Paper,
 } from '@mui/material';
 import ReactQuillWrapper from '../../../components/ReactQuillWrapper';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -79,7 +79,7 @@ export default function CourseManage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { darkMode } = useTheme();
-  
+
   const [course, setCourse] = useState<any>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [filteredModules, setFilteredModules] = useState<Module[]>([]);
@@ -87,7 +87,7 @@ export default function CourseManage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [volumeFilter, setVolumeFilter] = useState<string>('all');
-  
+
   // Module dialog states
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
@@ -97,14 +97,18 @@ export default function CourseManage() {
     order: 0,
     volume: '',
     estimatedDuration: 0,
-    isPublished: true
+    isPublished: true,
   });
-  
+
   // Lesson dialog states
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
-  const [lessonFile, setLessonFile] = useState<{ url: string; fileName: string; fileType: string } | null>(null);
-  
+  const [lessonFile, setLessonFile] = useState<{
+    url: string;
+    fileName: string;
+    fileType: string;
+  } | null>(null);
+
   // Course dialog states
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
@@ -115,7 +119,7 @@ export default function CourseManage() {
     level: '',
     tags: [] as string[],
     visibility: 'public',
-    status: 'published'
+    status: 'published',
   });
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -141,30 +145,29 @@ export default function CourseManage() {
     }
   }, [courseId]);
 
-
   const loadCourseData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [courseRes, modulesRes] = await Promise.all([
         coursesApi.getById(courseId!),
-        coursesApi.getModules(courseId!)
+        coursesApi.getModules(courseId!),
       ]);
-      
+
       if (!courseRes) {
         throw new Error('Course not found');
       }
-      
+
       if (!modulesRes || modulesRes.length === 0) {
         setModules([]);
         setCourse(courseRes);
         return;
       }
-      
+
       // Force new object reference to ensure React re-renders
       setCourse({ ...courseRes });
-      
+
       // Load lessons for each module
       const modulesWithLessons = await Promise.all(
         (modulesRes || []).map(async (module) => {
@@ -175,9 +178,9 @@ export default function CourseManage() {
             console.error(`Error loading lessons for module ${module._id}:`, err);
             return { ...module, lessons: [] };
           }
-        })
+        }),
       );
-      
+
       setModules(modulesWithLessons);
     } catch (err) {
       console.error('❌ Error loading course data:', err);
@@ -192,7 +195,7 @@ export default function CourseManage() {
     if (volumeFilter === 'all') {
       setFilteredModules(modules);
     } else {
-      setFilteredModules(modules.filter(module => module.volume === volumeFilter));
+      setFilteredModules(modules.filter((module) => module.volume === volumeFilter));
     }
   }, [modules, volumeFilter]);
 
@@ -225,7 +228,7 @@ export default function CourseManage() {
     setConfirmAction({
       type: 'module',
       moduleId,
-      title: moduleTitle
+      title: moduleTitle,
     });
     setConfirmDialogOpen(true);
   };
@@ -274,13 +277,19 @@ export default function CourseManage() {
       type: 'lesson',
       moduleId,
       lessonId,
-      title: lessonTitle
+      title: lessonTitle,
     });
     setConfirmDialogOpen(true);
   };
 
   const confirmDeleteLesson = async () => {
-    if (!confirmAction || confirmAction.type !== 'lesson' || !confirmAction.moduleId || !confirmAction.lessonId) return;
+    if (
+      !confirmAction ||
+      confirmAction.type !== 'lesson' ||
+      !confirmAction.moduleId ||
+      !confirmAction.lessonId
+    )
+      return;
 
     try {
       await coursesApi.deleteLesson(confirmAction.moduleId, confirmAction.lessonId);
@@ -300,7 +309,7 @@ export default function CourseManage() {
       order: 0,
       volume: '',
       estimatedDuration: 0,
-      isPublished: true
+      isPublished: true,
     });
   };
 
@@ -312,7 +321,7 @@ export default function CourseManage() {
       order: 0,
       estimatedDuration: 0,
       isPublished: true,
-      content: {}
+      content: {},
     });
     setLessonFile(null);
   };
@@ -325,7 +334,7 @@ export default function CourseManage() {
       level: '',
       tags: [],
       visibility: 'public',
-      status: 'published'
+      status: 'published',
     });
   };
 
@@ -338,7 +347,7 @@ export default function CourseManage() {
         order: module.order,
         volume: module.volume || '',
         estimatedDuration: module.estimatedDuration || 0,
-        isPublished: module.isPublished
+        isPublished: module.isPublished,
       });
     } else {
       setEditingModule(null);
@@ -358,15 +367,15 @@ export default function CourseManage() {
         order: lesson.order,
         estimatedDuration: lesson.estimatedDuration || 0,
         isPublished: lesson.isPublished,
-        content: lesson.content || { htmlContent: '' }
+        content: lesson.content || { htmlContent: '' },
       });
-      
+
       // Set existing file if lesson has file content
       if (lesson.type === 'document' && lesson.content?.fileUrl) {
         setLessonFile({
           url: lesson.content.fileUrl,
           fileName: lesson.content.fileName || 'Tài liệu đính kèm',
-          fileType: lesson.content.fileType || 'application/pdf'
+          fileType: lesson.content.fileType || 'application/pdf',
         });
       } else {
         setLessonFile(null);
@@ -389,7 +398,7 @@ export default function CourseManage() {
         level: course.level,
         tags: course.tags || [],
         visibility: course.visibility,
-        status: course.status
+        status: course.status,
       });
     } else {
       setEditingCourse(null);
@@ -399,12 +408,12 @@ export default function CourseManage() {
   };
 
   const getLessonTypeIcon = (type: string) => {
-    const lessonType = LESSON_TYPES.find(t => t.value === type);
+    const lessonType = LESSON_TYPES.find((t) => t.value === type);
     return lessonType?.icon || <DescriptionIcon />;
   };
 
   const getLessonTypeLabel = (type: string) => {
-    const lessonType = LESSON_TYPES.find(t => t.value === type);
+    const lessonType = LESSON_TYPES.find((t) => t.value === type);
     return lessonType?.label || 'Tài liệu';
   };
 
@@ -427,19 +436,19 @@ export default function CourseManage() {
   const handleLessonSubmit = async () => {
     try {
       const content: any = { ...lessonForm.content };
-      
+
       // Add file content if lesson type is document and file is uploaded
       if (lessonForm.type === 'document' && lessonFile) {
         content.fileUrl = lessonFile.url;
         content.fileName = lessonFile.fileName;
         content.fileType = lessonFile.fileType;
       }
-      
+
       const lessonData = {
         ...lessonForm,
-        content
+        content,
       };
-      
+
       if (editingLesson) {
         await coursesApi.updateLesson(selectedModuleId, editingLesson._id, lessonData);
       } else {
@@ -463,7 +472,7 @@ export default function CourseManage() {
       setCourseDialogOpen(false);
       setEditingCourse(null);
       resetCourseForm();
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
       loadCourseData();
     } catch (err) {
       console.error('❌ Error saving course:', err);
@@ -473,7 +482,15 @@ export default function CourseManage() {
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3, background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <Typography
+          variant="h4"
+          sx={{
+            mb: 3,
+            background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
           Đang tải...
         </Typography>
       </Box>
@@ -493,66 +510,65 @@ export default function CourseManage() {
     );
   }
 
-
   return (
     <Box sx={{ p: 3 }}>
       {/* Breadcrumb */}
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: 'Trang chủ', path: '/dashboard' },
           { label: 'Giáo viên', path: '/teacher' },
           { label: 'Môn học', path: '/teacher/courses' },
-          { label: course?.title || 'Quản lý môn học', current: true }
+          { label: course?.title || 'Quản lý môn học', current: true },
         ]}
       />
-      
+
       {/* Back Button */}
       <BackButton to="/teacher/courses" />
-      
+
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-            <Typography 
-              key={`title-${course?._id}-${refreshKey}`} 
-              variant="h4" 
-              sx={{ 
-                background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)', 
-                WebkitBackgroundClip: 'text', 
-                WebkitTextFillColor: 'transparent'
+            <Typography
+              key={`title-${course?._id}-${refreshKey}`}
+              variant="h4"
+              sx={{
+                background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
               Quản lý nội dung: {course?.title}
             </Typography>
             <Tooltip title="Chỉnh sửa môn học">
-              <IconButton 
+              <IconButton
                 onClick={() => openCourseDialog(course)}
                 size="small"
-                sx={{ 
-                  bgcolor: '#EF5B5B', 
+                sx={{
+                  bgcolor: '#EF5B5B',
                   color: 'white',
-                  '&:hover': { bgcolor: '#D94A4A' }
+                  '&:hover': { bgcolor: '#D94A4A' },
                 }}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>
-          <Typography 
+          <Typography
             key={`desc-${course?._id}-${refreshKey}`}
-            variant="body1" 
+            variant="body1"
             color="text.secondary"
           >
             {course?.description}
           </Typography>
         </Box>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           startIcon={<AddIcon />}
           onClick={() => openModuleDialog()}
-          sx={{ 
+          sx={{
             background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
-            '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' }
+            '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' },
           }}
         >
           Thêm Module
@@ -572,7 +588,7 @@ export default function CourseManage() {
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="all">Tất cả</MenuItem>
-          {Array.from(new Set(modules.map(m => m.volume).filter(Boolean))).map(volume => (
+          {Array.from(new Set(modules.map((m) => m.volume).filter(Boolean))).map((volume) => (
             <MenuItem key={volume} value={volume}>
               {volume}
             </MenuItem>
@@ -592,13 +608,13 @@ export default function CourseManage() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Hãy tạo module đầu tiên để bắt đầu xây dựng nội dung môn học
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             startIcon={<AddIcon />}
             onClick={() => openModuleDialog()}
-            sx={{ 
+            sx={{
               background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
-              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' }
+              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' },
             }}
           >
             Tạo Module đầu tiên
@@ -614,11 +630,11 @@ export default function CourseManage() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                       <Typography variant="h6">{module.title}</Typography>
                       {module.volume && (
-                        <Chip 
-                          label={module.volume} 
-                          size="small" 
-                          color="primary" 
-                          variant="outlined" 
+                        <Chip
+                          label={module.volume}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
                           sx={{ fontSize: '0.75rem' }}
                         />
                       )}
@@ -628,28 +644,28 @@ export default function CourseManage() {
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Chip 
-                      sx={{ color: "white" }}
-                      label={module.isPublished ? 'Đã xuất bản' : 'Bản nháp'} 
+                    <Chip
+                      sx={{ color: 'white' }}
+                      label={module.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
                       color={module.isPublished ? 'success' : 'default'}
                       size="small"
                     />
-                    <Chip 
-                      label={`${module.lessons?.length || 0} bài học`} 
+                    <Chip
+                      label={`${module.lessons?.length || 0} bài học`}
                       variant="outlined"
                       size="small"
                     />
                     <Tooltip title="Chỉnh sửa module">
                       <Box
                         component="span"
-                        sx={{ 
-                          cursor: 'pointer', 
-                          p: 0.5, 
+                        sx={{
+                          cursor: 'pointer',
+                          p: 0.5,
                           borderRadius: 1,
                           '&:hover': { bgcolor: 'action.hover' },
                           display: 'inline-flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -662,15 +678,15 @@ export default function CourseManage() {
                     <Tooltip title="Xóa module">
                       <Box
                         component="span"
-                        sx={{ 
-                          cursor: 'pointer', 
-                          p: 0.5, 
+                        sx={{
+                          cursor: 'pointer',
+                          p: 0.5,
                           borderRadius: 1,
                           '&:hover': { bgcolor: 'action.hover' },
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: 'error.main'
+                          color: 'error.main',
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -684,31 +700,36 @@ export default function CourseManage() {
                 </Box>
               </AccordionSummary>
               <AccordionDetails>
-                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    mb: 2,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   <Typography variant="subtitle1">Bài học trong module</Typography>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     startIcon={<AddIcon />}
                     onClick={() => openLessonDialog(module._id)}
-                    sx={{ 
+                    sx={{
                       background: 'linear-gradient(45deg, #4ECDC4, #45B7D1)',
                       color: 'white',
-                      '&:hover': { background: 'linear-gradient(45deg, #45B7D1, #4ECDC4)' }
+                      '&:hover': { background: 'linear-gradient(45deg, #45B7D1, #4ECDC4)' },
                     }}
                   >
                     Thêm bài học
                   </Button>
                 </Box>
-                
+
                 {module.lessons && module.lessons.length > 0 ? (
                   <Stack spacing={1}>
                     {module.lessons.map((lesson) => (
                       <Card key={lesson._id} sx={{ bgcolor: darkMode ? 'grey.700' : 'grey.50' }}>
                         <CardContent sx={{ py: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ color: '#EF5B5B' }}>
-                              {getLessonTypeIcon(lesson.type)}
-                            </Box>
+                            <Box sx={{ color: '#EF5B5B' }}>{getLessonTypeIcon(lesson.type)}</Box>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant="subtitle2">{lesson.title}</Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -716,18 +737,18 @@ export default function CourseManage() {
                               </Typography>
                               {lesson.type === 'document' && lesson.content?.fileUrl && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                                  <Chip 
+                                  <Chip
                                     icon={<DescriptionIcon />}
-                                    label={lesson.content?.fileName || 'Tài liệu đính kèm'} 
-                                    size="small" 
-                                    color="primary" 
+                                    label={lesson.content?.fileName || 'Tài liệu đính kèm'}
+                                    size="small"
+                                    color="primary"
                                     variant="outlined"
                                     clickable
                                     onClick={() => window.open(lesson.content?.fileUrl, '_blank')}
                                     sx={{
                                       '&:hover': {
                                         backgroundColor: 'primary.main',
-                                        color: 'white',
+                                        color: '#EF5B5B',
                                         transform: 'scale(1.05)',
                                       },
                                       transition: 'all 0.3s ease',
@@ -744,13 +765,14 @@ export default function CourseManage() {
                                 </Box>
                               )}
                               <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                                <Chip 
-                                  label={getLessonTypeLabel(lesson.type)} 
-                                  size="small" 
+                                <Chip
+                                  label={getLessonTypeLabel(lesson.type)}
+                                  size="small"
                                   variant="outlined"
                                 />
-                                <Chip 
-                                  label={lesson.isPublished ? 'Đã xuất bản' : 'Bản nháp'} 
+                                <Chip
+                                  sx={{ color: 'white' }}
+                                  label={lesson.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
                                   size="small"
                                   color={lesson.isPublished ? 'success' : 'default'}
                                 />
@@ -758,17 +780,19 @@ export default function CourseManage() {
                             </Box>
                             <Box>
                               <Tooltip title="Chỉnh sửa bài học">
-                                <IconButton 
-                                  size="small" 
+                                <IconButton
+                                  size="small"
                                   onClick={() => openLessonDialog(module._id, lesson)}
                                 >
                                   <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Xóa bài học">
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleDeleteLesson(module._id, lesson._id, lesson.title)}
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    handleDeleteLesson(module._id, lesson._id, lesson.title)
+                                  }
                                   color="error"
                                 >
                                   <DeleteIcon fontSize="small" />
@@ -781,18 +805,20 @@ export default function CourseManage() {
                     ))}
                   </Stack>
                 ) : (
-                  <Paper sx={{ p: 3, textAlign: 'center', bgcolor: darkMode ? 'grey.700' : 'grey.100' }}>
+                  <Paper
+                    sx={{ p: 3, textAlign: 'center', bgcolor: darkMode ? 'grey.700' : 'grey.100' }}
+                  >
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Chưa có bài học nào trong module này
                     </Typography>
-                    <Button 
-                      size="small" 
+                    <Button
+                      size="small"
                       startIcon={<AddIcon />}
                       onClick={() => openLessonDialog(module._id)}
-                      sx={{ 
+                      sx={{
                         background: 'linear-gradient(45deg, #4ECDC4, #45B7D1)',
                         color: 'white',
-                        '&:hover': { background: 'linear-gradient(45deg, #45B7D1, #4ECDC4)' }
+                        '&:hover': { background: 'linear-gradient(45deg, #45B7D1, #4ECDC4)' },
                       }}
                     >
                       Thêm bài học đầu tiên
@@ -806,10 +832,13 @@ export default function CourseManage() {
       )}
 
       {/* Module Dialog */}
-      <Dialog open={moduleDialogOpen} onClose={() => setModuleDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingModule ? 'Chỉnh sửa Module' : 'Tạo Module mới'}
-        </DialogTitle>
+      <Dialog
+        open={moduleDialogOpen}
+        onClose={() => setModuleDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{editingModule ? 'Chỉnh sửa Module' : 'Tạo Module mới'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -831,7 +860,9 @@ export default function CourseManage() {
               label="Thứ tự"
               type="number"
               value={moduleForm.order}
-              onChange={(e) => setModuleForm({ ...moduleForm, order: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setModuleForm({ ...moduleForm, order: parseInt(e.target.value) || 0 })
+              }
               fullWidth
             />
             <TextField
@@ -846,19 +877,21 @@ export default function CourseManage() {
               label="Thời lượng ước tính (phút)"
               type="number"
               value={moduleForm.estimatedDuration}
-              onChange={(e) => setModuleForm({ ...moduleForm, estimatedDuration: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setModuleForm({ ...moduleForm, estimatedDuration: parseInt(e.target.value) || 0 })
+              }
               fullWidth
             />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setModuleDialogOpen(false)}>Hủy</Button>
-          <Button 
+          <Button
             onClick={editingModule ? handleUpdateModule : handleCreateModule}
             variant="contained"
-            sx={{ 
+            sx={{
               background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
-              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' }
+              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' },
             }}
           >
             {editingModule ? 'Cập nhật' : 'Tạo'}
@@ -867,21 +900,19 @@ export default function CourseManage() {
       </Dialog>
 
       {/* Lesson Dialog */}
-      <Dialog 
-        open={lessonDialogOpen} 
-        onClose={() => setLessonDialogOpen(false)} 
-        maxWidth="lg" 
+      <Dialog
+        open={lessonDialogOpen}
+        onClose={() => setLessonDialogOpen(false)}
+        maxWidth="lg"
         fullWidth
         sx={{
           '& .MuiDialog-paper': {
-            overflow: 'visible'
-          }
+            overflow: 'visible',
+          },
         }}
       >
-        <DialogTitle>
-          {editingLesson ? 'Chỉnh sửa Bài học' : 'Tạo Bài học mới'}
-        </DialogTitle>
-      <DialogContent>
+        <DialogTitle>{editingLesson ? 'Chỉnh sửa Bài học' : 'Tạo Bài học mới'}</DialogTitle>
+        <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Tên bài học"
@@ -900,30 +931,39 @@ export default function CourseManage() {
               placeholder="Tóm tắt ngắn gọn nội dung bài học"
             />
             <Box>
-              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Nội dung chi tiết</Typography>
-              <Box sx={{ 
-                '& .ql-toolbar': { 
-                  zIndex: 2,
-                  position: 'relative'
-                },
-                '& .ql-container': { 
-                  zIndex: 2,
-                  position: 'relative'
-                },
-                '& .ql-editor': {
-                  minHeight: '120px'
-                },
-                '& .ql-snow .ql-picker': {
-                  zIndex: 1300
-                },
-                '& .ql-snow .ql-picker-options': {
-                  zIndex: 1300
-                }
-              }}>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Nội dung chi tiết
+              </Typography>
+              <Box
+                sx={{
+                  '& .ql-toolbar': {
+                    zIndex: 2,
+                    position: 'relative',
+                  },
+                  '& .ql-container': {
+                    zIndex: 2,
+                    position: 'relative',
+                  },
+                  '& .ql-editor': {
+                    minHeight: '120px',
+                  },
+                  '& .ql-snow .ql-picker': {
+                    zIndex: 1300,
+                  },
+                  '& .ql-snow .ql-picker-options': {
+                    zIndex: 1300,
+                  },
+                }}
+              >
                 <ReactQuillWrapper
                   theme="snow"
                   value={lessonForm.content?.htmlContent || ''}
-                  onChange={(val) => setLessonForm({ ...lessonForm, content: { ...(lessonForm.content || {}), htmlContent: val } })}
+                  onChange={(val) =>
+                    setLessonForm({
+                      ...lessonForm,
+                      content: { ...(lessonForm.content || {}), htmlContent: val },
+                    })
+                  }
                   modules={{
                     toolbar: [
                       [{ header: [1, 2, 3, 4, false] }],
@@ -938,10 +978,21 @@ export default function CourseManage() {
                   }}
                   formats={[
                     'header',
-                    'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
-                    'list', 'bullet', 'indent',
-                    'align', 'color', 'background',
-                    'link', 'image', 'video',
+                    'bold',
+                    'italic',
+                    'underline',
+                    'strike',
+                    'blockquote',
+                    'code-block',
+                    'list',
+                    'bullet',
+                    'indent',
+                    'align',
+                    'color',
+                    'background',
+                    'link',
+                    'image',
+                    'video',
                   ]}
                 />
               </Box>
@@ -966,25 +1017,29 @@ export default function CourseManage() {
               label="Thứ tự"
               type="number"
               value={lessonForm.order}
-              onChange={(e) => setLessonForm({ ...lessonForm, order: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setLessonForm({ ...lessonForm, order: parseInt(e.target.value) || 0 })
+              }
               fullWidth
             />
             <TextField
               label="Thời lượng ước tính (phút)"
               type="number"
               value={lessonForm.estimatedDuration}
-              onChange={(e) => setLessonForm({ ...lessonForm, estimatedDuration: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setLessonForm({ ...lessonForm, estimatedDuration: parseInt(e.target.value) || 0 })
+              }
               fullWidth
             />
-            
+
             {/* File Upload for Document Type */}
             {lessonForm.type === 'document' && (
               <Box sx={{ mt: 2 }}>
-                <Paper 
-                  elevation={1} 
-                  sx={{ 
-                    p: 2, 
-                    borderRadius: 2, 
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
                     backgroundColor: 'primary.50',
                     border: '1px solid',
                     borderColor: 'primary.200',
@@ -997,7 +1052,8 @@ export default function CourseManage() {
                     </Typography>
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Chọn file tài liệu để đính kèm với bài học. Hỗ trợ PDF, Word, Excel, PowerPoint và Text.
+                    Chọn file tài liệu để đính kèm với bài học. Hỗ trợ PDF, Word, Excel, PowerPoint
+                    và Text.
                   </Typography>
                   <FileUpload
                     onFileUploaded={(fileData) => setLessonFile(fileData)}
@@ -1010,16 +1066,20 @@ export default function CourseManage() {
                       'application/vnd.ms-excel',
                       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                       'application/vnd.ms-powerpoint',
-                      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
                     ]}
                     maxSize={20} // 20MB
                     folder="lessons"
                     disabled={loading}
-                    existingFile={editingLesson?.content?.fileUrl ? {
-                      url: editingLesson.content.fileUrl,
-                      fileName: editingLesson.content.fileName || 'Tài liệu đính kèm',
-                      fileType: editingLesson.content.fileType || 'application/pdf'
-                    } : undefined}
+                    existingFile={
+                      editingLesson?.content?.fileUrl
+                        ? {
+                            url: editingLesson.content.fileUrl,
+                            fileName: editingLesson.content.fileName || 'Tài liệu đính kèm',
+                            fileType: editingLesson.content.fileType || 'application/pdf',
+                          }
+                        : undefined
+                    }
                   />
                 </Paper>
               </Box>
@@ -1028,12 +1088,12 @@ export default function CourseManage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setLessonDialogOpen(false)}>Hủy</Button>
-          <Button 
+          <Button
             onClick={handleLessonSubmit}
             variant="contained"
-            sx={{ 
+            sx={{
               background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
-              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' }
+              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' },
             }}
           >
             {editingLesson ? 'Cập nhật' : 'Tạo'}
@@ -1042,14 +1102,21 @@ export default function CourseManage() {
       </Dialog>
 
       {/* Course Edit Dialog */}
-      <Dialog open={courseDialogOpen} onClose={() => setCourseDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ 
-          background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)', 
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}>
+      <Dialog
+        open={courseDialogOpen}
+        onClose={() => setCourseDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
           <EditIcon />
           {editingCourse ? 'Chỉnh sửa môn học' : 'Tạo môn học mới'}
         </DialogTitle>
@@ -1112,12 +1179,12 @@ export default function CourseManage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCourseDialogOpen(false)}>Hủy</Button>
-          <Button 
+          <Button
             onClick={handleCourseSubmit}
             variant="contained"
-            sx={{ 
+            sx={{
               background: 'linear-gradient(45deg, #EF5B5B, #FF7B7B)',
-              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' }
+              '&:hover': { background: 'linear-gradient(45deg, #D94A4A, #EF5B5B)' },
             }}
           >
             {editingCourse ? 'Cập nhật' : 'Tạo'}
@@ -1141,7 +1208,7 @@ export default function CourseManage() {
         }}
         title={confirmAction?.type === 'module' ? 'Xóa module' : 'Xóa bài học'}
         message={
-          confirmAction?.type === 'module' 
+          confirmAction?.type === 'module'
             ? `Bạn có chắc chắn muốn xóa module "${confirmAction?.title}"? Tất cả bài học trong module sẽ bị xóa và không thể hoàn tác.`
             : `Bạn có chắc chắn muốn xóa bài học "${confirmAction?.title}"? Hành động này không thể hoàn tác.`
         }

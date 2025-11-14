@@ -82,7 +82,7 @@ export const coursesApi = {
     const res = await apiClient.post(`/api/courses/${courseId}/enroll`);
     return res.data;
   },
-  async checkEnrollment(courseId: string): Promise<{ enrolled: boolean; progress: number }> {
+  async checkEnrollment(courseId: string): Promise<{ enrolled: boolean; progress: number; rating?: number; review?: string }> {
     const res = await apiClient.get(`/api/courses/${courseId}/enrollment`);
     return res.data;
   },
