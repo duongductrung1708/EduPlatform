@@ -9,7 +9,6 @@ import { User, UserDocument } from '../models/user.model';
 async function migrate() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const classroomModel = app.get<Model<ClassroomDocument>>(getModelToken(Classroom.name));
-  const _userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
 
   try {
     console.log('🔧 Normalizing legacy classroom fields...');

@@ -63,7 +63,8 @@ export class UsersService {
   }
 
   private sanitizeUser(user: UserDocument) {
-    const { passwordHash: _passwordHash, ...sanitized } = user.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, ...sanitized } = user.toObject();
     return sanitized;
   }
 }

@@ -1258,7 +1258,6 @@ export class AdminService {
     try {
       // Simple approach - get last 6 months of data
       const now = new Date();
-      const _sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
       
       // Get total users by month
       const userGrowth = [];

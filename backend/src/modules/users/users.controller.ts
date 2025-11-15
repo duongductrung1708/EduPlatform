@@ -18,7 +18,8 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User profile', type: UserResponseDto })
   async getProfile(@CurrentUser() _user: any) {
     const userDoc = await this.usersService.findById(_user.id);
-    const { passwordHash: _passwordHash, ...sanitized } = userDoc.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, ...sanitized } = userDoc.toObject();
     return sanitized;
   }
 
@@ -30,7 +31,8 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     const updatedUser = await this.usersService.update(_user.id, updateUserDto);
-    const { passwordHash: _passwordHash, ...sanitized } = updatedUser.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, ...sanitized } = updatedUser.toObject();
     return sanitized;
   }
 
@@ -56,7 +58,8 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User details', type: UserResponseDto })
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
-    const { passwordHash: _passwordHash, ...sanitized } = user.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, ...sanitized } = user.toObject();
     return sanitized;
   }
 }
