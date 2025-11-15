@@ -46,7 +46,7 @@ export class EmailService {
     });
 
     // Verify transporter configuration
-    this.transporter.verify((error, success) => {
+    this.transporter.verify((error, _success) => {
       if (error) {
         this.logger.error('SMTP connection verification failed:', error.message || error);
         this.logger.error('Please check your SMTP configuration in .env file');

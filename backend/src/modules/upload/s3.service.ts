@@ -43,7 +43,7 @@ export class S3Service {
     }
   }
 
-  async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedUrl(key: string, _expiresIn: number = 3600): Promise<string> {
     try {
       const signedUrl = `https://${this.bucketName}.s3.amazonaws.com/${key}`;
       return signedUrl;
@@ -57,7 +57,7 @@ export class S3Service {
     fileName: string,
     contentType: string,
     folder: string = 'uploads',
-    expiresIn: number = 3600
+    _expiresIn: number = 3600
   ): Promise<{ uploadUrl: string; key: string; publicUrl: string }> {
     try {
       const key = `${folder}/${Date.now()}-${fileName}`;

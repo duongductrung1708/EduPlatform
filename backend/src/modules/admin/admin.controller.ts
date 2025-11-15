@@ -67,7 +67,7 @@ export class AdminController {
     },
   })
   async getDashboardStats(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('period') period?: string,
   ): Promise<DashboardStats> {
     return this.adminService.getDashboardStats(period || '30days');
@@ -93,7 +93,7 @@ export class AdminController {
     },
   })
   async getRecentActivity(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('limit') limit?: string,
   ): Promise<RecentActivity[]> {
     const limitNumber = limit ? parseInt(limit, 10) : 10;
@@ -120,7 +120,7 @@ export class AdminController {
     },
   })
   async getTopCourses(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('limit') limit?: string,
   ): Promise<TopCourse[]> {
     const limitNumber = limit ? parseInt(limit, 10) : 10;
@@ -134,7 +134,7 @@ export class AdminController {
     description: 'Danh sách người dùng',
   })
   async getAllUsers(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('role') role?: string,
@@ -150,20 +150,20 @@ export class AdminController {
 
   @Get('users/stats')
   @ApiOperation({ summary: 'Lấy thống kê người dùng' })
-  async getUserStats(@CurrentUser() user: User) {
+  async getUserStats(@CurrentUser() _user: User) {
     return this.adminService.getUserStats();
   }
 
   @Get('users/:id')
   @ApiOperation({ summary: 'Lấy thông tin chi tiết người dùng' })
-  async getUserById(@CurrentUser() user: User, @Param('id') id: string) {
+  async getUserById(@CurrentUser() _user: User, @Param('id') id: string) {
     return this.adminService.getUserById(id);
   }
 
   @Put('users/:id')
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
   async updateUser(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Param('id') id: string,
     @Body() updateData: any,
   ) {
@@ -172,7 +172,7 @@ export class AdminController {
 
   @Delete('users/:id')
   @ApiOperation({ summary: 'Xóa người dùng' })
-  async deleteUser(@CurrentUser() user: User, @Param('id') id: string) {
+  async deleteUser(@CurrentUser() _user: User, @Param('id') id: string) {
     return this.adminService.deleteUser(id);
   }
 
@@ -183,7 +183,7 @@ export class AdminController {
     description: 'Danh sách khóa học',
   })
   async getAllCourses(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
@@ -201,7 +201,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Tạo khóa học mới (admin only), gán giảng viên' })
   @ApiResponse({ status: 201, description: 'Tạo khóa học thành công' })
   async createCourse(
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
     @Body() dto: CreateCourseDto,
   ) {
     // Admin can create and assign teacher via dto.teacherId
@@ -222,7 +222,7 @@ export class AdminController {
   @Put('courses/:id/status')
   @ApiOperation({ summary: 'Cập nhật trạng thái khóa học' })
   async updateCourseStatus(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
@@ -236,7 +236,7 @@ export class AdminController {
     description: 'Danh sách lớp học',
   })
   async getAllClassrooms(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
@@ -253,7 +253,7 @@ export class AdminController {
   @Put('classrooms/:id/status')
   @ApiOperation({ summary: 'Cập nhật trạng thái lớp học' })
   async updateClassroomStatus(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
@@ -262,13 +262,13 @@ export class AdminController {
 
   @Get('classrooms/stats')
   @ApiOperation({ summary: 'Lấy thống kê lớp học' })
-  async getClassroomStats(@CurrentUser() user: User) {
+  async getClassroomStats(@CurrentUser() _user: User) {
     return this.adminService.getClassroomStats();
   }
 
   @Get('courses/stats')
   @ApiOperation({ summary: 'Lấy thống kê khóa học' })
-  async getCourseStats(@CurrentUser() user: User) {
+  async getCourseStats(@CurrentUser() _user: User) {
     return this.adminService.getCourseStats();
   }
 
@@ -342,21 +342,21 @@ export class AdminController {
       },
     },
   })
-  async getAnalyticsData(@CurrentUser() user: User) {
+  async getAnalyticsData(@CurrentUser() _user: User) {
     return this.adminService.getAnalyticsData();
   }
 
   // Storage endpoints
   @Get('storage/stats')
   @ApiOperation({ summary: 'Lấy thống kê lưu trữ' })
-  async getStorageStats(@CurrentUser() user: User) {
+  async getStorageStats(@CurrentUser() _user: User) {
     return this.adminService.getStorageStats();
   }
 
   @Get('storage/files')
   @ApiOperation({ summary: 'Lấy danh sách tệp lưu trữ' })
   async getStorageFiles(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -365,27 +365,27 @@ export class AdminController {
 
   @Delete('storage/files/:fileId')
   @ApiOperation({ summary: 'Xóa tệp lưu trữ' })
-  async deleteStorageFile(@CurrentUser() user: User, @Param('fileId') fileId: string) {
+  async deleteStorageFile(@CurrentUser() _user: User, @Param('fileId') fileId: string) {
     return this.adminService.deleteStorageFile(fileId);
   }
 
   @Post('storage/cleanup')
   @ApiOperation({ summary: 'Dọn dẹp lưu trữ' })
-  async cleanupStorage(@CurrentUser() user: User) {
+  async cleanupStorage(@CurrentUser() _user: User) {
     return this.adminService.cleanupStorage();
   }
 
   // Security endpoints
   @Get('security/settings')
   @ApiOperation({ summary: 'Lấy cài đặt bảo mật' })
-  async getSecuritySettings(@CurrentUser() user: User) {
+  async getSecuritySettings(@CurrentUser() _user: User) {
     return this.adminService.getSecuritySettings();
   }
 
   @Put('security/settings/:settingId')
   @ApiOperation({ summary: 'Cập nhật cài đặt bảo mật' })
   async updateSecuritySetting(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Param('settingId') settingId: string,
     @Body('enabled') enabled: boolean,
   ) {
@@ -395,7 +395,7 @@ export class AdminController {
   @Get('security/logs')
   @ApiOperation({ summary: 'Lấy nhật ký bảo mật' })
   async getSecurityLogs(
-    @CurrentUser() user: User,
+    @CurrentUser() _user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -404,20 +404,20 @@ export class AdminController {
 
   @Post('security/audit')
   @ApiOperation({ summary: 'Chạy kiểm tra bảo mật' })
-  async runSecurityAudit(@CurrentUser() user: User) {
+  async runSecurityAudit(@CurrentUser() _user: User) {
     return this.adminService.runSecurityAudit();
   }
 
   // Settings endpoints
   @Get('settings')
   @ApiOperation({ summary: 'Lấy cài đặt hệ thống' })
-  async getSystemSettings(@CurrentUser() user: User) {
+  async getSystemSettings(@CurrentUser() _user: User) {
     return this.adminService.getSystemSettings();
   }
 
   @Put('settings')
   @ApiOperation({ summary: 'Cập nhật cài đặt hệ thống' })
-  async updateSystemSettings(@CurrentUser() user: User, @Body() settings: any) {
+  async updateSystemSettings(@CurrentUser() _user: User, @Body() settings: any) {
     return this.adminService.updateSystemSettings(settings);
   }
 }

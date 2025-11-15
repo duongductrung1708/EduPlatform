@@ -202,7 +202,9 @@ export class AssignmentsService {
           studentId,
           submittedAt: saved.submittedAt || new Date().toISOString(),
         });
-    } catch {}
+    } catch {
+      // Ignore notification errors
+    }
     return saved;
   }
 
@@ -302,8 +304,12 @@ export class AssignmentsService {
           `Bạn đã được chấm điểm cho một bài tập` ,
           { link: `/classrooms/${(assignment.classroomId as any).toString()}/assignments/${(assignment._id as any).toString()}` }
         );
-      } catch {}
-    } catch {}
+      } catch {
+        // Ignore notification errors
+      }
+    } catch {
+      // Ignore errors
+    }
 
     return updatedSubmission!;
   }

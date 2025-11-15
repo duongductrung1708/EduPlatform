@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../../decorators/current-user.decorator';

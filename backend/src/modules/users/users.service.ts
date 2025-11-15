@@ -63,7 +63,7 @@ export class UsersService {
   }
 
   private sanitizeUser(user: UserDocument) {
-    const { passwordHash, ...sanitized } = user.toObject();
+    const { passwordHash: _passwordHash, ...sanitized } = user.toObject();
     return sanitized;
   }
 }

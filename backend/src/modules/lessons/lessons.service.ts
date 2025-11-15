@@ -188,7 +188,9 @@ export class LessonsService {
       if (this.realtime) {
         this.realtime.server.to(`lesson:${id}`).emit('lessonDeleted', { id });
       }
-    } catch {}
+    } catch {
+      // Ignore realtime errors
+    }
     // Delete uploaded files: S3 keys and local files
     try {
       for (const a of attachments) {
@@ -210,8 +212,12 @@ export class LessonsService {
               if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
             }
           }
-        } catch {}
+        } catch {
+          // Ignore file deletion errors
+        }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
   }
 }

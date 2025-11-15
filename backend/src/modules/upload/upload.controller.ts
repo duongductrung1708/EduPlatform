@@ -34,7 +34,7 @@ export class UploadController {
     @UploadedFile() file: Express.Multer.File,
     @Body('folder') folder: string = 'uploads',
     @Body('customFileName') customFileName?: string,
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
   ) {
     if (!file) {
       throw new Error('No file provided');
@@ -58,7 +58,7 @@ export class UploadController {
       contentType: string;
       folder?: string;
     },
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
   ) {
     const { fileName, contentType, folder = 'uploads' } = body;
     
@@ -80,7 +80,7 @@ export class UploadController {
   @ApiOperation({ summary: 'Delete file from S3 (teacher/admin only)' })
   async deleteFile(
     @Param('key') key: string,
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
   ) {
     await this.s3Service.deleteFile(key);
     
@@ -95,7 +95,7 @@ export class UploadController {
   @ApiOperation({ summary: 'Get signed URL for file access' })
   async getSignedUrl(
     @Param('key') key: string,
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
   ) {
     const signedUrl = await this.s3Service.getSignedUrl(key);
     

@@ -330,7 +330,7 @@ export class CoursesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fix enrollment counts for all courses (admin only)' })
   @ApiResponse({ status: 200, description: 'Enrollment counts fixed successfully' })
-  async fixEnrollmentCounts(@CurrentUser() user: any) {
+  async fixEnrollmentCounts(@CurrentUser() _user: any) {
     return this.coursesService.fixEnrollmentCounts();
   }
 }

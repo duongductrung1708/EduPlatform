@@ -109,7 +109,9 @@ export class ChatService {
       try {
         const lesson = await this.lessonModel.findById(msg.lessonId).lean();
         classroomId = lesson?.classroomId ? String(lesson.classroomId) : null;
-      } catch {}
+      } catch {
+        // Ignore lesson lookup errors
+      }
     }
     if (!classroomId) return false;
     const classroom = await this.classroomModel.findById(classroomId).lean();

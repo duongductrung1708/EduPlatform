@@ -210,7 +210,9 @@ export class ClassroomsService {
             const filePath = path.join(process.cwd(), 'uploads', stored);
             if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
           }
-        } catch {}
+        } catch {
+          // Ignore file deletion errors
+        }
       }
     }
     // Delete chats for lessons and classroom
@@ -388,7 +390,9 @@ export class ClassroomsService {
           await this.notifications.create(tId.toString(), 'Thêm học sinh', `${student.name} đã được thêm vào lớp: ${classroom.title || classroom.name}`, { link: `/teacher/classrooms/${classroomId}` });
         }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
 
     // Return updated classroom with populated students
     return this.findOne(classroomId);
@@ -546,7 +550,9 @@ export class ClassroomsService {
           await this.notifications.create(tId.toString(), 'Xóa học sinh', `Một học sinh đã bị xóa khỏi lớp: ${classroom.title || classroom.name}`, { link: `/teacher/classrooms/${classroomId}` });
         }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

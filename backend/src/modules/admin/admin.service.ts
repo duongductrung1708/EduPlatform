@@ -144,7 +144,7 @@ export class AdminService {
       };
 
       usersByRole.forEach((role) => {
-        if (roleStats.hasOwnProperty(role._id)) {
+        if (Object.prototype.hasOwnProperty.call(roleStats, role._id)) {
           roleStats[role._id as keyof typeof roleStats] = role.count;
         }
       });
@@ -176,7 +176,6 @@ export class AdminService {
 
       if (useDailyStats) {
         // Daily stats
-        const daysCount = period === '7days' ? 7 : 30;
         timeStats = await this.userModel.aggregate([
           {
             $match: {
@@ -419,9 +418,9 @@ export class AdminService {
         });
 
         // Fill in missing days with 0 values
-        const daysCount = period === '7days' ? 7 : 30;
+        const _daysCount = period === '7days' ? 7 : 30;
         const finalStats: Array<{ month: string; users: number; courses: number; classrooms: number }> = [];
-        for (let i = daysCount - 1; i >= 0; i--) {
+        for (let i = _daysCount - 1; i >= 0; i--) {
           const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
           const dateStr = date.toISOString().split('T')[0];
           finalStats.push(
@@ -554,7 +553,7 @@ export class AdminService {
     }
 
     // Ensure unique slug; generate if missing
-    let slug = (payload.slug || payload.title)
+    const slug = (payload.slug || payload.title)
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .trim()
@@ -1167,7 +1166,7 @@ export class AdminService {
       };
 
       usersByRole.forEach((role) => {
-        if (roleStats.hasOwnProperty(role._id)) {
+        if (Object.prototype.hasOwnProperty.call(roleStats, role._id)) {
           roleStats[role._id as keyof typeof roleStats] = role.count;
         }
       });
@@ -1259,7 +1258,7 @@ export class AdminService {
     try {
       // Simple approach - get last 6 months of data
       const now = new Date();
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const _sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
       
       // Get total users by month
       const userGrowth = [];
@@ -1452,7 +1451,9 @@ export class AdminService {
             if (urlParts.length > 2) {
               folderSet.add(urlParts[urlParts.length - 2]);
             }
-          } catch {}
+          } catch {
+            // Ignore URL parsing errors
+          }
         }
         // Count videoUrl
         if (content.videoUrl) {
@@ -1466,7 +1467,9 @@ export class AdminService {
             if (urlParts.length > 2) {
               folderSet.add(urlParts[urlParts.length - 2]);
             }
-          } catch {}
+          } catch {
+            // Ignore URL parsing errors
+          }
         }
       });
 
@@ -1575,7 +1578,7 @@ export class AdminService {
 
       // Paginate
       const total = allFiles.length;
-      const paginatedFiles = allFiles.slice(skip, skip + limit).map(({ updatedAtRaw, ...file }) => file);
+      const paginatedFiles = allFiles.slice(skip, skip + limit).map(({ updatedAtRaw: _updatedAtRaw, ...file }) => file);
 
       return {
         files: paginatedFiles,
@@ -1626,7 +1629,7 @@ export class AdminService {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
-  async deleteStorageFile(fileId: string) {
+  async deleteStorageFile(_fileId: string) {
     // Implementation would delete the actual file
     // For now, just return success
     return { success: true, message: 'File deleted successfully' };

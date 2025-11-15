@@ -16,9 +16,9 @@ export class UsersController {
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'User profile', type: UserResponseDto })
-  async getProfile(@CurrentUser() user: any) {
-    const userDoc = await this.usersService.findById(user.id);
-    const { passwordHash, ...sanitized } = userDoc.toObject();
+  async getProfile(@CurrentUser() _user: any) {
+    const userDoc = await this.usersService.findById(_user.id);
+    const { passwordHash: _passwordHash, ...sanitized } = userDoc.toObject();
     return sanitized;
   }
 
@@ -26,11 +26,11 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated', type: UserResponseDto })
   async updateProfile(
-    @CurrentUser() user: any,
+    @CurrentUser() _user: any,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    const updatedUser = await this.usersService.update(user.id, updateUserDto);
-    const { passwordHash, ...sanitized } = updatedUser.toObject();
+    const updatedUser = await this.usersService.update(_user.id, updateUserDto);
+    const { passwordHash: _passwordHash, ...sanitized } = updatedUser.toObject();
     return sanitized;
   }
 
@@ -56,7 +56,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User details', type: UserResponseDto })
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
-    const { passwordHash, ...sanitized } = user.toObject();
+    const { passwordHash: _passwordHash, ...sanitized } = user.toObject();
     return sanitized;
   }
 }

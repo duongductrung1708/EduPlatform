@@ -48,7 +48,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   async handleClassMessage(@MessageBody() data: { classroomId: string; message: string; user: { id: string; name: string } }) {
     // Save first to get id/timestamp
     let saved: any = null;
-    try { saved = await this.chatModel.create({ classroomId: new Types.ObjectId(data.classroomId), authorId: new Types.ObjectId(data.user.id), authorName: data.user.name, message: data.message }); } catch {}
+    try { saved = await this.chatModel.create({ classroomId: new Types.ObjectId(data.classroomId), authorId: new Types.ObjectId(data.user.id), authorName: data.user.name, message: data.message }); } catch {
+      // Ignore save errors
+    }
     const ts = saved?.createdAt ? new Date(saved.createdAt).toISOString() : new Date().toISOString();
     const payload: any = { ...data, id: saved?._id?.toString?.(), timestamp: ts };
     this.server.to(`classroom:${data.classroomId}`).emit('classMessage', payload);
@@ -62,7 +64,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       while ((m = emailRegex.exec(data.message))) { emailMatches.push(m[1]); }
       if (emailMatches.length) {
         for (const email of emailMatches) {
-          try { const u = await this.usersService.findByEmail(email); if (u) seen.add(String((u as any)._id)); } catch {}
+          try { const u = await this.usersService.findByEmail(email); if (u) seen.add(String((u as any)._id)); } catch {
+            // Ignore user lookup errors
+          }
         }
       }
       const unameRegex = /@([A-Za-z0-9_]{3,32})/g;
@@ -70,7 +74,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       while ((m = unameRegex.exec(data.message))) { unameMatches.push(m[1]); }
       if (unameMatches.length) {
         for (const uname of unameMatches) {
-          try { (await this.usersService.findIdsByExactNameInsensitive(uname)).forEach((id) => seen.add(id)); } catch {}
+          try { (await this.usersService.findIdsByExactNameInsensitive(uname)).forEach((id) => seen.add(id)); } catch {
+            // Ignore user lookup errors
+          }
         }
       }
       for (const uid of Array.from(seen)) {
@@ -83,9 +89,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
             body: created?.body || `${data.user.name}: ${data.message}`,
             link: created?.meta?.link || `/classrooms/${data.classroomId}`,
           });
-        } catch {}
+        } catch {
+          // Ignore notification errors
+        }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
   }
 
   @SubscribeMessage('joinCourse')
@@ -109,7 +119,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @SubscribeMessage('lessonMessage')
   async handleLessonMessage(@MessageBody() data: { lessonId: string; message: string; user: { id: string; name: string } }) {
     let saved: any = null;
-    try { saved = await this.chatModel.create({ lessonId: new Types.ObjectId(data.lessonId), authorId: new Types.ObjectId(data.user.id), authorName: data.user.name, message: data.message }); } catch {}
+    try { saved = await this.chatModel.create({ lessonId: new Types.ObjectId(data.lessonId), authorId: new Types.ObjectId(data.user.id), authorName: data.user.name, message: data.message }); } catch {
+      // Ignore save errors
+    }
     const ts = saved?.createdAt ? new Date(saved.createdAt).toISOString() : new Date().toISOString();
     const payload: any = { ...data, id: saved?._id?.toString?.(), timestamp: ts };
     this.server.to(`lesson:${data.lessonId}`).emit('lessonMessage', payload);
@@ -123,13 +135,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const emails: string[] = [];
       while ((m = emailRegex.exec(data.message))) { emails.push(m[1]); }
       for (const email of emails) {
-        try { const u = await this.usersService.findByEmail(email); if (u) seen.add(String((u as any)._id)); } catch {}
+        try { const u = await this.usersService.findByEmail(email); if (u) seen.add(String((u as any)._id)); } catch {
+          // Ignore user lookup errors
+        }
       }
       const unameRegex = /@([A-Za-z0-9_]{3,32})/g;
       const names: string[] = [];
       while ((m = unameRegex.exec(data.message))) { names.push(m[1]); }
       for (const uname of names) {
-        try { (await this.usersService.findIdsByExactNameInsensitive(uname)).forEach((id) => seen.add(id)); } catch {}
+        try { (await this.usersService.findIdsByExactNameInsensitive(uname)).forEach((id) => seen.add(id)); } catch {
+          // Ignore user lookup errors
+        }
       }
       for (const uid of Array.from(seen)) {
         try {
@@ -141,9 +157,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
             body: created?.body || `${data.user.name}: ${data.message}`,
             link: created?.meta?.link || `/lessons/${data.lessonId}`,
           });
-        } catch {}
+        } catch {
+          // Ignore notification errors
+        }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
   }
 
   // Emit enrollment events

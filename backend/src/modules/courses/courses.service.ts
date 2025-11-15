@@ -447,7 +447,9 @@ export class CoursesService {
               if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
             }
           }
-        } catch {}
+        } catch {
+          // Ignore errors
+        }
       }
     }
     // Delete lessons and modules
@@ -514,7 +516,9 @@ export class CoursesService {
           if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
         }
       }
-    } catch {}
+    } catch {
+      // Ignore errors
+    }
     await this.documentModel.findByIdAndDelete(id);
   }
 
@@ -579,7 +583,9 @@ export class CoursesService {
       });
       try {
         await this.notifications.create((populatedEnrollment as any).studentId._id.toString(), 'Ghi danh khóa học', `Bạn đã được ghi danh vào ${course.title}`, { link: `/courses/${resolvedCourseId.toString()}` });
-      } catch {}
+      } catch {
+        // Ignore notification errors
+      }
     }
     // Notify the course owner (teacher)
     if (course?.createdBy) {
@@ -589,7 +595,9 @@ export class CoursesService {
       });
       try {
         await this.notifications.create(course.createdBy.toString(), 'Học sinh ghi danh', `${(populatedEnrollment as any)?.studentId?.name || 'Học sinh'} đã ghi danh vào ${course.title}`, { link: `/teacher/courses/${resolvedCourseId.toString()}/enrollments` });
-      } catch {}
+      } catch {
+        // Ignore notification errors
+      }
     }
 
     return { message: 'Enrolled successfully' };
@@ -920,13 +928,17 @@ export class CoursesService {
     // Notify the course owner (teacher)
     if (course?.createdBy) {
       this.realtimeGateway.emitUserEvent(course.createdBy.toString(), 'enrollmentRemoved', { courseId, studentId });
+    } else {
+      // Course owner not found
     }
     try {
       await this.notifications.create(studentId.toString(), 'Hủy ghi danh khóa học', `Bạn đã bị hủy ghi danh khỏi ${course.title}`, { link: `/courses/${courseId}` });
       if (course?.createdBy) {
         await this.notifications.create(course.createdBy.toString(), 'Hủy ghi danh', `Một học sinh đã bị hủy ghi danh khỏi ${course.title}`, { link: `/teacher/courses/${courseId}/enrollments` });
       }
-    } catch {}
+    } catch {
+      // Ignore notification errors
+    }
 
     return { message: 'Student removed from course successfully' };
   }
