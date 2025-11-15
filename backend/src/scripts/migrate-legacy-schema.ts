@@ -4,7 +4,6 @@ import { AppModule } from '../modules/app.module';
 import { getModelToken } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Classroom, ClassroomDocument } from '../models/classroom.model';
-import { User, UserDocument } from '../models/user.model';
 
 async function migrate() {
   const app = await NestFactory.createApplicationContext(AppModule);

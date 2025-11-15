@@ -40,7 +40,7 @@ export const coursesApi = {
     };
   },
   async listPublic(page = 1, limit = 100, search?: string, tags?: string[]): Promise<{ items: CourseItem[]; total: number; page: number; totalPages: number; }> {
-    const params: any = { page, limit };
+    const params: Record<string, string | number> = { page, limit };
     if (search) params.q = search;
     if (tags && tags.length) params.tags = tags.join(',');
     const res = await apiClient.get('/api/courses/public/list', { params });
@@ -86,19 +86,19 @@ export const coursesApi = {
     const res = await apiClient.get(`/api/courses/${courseId}/enrollment`);
     return res.data;
   },
-  async getModules(courseId: string): Promise<any[]> {
+  async getModules(courseId: string): Promise<Array<{ _id: string; title: string; description?: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean; [key: string]: unknown }>> {
     const res = await apiClient.get(`/api/courses/${courseId}/modules`);
     return res.data;
   },
-  async createModule(courseId: string, payload: { title: string; description: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean; }): Promise<any> {
+  async createModule(courseId: string, payload: { title: string; description: string; order?: number; volume?: string; estimatedDuration?: number; isPublished?: boolean; }): Promise<{ _id: string; title: string; [key: string]: unknown }> {
     const res = await apiClient.post(`/api/courses/${courseId}/modules`, payload);
     return res.data;
   },
-  async getLessons(moduleId: string): Promise<any[]> {
+  async getLessons(moduleId: string): Promise<Array<{ _id: string; title: string; description?: string; type?: string; order?: number; [key: string]: unknown }>> {
     const res = await apiClient.get(`/api/courses/modules/${moduleId}/lessons`);
     return res.data;
   },
-  async createLesson(moduleId: string, payload: { title: string; description: string; type: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: any; estimatedDuration?: number; isPublished?: boolean; }): Promise<any> {
+  async createLesson(moduleId: string, payload: { title: string; description: string; type: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: Record<string, unknown>; estimatedDuration?: number; isPublished?: boolean; }): Promise<{ _id: string; title: string; [key: string]: unknown }> {
     const res = await apiClient.post(`/api/courses/modules/${moduleId}/lessons`, payload);
     return res.data;
   },
@@ -145,7 +145,7 @@ export const coursesApi = {
     const res = await apiClient.delete(`/api/courses/${courseId}/modules/${moduleId}`);
     return res.data;
   },
-  async updateLesson(moduleId: string, lessonId: string, payload: { title?: string; description?: string; type?: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: any; estimatedDuration?: number; isPublished?: boolean }): Promise<any> {
+  async updateLesson(moduleId: string, lessonId: string, payload: { title?: string; description?: string; type?: 'document'|'video'|'interactive'|'quiz'|'assignment'; order?: number; content?: Record<string, unknown>; estimatedDuration?: number; isPublished?: boolean }): Promise<{ _id: string; title: string; [key: string]: unknown }> {
     const res = await apiClient.patch(`/api/courses/modules/${moduleId}/lessons/${lessonId}`, payload);
     return res.data;
   },
@@ -153,7 +153,7 @@ export const coursesApi = {
     const res = await apiClient.delete(`/api/courses/modules/${moduleId}/lessons/${lessonId}`);
     return res.data;
   },
-  async getEnrollments(courseId: string): Promise<{ students: any[] }> {
+  async getEnrollments(courseId: string): Promise<{ students: Array<{ _id: string; name: string; email: string; [key: string]: unknown }> }> {
     const res = await apiClient.get(`/api/courses/${courseId}/enrollments`);
     return res.data || { students: [] };
   },

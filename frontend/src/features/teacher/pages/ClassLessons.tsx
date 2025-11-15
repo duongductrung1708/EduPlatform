@@ -20,10 +20,8 @@ import {
   Stack,
   List,
   ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
-  Divider,
   Tooltip,
   Paper,
   CircularProgress,
@@ -46,7 +44,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import { lessonsApi, LessonItem, LessonAttachment } from '../../../api/lessons';
 import { uploadsApi } from '../../../api/uploads';
-import { classesApi } from '../../../api/admin';
+import { classesApi, ClassroomItem } from '../../../api/admin';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ChatBox } from '../../../components/ChatBox';
@@ -75,7 +73,7 @@ export default function ClassLessons() {
   const [success, setSuccess] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<LessonItem | null>(null);
-  const [classroomInfo, setClassroomInfo] = useState<any | null>(null);
+  const [classroomInfo, setClassroomInfo] = useState<ClassroomItem | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseItem | null>(null);
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -126,8 +124,9 @@ export default function ClassLessons() {
       setError(null);
       const list = await lessonsApi.list(classroomId);
       setItems(list);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tải bài giảng');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tải bài giảng');
     } finally {
       setLoading(false);
     }
@@ -140,7 +139,8 @@ export default function ClassLessons() {
         if (classroomId) {
           const info = await classesApi.getById(classroomId);
           setClassroomInfo(info);
-          const courseId = typeof info.courseId === 'object' ? info.courseId._id : info.courseId;
+          const classroomWithCourse = info as ClassroomItem & { courseId?: string | { _id: string; [key: string]: unknown } };
+          const courseId = typeof classroomWithCourse.courseId === 'object' ? classroomWithCourse.courseId._id : classroomWithCourse.courseId;
           if (courseId) {
             try {
               const c = await coursesApi.getById(courseId);
@@ -150,6 +150,7 @@ export default function ClassLessons() {
         }
       } catch {}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroomId]);
 
   const onFiles = async (files: FileList | null) => {
@@ -168,8 +169,9 @@ export default function ClassLessons() {
       });
       const uploadedFiles = await Promise.all(uploadPromises);
       setAttachments((prev) => [...prev, ...uploadedFiles]);
-    } catch (e: any) {
-      setError(e?.message || 'Upload thất bại');
+    } catch (e: unknown) {
+      const err = e as { message?: string; response?: { data?: { message?: string } } };
+      setError(err?.message || err?.response?.data?.message || 'Upload thất bại');
     } finally {
       setUploading(false);
     }
@@ -206,8 +208,9 @@ export default function ClassLessons() {
       setTags('');
       setSuccess('Đã tạo bài giảng');
       fetchLessons();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tạo bài giảng');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tạo bài giảng');
     } finally {
       setSaving(false);
     }
@@ -271,8 +274,9 @@ export default function ClassLessons() {
       setTags('');
       setSuccess('Đã cập nhật bài giảng');
       fetchLessons();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể cập nhật');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể cập nhật');
     } finally {
       setSaving(false);
     }
@@ -284,8 +288,9 @@ export default function ClassLessons() {
       await lessonsApi.remove(classroomId, lesson._id);
       setSuccess('Đã xóa bài giảng');
       fetchLessons();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xóa bài giảng');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể xóa bài giảng');
     }
   };
 
@@ -328,10 +333,10 @@ export default function ClassLessons() {
                   label={`Khóa học: ${courseInfo.title} (${courseInfo.category || 'Khác'} - ${courseInfo.level || 'N/A'})`}
                 />
               )}
-              {classroomInfo.schedule?.startDate && (
+              {(classroomInfo as ClassroomItem & { schedule?: { startDate?: string } })?.schedule?.startDate && (
                 <Chip
                   size="small"
-                  label={`Bắt đầu: ${new Date(classroomInfo.schedule.startDate).toLocaleDateString()}`}
+                  label={`Bắt đầu: ${new Date((classroomInfo as ClassroomItem & { schedule?: { startDate?: string } }).schedule!.startDate!).toLocaleDateString()}`}
                 />
               )}
             </Box>
@@ -799,7 +804,7 @@ export default function ClassLessons() {
               <ReactQuillWrapper
                 theme="snow"
                 value={contentHtml}
-                onChange={setContentHtml as any}
+                onChange={(value: string) => setContentHtml(value)}
                 modules={quillModules}
                 formats={quillFormats}
               />
@@ -1050,7 +1055,7 @@ export default function ClassLessons() {
               <ReactQuillWrapper
                 theme="snow"
                 value={contentHtml}
-                onChange={setContentHtml as any}
+                onChange={(value: string) => setContentHtml(value)}
                 modules={quillModules}
                 formats={quillFormats}
               />

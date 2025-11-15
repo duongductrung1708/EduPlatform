@@ -18,7 +18,7 @@ import {
   CircularProgress,
   Divider,
 } from '@mui/material';
-import { assignmentsApi } from '../api/assignments';
+import { assignmentsApi, AssignmentAttachment, AssignmentItem } from '../api/assignments';
 import BackButton from '../components/BackButton';
 import Breadcrumb from '../components/Breadcrumb';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -31,10 +31,23 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { ShimmerBox } from '../components/LoadingSkeleton';
 import { resolveFileUrl } from '../utils/url';
 
+interface Submission {
+  _id: string;
+  student?: { _id?: string; name?: string; email?: string } | string;
+  studentId?: string;
+  contentText?: string;
+  attachments?: AssignmentAttachment[];
+  grade?: number | string;
+  feedback?: string;
+  submittedAt?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
 const GradeSubmissionsPage: React.FC = () => {
   const { classroomId, assignmentId } = useParams();
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [assignment, setAssignment] = useState<any | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [assignment, setAssignment] = useState<AssignmentItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +68,7 @@ const GradeSubmissionsPage: React.FC = () => {
 
       // Pre-fill grades from existing submissions
       const gradesMap: Record<string, { grade: string; feedback: string }> = {};
-      list.forEach((s: any) => {
+      list.forEach((s: Submission) => {
         if (s.grade !== undefined || s.feedback) {
           gradesMap[s._id] = {
             grade: s.grade?.toString() || '',
@@ -64,8 +77,9 @@ const GradeSubmissionsPage: React.FC = () => {
         }
       });
       setGrades(gradesMap);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tải danh sách bài nộp');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tải danh sách bài nộp');
     } finally {
       setLoading(false);
     }
@@ -114,8 +128,9 @@ const GradeSubmissionsPage: React.FC = () => {
       await assignmentsApi.grade(classroomId, assignmentId, submissionId, payload);
       setSuccess('Đã chấm điểm thành công');
       fetchSubmissions();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể chấm điểm');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể chấm điểm');
     } finally {
       setGrading((prev) => ({ ...prev, [submissionId]: false }));
     }
@@ -422,7 +437,7 @@ const GradeSubmissionsPage: React.FC = () => {
                             Tệp đính kèm ({s.attachments.length}):
                           </Typography>
                           <Stack spacing={1}>
-                            {s.attachments.map((a: any, idx: number) => {
+                            {s.attachments.map((a: AssignmentAttachment, idx: number) => {
                               const fileUrl = resolveFileUrl(a.url) || a.url;
                               return (
                                 <Paper

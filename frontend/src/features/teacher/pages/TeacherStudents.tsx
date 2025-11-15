@@ -24,7 +24,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import EmailIcon from '@mui/icons-material/Email';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
-import { classesApi } from '../../../api/admin';
+import { classesApi, ClassroomItem } from '../../../api/admin';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { ShimmerBox, DarkShimmerBox } from '../../../components/LoadingSkeleton';
@@ -39,7 +39,6 @@ interface Student {
 
 export default function TeacherStudents() {
   const { darkMode } = useTheme();
-  const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +105,13 @@ export default function TeacherStudents() {
       setError(null);
 
       // Get all classrooms for the teacher
-      let classrooms: any[] = [];
+      let classrooms: ClassroomItem[] = [];
       try {
         const classroomsResponse = await classesApi.listMy(1, 100);
         classrooms = classroomsResponse.items || [];
-      } catch (err: any) {
-        if (err?.response?.status === 401) {
+      } catch (err: unknown) {
+        const error = err as { response?: { status?: number; data?: { message?: string } } };
+        if (error?.response?.status === 401) {
           setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
           setStudents([]);
           return;
@@ -132,10 +132,10 @@ export default function TeacherStudents() {
       for (const classroom of classrooms) {
         try {
           const classroomStudents = await classesApi.getStudents(classroom._id);
-          const classroomName = (classroom as any).title || (classroom as any).name || 'Lớp học';
+          const classroomName = (classroom as ClassroomItem & { name?: string }).title || (classroom as ClassroomItem & { name?: string }).name || 'Lớp học';
           classroomsSet.add(classroomName);
 
-          classroomStudents.forEach((student: any) => {
+          classroomStudents.forEach((student: { _id: string; name: string; email: string; avatarUrl?: string; [key: string]: unknown }) => {
             const studentId = student._id || student.id;
             if (!studentId) return;
 
@@ -171,8 +171,9 @@ export default function TeacherStudents() {
       setClassroomList(Array.from(classroomsSet).sort());
       setStudents(allStudents);
       setFilteredStudents(allStudents);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const apiMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       setError(apiMsg || 'Không thể tải danh sách học sinh');
     } finally {
       setLoading(false);

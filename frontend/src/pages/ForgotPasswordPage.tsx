@@ -30,8 +30,9 @@ const ForgotPasswordPage: React.FC = () => {
           replace: true 
         });
       }, 1500);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể gửi yêu cầu');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể gửi yêu cầu');
     } finally {
       setLoading(false);
     }

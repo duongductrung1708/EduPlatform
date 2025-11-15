@@ -14,9 +14,9 @@ export interface Classroom {
     _id: string;
     title: string;
   };
-  studentIds?: any[];
-  teacherIds?: any[];
-  assignmentIds?: any[];
+  studentIds?: string[];
+  teacherIds?: string[];
+  assignmentIds?: string[];
   inviteCode?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -85,7 +85,7 @@ export const classroomsApi = {
   },
 
   // Lấy danh sách học sinh trong lớp
-  async getClassroomStudents(id: string): Promise<any[]> {
+  async getClassroomStudents(id: string): Promise<Array<{ _id: string; name: string; email: string }>> {
     try {
       const response = await apiClient.get(`/classes/${id}/students`);
       return response.data;
@@ -106,7 +106,7 @@ export const classroomsApi = {
   },
 
   // Tìm học sinh theo email
-  async findStudentByEmail(email: string): Promise<any> {
+  async findStudentByEmail(email: string): Promise<{ _id: string; name: string; email: string } | null> {
     try {
       const response = await apiClient.get(`/classes/find-student?email=${encodeURIComponent(email)}`);
       return response.data;

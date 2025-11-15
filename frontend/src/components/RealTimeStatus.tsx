@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Chip, Tooltip } from '@mui/material';
+import { Chip, Tooltip } from '@mui/material';
 import { Wifi as WifiIcon, WifiOff as WifiOffIcon } from '@mui/icons-material';
 import { useAdminWebSocket } from '../hooks/useAdminWebSocket';
 

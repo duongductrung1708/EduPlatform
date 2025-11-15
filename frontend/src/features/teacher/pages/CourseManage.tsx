@@ -19,7 +19,6 @@ import {
   AccordionSummary,
   AccordionDetails,
   Chip,
-  Divider,
   Paper,
 } from '@mui/material';
 import ReactQuillWrapper from '../../../components/ReactQuillWrapper';
@@ -32,7 +31,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import QuizIcon from '@mui/icons-material/Quiz';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
-import { coursesApi } from '../../../api/courses';
+import { coursesApi, CourseItem } from '../../../api/courses';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ConfirmDialog from '../../../components/ConfirmDialog';
@@ -80,7 +79,7 @@ export default function CourseManage() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
 
-  const [course, setCourse] = useState<any>(null);
+  const [course, setCourse] = useState<CourseItem | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +110,7 @@ export default function CourseManage() {
 
   // Course dialog states
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [editingCourse, setEditingCourse] = useState<CourseItem | null>(null);
   const [courseForm, setCourseForm] = useState({
     title: '',
     description: '',
@@ -136,13 +135,14 @@ export default function CourseManage() {
     order: 0,
     estimatedDuration: 0,
     isPublished: true,
-    content: { htmlContent: '' } as any,
+    content: { htmlContent: '' } as { htmlContent?: string; fileUrl?: string; fileName?: string; fileType?: string; [key: string]: unknown },
   });
 
   useEffect(() => {
     if (courseId) {
       loadCourseData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   const loadCourseData = async () => {
@@ -172,11 +172,39 @@ export default function CourseManage() {
       const modulesWithLessons = await Promise.all(
         (modulesRes || []).map(async (module) => {
           try {
-            const lessons = await coursesApi.getLessons(module._id);
-            return { ...module, lessons };
+            const lessonsData = await coursesApi.getLessons(module._id);
+            const lessons: Lesson[] = lessonsData.map((l: { _id: string; title: string; description?: string; type?: string; order?: number; estimatedDuration?: number; isPublished?: boolean; content?: { htmlContent?: string; fileUrl?: string; fileName?: string; fileType?: string } }) => ({
+              _id: l._id,
+              title: l.title,
+              description: l.description || '',
+              type: (l.type || 'document') as 'document' | 'video' | 'interactive' | 'quiz' | 'assignment',
+              order: l.order || 0,
+              estimatedDuration: l.estimatedDuration,
+              isPublished: l.isPublished ?? true,
+              content: l.content,
+            }));
+            return { 
+              _id: module._id,
+              title: module.title,
+              description: module.description || '',
+              order: module.order || 0,
+              estimatedDuration: module.estimatedDuration,
+              isPublished: module.isPublished ?? true,
+              volume: module.volume,
+              lessons 
+            } as Module;
           } catch (err) {
             console.error(`Error loading lessons for module ${module._id}:`, err);
-            return { ...module, lessons: [] };
+            return { 
+              _id: module._id,
+              title: module.title,
+              description: module.description || '',
+              order: module.order || 0,
+              estimatedDuration: module.estimatedDuration,
+              isPublished: module.isPublished ?? true,
+              volume: module.volume,
+              lessons: [] 
+            } as Module;
           }
         }),
       );
@@ -247,7 +275,7 @@ export default function CourseManage() {
     }
   };
 
-  const handleCreateLesson = async () => {
+  const _handleCreateLesson = async () => {
     try {
       await coursesApi.createLesson(selectedModuleId, lessonForm);
       setLessonDialogOpen(false);
@@ -259,7 +287,7 @@ export default function CourseManage() {
     }
   };
 
-  const handleUpdateLesson = async () => {
+  const _handleUpdateLesson = async () => {
     try {
       await coursesApi.updateLesson(selectedModuleId, editingLesson!._id, lessonForm);
       setLessonDialogOpen(false);
@@ -388,17 +416,17 @@ export default function CourseManage() {
     setLessonDialogOpen(true);
   };
 
-  const openCourseDialog = (course?: any) => {
+  const openCourseDialog = (course?: CourseItem) => {
     if (course) {
       setEditingCourse(course);
       setCourseForm({
-        title: course.title,
-        description: course.description,
-        category: course.category,
-        level: course.level,
+        title: course.title || '',
+        description: course.description || '',
+        category: course.category || '',
+        level: course.level || '',
         tags: course.tags || [],
-        visibility: course.visibility,
-        status: course.status,
+        visibility: course.visibility || 'public',
+        status: course.status || 'published',
       });
     } else {
       setEditingCourse(null);
@@ -417,7 +445,7 @@ export default function CourseManage() {
     return lessonType?.label || 'Tài liệu';
   };
 
-  const handleModuleSubmit = async () => {
+  const _handleModuleSubmit = async () => {
     try {
       if (editingModule) {
         await coursesApi.updateModule(courseId!, editingModule._id, moduleForm);
@@ -435,7 +463,7 @@ export default function CourseManage() {
 
   const handleLessonSubmit = async () => {
     try {
-      const content: any = { ...lessonForm.content };
+      const content: { htmlContent?: string; fileUrl?: string; fileName?: string; fileType?: string; [key: string]: unknown } = { ...lessonForm.content };
 
       // Add file content if lesson type is document and file is uploaded
       if (lessonForm.type === 'document' && lessonFile) {
@@ -467,7 +495,7 @@ export default function CourseManage() {
   const handleCourseSubmit = async () => {
     try {
       if (editingCourse) {
-        const updatedCourse = await coursesApi.update(courseId!, courseForm);
+        await coursesApi.update(courseId!, courseForm);
       }
       setCourseDialogOpen(false);
       setEditingCourse(null);
@@ -542,7 +570,7 @@ export default function CourseManage() {
             </Typography>
             <Tooltip title="Chỉnh sửa môn học">
               <IconButton
-                onClick={() => openCourseDialog(course)}
+                onClick={() => openCourseDialog(course || undefined)}
                 size="small"
                 sx={{
                   bgcolor: '#EF5B5B',
@@ -1001,7 +1029,7 @@ export default function CourseManage() {
               select
               label="Loại bài học"
               value={lessonForm.type}
-              onChange={(e) => setLessonForm({ ...lessonForm, type: e.target.value as any })}
+              onChange={(e) => setLessonForm({ ...lessonForm, type: e.target.value as 'document' | 'video' | 'interactive' | 'quiz' | 'assignment' })}
               fullWidth
             >
               {LESSON_TYPES.map((type) => (

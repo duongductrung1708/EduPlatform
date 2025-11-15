@@ -5,8 +5,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
   Typography,
   Paper,
   List,
@@ -19,14 +17,10 @@ import {
   IconButton,
   TextField,
   InputAdornment,
-  Divider,
   Slide,
   Fade,
   Zoom,
   Collapse,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
 } from '@mui/material';
 import {
   SmartToy,
@@ -34,25 +28,15 @@ import {
   Send,
   QuestionAnswer,
   School,
-  Class,
   Assignment,
   People,
   TrendingUp,
-  EmojiEvents,
-  Dashboard,
   HelpOutline,
-  PlayArrow,
   Download,
   GroupAdd,
-  Public,
-  Search,
-  Bookmark,
-  Edit,
   Add,
-  Delete,
   CheckCircle,
   Warning,
-  Info,
   KeyboardArrowDown,
   KeyboardArrowUp
 } from '@mui/icons-material';
@@ -60,7 +44,7 @@ import { TransitionProps } from '@mui/material/transitions';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & {
-    children: React.ReactElement<any, any>;
+    children: React.ReactElement;
   },
   ref: React.Ref<unknown>,
 ) {

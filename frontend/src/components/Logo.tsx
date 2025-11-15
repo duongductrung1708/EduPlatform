@@ -9,8 +9,11 @@ interface LogoProps {
 
 export default function Logo({ height = 28, onClick, alt = 'EduLearn' }: LogoProps) {
   return (
-    <img src={logoUrl} alt={alt} style={{ height, display: 'block', cursor: onClick ? 'pointer' : 'default' }} onClick={onClick} />
+    <img
+      src={logoUrl}
+      alt={alt}
+      style={{ height, display: 'block', cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
+    />
   );
 }
-
-

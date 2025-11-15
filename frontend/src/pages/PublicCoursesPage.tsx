@@ -89,8 +89,9 @@ export default function PublicCoursesPage() {
         setAvailableCategories(categories);
         setAvailableLevels(levels);
         
-      } catch (err: any) {
-        setError(err?.response?.data?.message || 'Không thể tải danh sách môn học');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        setError(error?.response?.data?.message || 'Không thể tải danh sách môn học');
       } finally {
         setLoading(false);
       }

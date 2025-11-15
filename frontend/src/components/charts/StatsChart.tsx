@@ -19,7 +19,7 @@ import {
 import { Box, Typography, Paper, useTheme } from '@mui/material';
 
 interface ChartProps {
-  data: any[];
+  data: Array<{ name: string; value: number; [key: string]: unknown }>;
   title: string;
   height?: number;
   type?: 'line' | 'bar' | 'pie' | 'area';
@@ -134,7 +134,7 @@ export const StatsChart: React.FC<ChartProps> = ({
         );
       
       case 'pie':
-        const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+        const renderCustomLabel = ({ cx, cy, midAngle, outerRadius, percent, name }: { cx: number; cy: number; midAngle: number; outerRadius: number; percent: number; name: string }) => {
           // Chỉ hiển thị label nếu phần trăm >= 5% để tránh chồng chéo
           if (percent < 0.05) return null;
           

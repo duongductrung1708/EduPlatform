@@ -59,8 +59,9 @@ export default function StudentBadges() {
           }),
         );
       setBadges(normalized);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const apiMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       setError(apiMsg || 'Không thể tải danh sách huy hiệu');
     } finally {
       setLoading(false);
@@ -75,7 +76,7 @@ export default function StudentBadges() {
     return '🎖️';
   };
 
-  const getBadgeColor = (badge: any) => {
+  const getBadgeColor = (badge: { criteria?: { kind?: string }; [key: string]: unknown }) => {
     switch (badge.criteria.kind) {
       case 'course_completion':
         return '#4CAF50';

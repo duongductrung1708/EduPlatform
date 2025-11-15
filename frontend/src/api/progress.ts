@@ -43,7 +43,7 @@ export interface BadgeData {
     title: string;
     slug: string;
   };
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export const progressApi = {
@@ -138,7 +138,7 @@ export const progressApi = {
       }
 
       return [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   },
@@ -160,7 +160,7 @@ export const progressApi = {
     return res.data;
   },
 
-  async getBadges(): Promise<any[]> {
+  async getBadges(): Promise<BadgeData[]> {
     const res = await apiClient.get('/api/progress/badges');
     return res.data;
   },

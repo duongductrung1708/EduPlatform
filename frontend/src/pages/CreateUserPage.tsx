@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   TextField,
   Button,
@@ -44,7 +42,7 @@ const CreateUserPage: React.FC = () => {
     }));
   };
 
-  const handleSelectChange = (e: any) => {
+  const handleSelectChange = (e: { target: { name: string; value: string } }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -74,8 +72,9 @@ const CreateUserPage: React.FC = () => {
         address: '',
         gender: 'male',
       });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo tài khoản');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Có lỗi xảy ra khi tạo tài khoản');
     } finally {
       setLoading(false);
     }

@@ -13,7 +13,6 @@ import {
   IconButton,
   Tooltip,
   Rating,
-  Divider,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -121,11 +120,11 @@ export default function CourseDetailPage() {
       setEnrolled(enrollmentStatus.enrolled);
       setProgress(enrollmentStatus.progress);
       // Load student's rating and review if available
-      if ((enrollmentStatus as any).rating) {
-        setStudentRating((enrollmentStatus as any).rating);
+      if (enrollmentStatus.rating) {
+        setStudentRating(enrollmentStatus.rating);
       }
-      if ((enrollmentStatus as any).review) {
-        setStudentReview((enrollmentStatus as any).review);
+      if (enrollmentStatus.review) {
+        setStudentReview(enrollmentStatus.review);
       }
     } catch (error) {
       setEnrolled(false);
@@ -143,9 +142,9 @@ export default function CourseDetailPage() {
       // If current user is the course owner or admin/teacher, consider as enrolled
       if (
         user &&
-        (courseData?.createdBy?._id === (user as any)?.id ||
-          (user as any)?.role === 'admin' ||
-          (user as any)?.role === 'teacher')
+        (courseData?.createdBy?._id === user?.id ||
+          user?.role === 'admin' ||
+          user?.role === 'teacher')
       ) {
         setEnrolled(true);
         setProgress(0);
@@ -154,7 +153,7 @@ export default function CourseDetailPage() {
       // Load modules and lessons
       const modulesData = await coursesApi.getModules(id!);
       const modulesWithLessons = await Promise.all(
-        (modulesData || []).map(async (m: any) => {
+        (modulesData || []).map(async (m: { _id: string; [key: string]: unknown }) => {
           try {
             const lessons = await coursesApi.getLessons(m._id);
             return { ...m, lessons: lessons || [] };
@@ -187,13 +186,13 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     const loadCourseProgress = async () => {
-      if (!user || !id || (user as any)?.role !== 'student') {
+      if (!user || !id || user?.role !== 'student') {
         setCompletedLessons([]);
         return;
       }
       try {
         const progressList = await progressApi.getStudentProgress();
-        const entry = progressList.find((item: any) => {
+        const entry = progressList.find((item: { courseId: string | { _id?: string; id?: string; toString?: () => string } | unknown; progress?: { completedLessons?: unknown[] } }) => {
           const course = item.courseId;
           const courseId =
             typeof course === 'string'
@@ -202,7 +201,7 @@ export default function CourseDetailPage() {
           return String(courseId) === String(id);
         });
         if (entry) {
-          const completed = (entry.progress?.completedLessons || []).map((lessonId: any) =>
+          const completed = (entry.progress?.completedLessons || []).map((lessonId: string | { _id?: string; id?: string; toString?: () => string } | unknown) =>
             typeof lessonId === 'string'
               ? lessonId
               : lessonId?._id || lessonId?.id || lessonId?.toString?.() || String(lessonId),
@@ -301,19 +300,20 @@ export default function CourseDetailPage() {
       await progressApi.rateCourse(id, studentRating, studentReview || undefined);
       // Refresh enrollment status to get updated rating
       const status = await coursesApi.checkEnrollment(id);
-      if ((status as any).rating) {
-        setStudentRating((status as any).rating);
+      if (status.rating) {
+        setStudentRating(status.rating);
       }
-      if ((status as any).review) {
-        setStudentReview((status as any).review);
+      if (status.review) {
+        setStudentReview(status.review);
       }
       // Refresh course data to update average rating
       const courseData = await coursesApi.getById(id);
       setCourse(courseData);
       setRatingDialogOpen(false);
-    } catch (error: any) {
-      console.error('Failed to submit rating:', error);
-      setError(error.response?.data?.message || 'Không thể gửi đánh giá');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      console.error('Failed to submit rating:', err);
+      setError(err.response?.data?.message || err.message || 'Không thể gửi đánh giá');
     } finally {
       setSubmittingRating(false);
     }
@@ -353,7 +353,11 @@ export default function CourseDetailPage() {
     }
   };
 
-  const handleDownloadDocument = async (lesson: any) => {
+  interface LessonWithContent {
+    content?: { fileUrl?: string; [key: string]: unknown };
+    [key: string]: unknown;
+  }
+  const handleDownloadDocument = async (lesson: LessonWithContent) => {
     try {
       if (lesson.content?.fileUrl) {
         // Create a temporary link to download the file
@@ -501,8 +505,8 @@ export default function CourseDetailPage() {
               <Card sx={{ borderRadius: 3, border: '2px solid', borderColor: 'divider' }}>
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   {user?.role === 'teacher' &&
-                  String((course as any).createdBy?._id || (course as any).createdBy) ===
-                    String((user as any)?._id) ? (
+                  String((course as CourseItem).createdBy?._id || (course as CourseItem).createdBy) ===
+                    String(user?.id) ? (
                     <Stack spacing={2}>
                       <Typography variant="h6" fontWeight={600} color="#EF5B5B">
                         Môn học của bạn
@@ -689,7 +693,7 @@ export default function CourseDetailPage() {
               </Box>
               <Box sx={{ p: 3 }}>
                 {filteredModules.length > 0 ? (
-                  filteredModules.map((module, index) => (
+                  filteredModules.map((module) => (
                     <Accordion key={module._id} sx={{ mb: 2, borderRadius: 2 }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Stack

@@ -25,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ErrorAlert from '../components/ErrorAlert';
 import OtpVerificationDialog from '../components/OtpVerificationDialog';
 import Logo from '../components/Logo';
+import { AuthResponse } from '../api/auth';
 
 export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -69,8 +70,9 @@ export const RegisterPage: React.FC = () => {
         // Direct login (fallback for admin users)
         navigate('/dashboard');
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Đăng ký thất bại';
+    } catch (err: unknown) {
+      const error = err as { message?: string; response?: { data?: { message?: string } } };
+      const errorMessage = error.message || error.response?.data?.message || 'Đăng ký thất bại';
       setError(errorMessage);
       
       // If registration failed but user was created, still show OTP dialog
@@ -82,7 +84,7 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  const handleOtpVerificationSuccess = (authData: any) => {
+  const handleOtpVerificationSuccess = (_authData: AuthResponse) => {
     // OTP verification successful, user is now logged in
     // AuthContext will automatically detect the stored tokens and update user state
     navigate('/dashboard');

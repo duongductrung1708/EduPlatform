@@ -24,12 +24,9 @@ import {
   DialogActions,
   Pagination,
   Alert,
-  Skeleton,
-  Tooltip,
   Menu,
   ListItemIcon,
   ListItemText,
-  Fab,
   Card,
   CardContent,
   Grid,
@@ -122,7 +119,7 @@ const CourseManagement: React.FC = () => {
     status: 'draft',
     teacherId: '',
     thumbnail: '',
-    tags: '' as any, // comma separated in UI
+    tags: '', // comma separated in UI
   });
   const PRIMARY_CATEGORIES = [
     'Toán',
@@ -210,9 +207,10 @@ const CourseManagement: React.FC = () => {
 
       setCourses(validCourses);
       setTotalPages(response.pagination?.pages || 1);
-    } catch (err: any) {
-      console.error('Error fetching courses:', err);
-      setError(err.response?.data?.message || err.message || 'Không thể tải danh sách môn học');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      console.error('Error fetching courses:', error);
+      setError(error.response?.data?.message || error.message || 'Không thể tải danh sách môn học');
       setCourses([]); // Set empty array on error
     } finally {
       setLoading(false);
@@ -235,7 +233,7 @@ const CourseManagement: React.FC = () => {
     // Optimistic update
     const prevCourses = [...courses];
     setCourses((cs) =>
-      cs.map((c) => (c._id === selectedCourse._id ? { ...c, status: newStatus as any } : c)),
+      cs.map((c) => (c._id === selectedCourse._id ? { ...c, status: newStatus as 'draft' | 'published' | 'archived' } : c)),
     );
     try {
       await adminApi.updateCourseStatus(selectedCourse._id, newStatus);
@@ -243,8 +241,9 @@ const CourseManagement: React.FC = () => {
       setSelectedCourse(null);
       setNewStatus('');
       fetchCourses(false);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể cập nhật trạng thái môn học');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Không thể cập nhật trạng thái môn học');
       // rollback
       setCourses(prevCourses);
     }
@@ -822,7 +821,7 @@ const CourseManagement: React.FC = () => {
                         <Chip
                           icon={getStatusIcon(course.status)}
                           label={getStatusText(course.status)}
-                          color={getStatusColor(course.status) as any}
+                          color={getStatusColor(course.status) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                           size="small"
                           sx={{
                             color: 'white',

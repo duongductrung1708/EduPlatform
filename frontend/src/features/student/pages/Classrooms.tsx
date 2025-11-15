@@ -10,9 +10,6 @@ import {
   Avatar,
   Paper,
   Chip,
-  IconButton,
-  Tooltip,
-  CircularProgress,
   Alert
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
@@ -21,7 +18,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import AddIcon from '@mui/icons-material/Add';
 import { classesApi } from '../../../api/admin';
 import { useNavigate } from 'react-router-dom';
-import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton';
+import { SkeletonGrid } from '../../../components/LoadingSkeleton';
 import { useTheme } from '../../../contexts/ThemeContext';
 import Pagination from '../../../components/Pagination';
 import SearchFilterBar from '../../../components/SearchFilterBar';
@@ -89,7 +86,7 @@ export default function StudentClassrooms() {
     setSearchTerm(value);
   };
 
-  const handleFilterChange = (filterKey: string, value: string) => {
+  const handleFilterChange = (_filterKey: string, _value: string) => {
     // Add filter logic here if needed
   };
 

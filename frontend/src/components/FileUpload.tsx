@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
   Box,
-  Button,
   Typography,
   LinearProgress,
   Alert,
@@ -16,7 +15,6 @@ import {
 import {
   CloudUpload as CloudUploadIcon,
   Delete as DeleteIcon,
-  FilePresent as FileIcon,
   CheckCircle as CheckCircleIcon,
   InsertDriveFile as InsertDriveFileIcon,
   Description as DescriptionIcon,
@@ -103,8 +101,9 @@ export default function FileUpload({
         setUploadProgress(0);
       }, 1000);
 
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi khi upload file');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Lỗi khi upload file');
       setUploading(false);
       setUploadProgress(0);
     }

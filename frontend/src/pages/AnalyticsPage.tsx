@@ -25,8 +25,6 @@ import {
 import {
   TrendingUp as TrendingUpIcon,
   People as PeopleIcon,
-  School as SchoolIcon,
-  Class as ClassIcon,
   Refresh as RefreshIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
@@ -84,15 +82,7 @@ interface SystemMetrics {
   };
 }
 
-interface AnalyticsData {
-  userGrowth: UserGrowthData[];
-  coursePerformance: CoursePerformanceData[];
-  classroomActivity: ClassroomActivityData[];
-  systemMetrics: SystemMetrics;
-}
-
 const AnalyticsPage: React.FC = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -127,9 +117,10 @@ const AnalyticsPage: React.FC = () => {
       setLoading(true);
       const data = await adminApi.getAnalyticsData();
       setLastUpdated(new Date());
-    } catch (err: any) {
-      console.error('Analytics API Error:', err);
-      setError(err.response?.data?.message || 'Không thể tải dữ liệu analytics');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      console.error('Analytics API Error:', error);
+      setError(error.response?.data?.message || 'Không thể tải dữ liệu analytics');
     } finally {
       setLoading(false);
     }
@@ -350,7 +341,7 @@ const AnalyticsPage: React.FC = () => {
                   <Chip
                     icon={getStatusIcon(analyticsData?.systemMetrics.systemHealth.database || 'healthy')}
                     label={analyticsData?.systemMetrics.systemHealth.database || 'healthy'}
-                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.database || 'healthy') as any}
+                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.database || 'healthy') as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                     size="small"
                   />
                 </Box>
@@ -360,7 +351,7 @@ const AnalyticsPage: React.FC = () => {
                   <Chip
                     icon={getStatusIcon(analyticsData?.systemMetrics.systemHealth.api || 'healthy')}
                     label={analyticsData?.systemMetrics.systemHealth.api || 'healthy'}
-                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.api || 'healthy') as any}
+                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.api || 'healthy') as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                     size="small"
                   />
                 </Box>
@@ -370,7 +361,7 @@ const AnalyticsPage: React.FC = () => {
                   <Chip
                     icon={getStatusIcon(analyticsData?.systemMetrics.systemHealth.storage || 'healthy')}
                     label={analyticsData?.systemMetrics.systemHealth.storage || 'healthy'}
-                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.storage || 'healthy') as any}
+                    color={getStatusColor(analyticsData?.systemMetrics.systemHealth.storage || 'healthy') as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                     size="small"
                   />
                 </Box>
@@ -465,7 +456,7 @@ const AnalyticsPage: React.FC = () => {
                             <LinearProgress
                               variant="determinate"
                               value={classroom.fillRate}
-                              color={getFillRateColor(classroom.fillRate) as any}
+                              color={getFillRateColor(classroom.fillRate) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                               sx={{ width: 60, mr: 1 }}
                             />
                             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>

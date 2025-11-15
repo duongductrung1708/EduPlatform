@@ -17,7 +17,6 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
-  useTheme as useMuiTheme,
   useMediaQuery,
   Badge,
   Tooltip,
@@ -54,12 +53,38 @@ import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  NotificationItem,
 } from '../api/notifications';
 
 const drawerWidth = 280;
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+}
+
+interface NotificationRaw {
+  _id?: string;
+  id?: string;
+  title?: string;
+  body?: string;
+  link?: string;
+  read?: boolean;
+  meta?: { link?: string };
+  userId?: string;
+  userName?: string;
+  courseId?: string;
+  courseTitle?: string;
+  classroomId?: string;
+  classroomName?: string;
+}
+
+interface NotificationDisplay {
+  id: string;
+  text: string;
+  ts: string;
+  link?: string;
+  _raw?: NotificationRaw | NotificationItem;
+  read?: boolean;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
@@ -72,9 +97,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
-  const [notifications, setNotifications] = useState<
-    Array<{ id: string; text: string; ts: string; link?: string; _raw?: any; read?: boolean }>
-  >([]);
+
+  const [notifications, setNotifications] = useState<NotificationDisplay[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -119,7 +143,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         setNotifLoading(true);
         const res = await fetchNotifications(20);
         setNotifications(
-          res.items.map((it) => ({
+          res.items.map((it: NotificationItem) => ({
             id: it._id,
             text: it.title || it.body,
             ts: new Date(it.createdAt).toLocaleTimeString(),
@@ -130,6 +154,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         );
         setUnreadCount(res.unread ?? 0);
       } catch {
+        // Ignore notification fetch errors
       } finally {
         setNotifLoading(false);
       }
@@ -138,12 +163,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Socket event handlers for real-time notifications
   React.useEffect(() => {
-    const handleNotificationCreated = (data: any) => {
+    const handleNotificationCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as NotificationRaw;
       const text = data?.title || data?.body || 'Thông báo mới';
       setNotifications((prev) =>
         [
           {
-            id: data?.id || crypto.randomUUID(),
+            id: data?.id || data?._id || crypto.randomUUID(),
             text,
             ts: new Date().toLocaleTimeString(),
             link: data?.link,
@@ -155,8 +181,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleUserCreated = (data: any) => {
-      const name = data?.user?.name || 'Người dùng';
+    const handleUserCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { user?: { name?: string }; userId?: string; userName?: string };
+      const name = data?.user?.name || data?.userName || 'Người dùng';
       setNotifications((prev) =>
         [
           {
@@ -172,8 +199,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleCourseCreated = (data: any) => {
-      const title = data?.course?.title || 'Khóa học';
+    const handleCourseCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { course?: { title?: string }; courseId?: string; courseTitle?: string };
+      const title = data?.course?.title || data?.courseTitle || 'Khóa học';
       setNotifications((prev) =>
         [
           {
@@ -189,8 +217,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleClassroomCreated = (data: any) => {
-      const name = data?.classroom?.name || data?.classroom?.title || 'Lớp học';
+    const handleClassroomCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { classroom?: { name?: string; title?: string }; classroomId?: string; classroomName?: string };
+      const name = data?.classroom?.name || data?.classroom?.title || data?.classroomName || 'Lớp học';
       setNotifications((prev) =>
         [
           {
@@ -225,13 +254,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const handleNotifOpen = (e: React.MouseEvent<HTMLElement>) => setNotifAnchor(e.currentTarget);
   const handleNotifClose = () => setNotifAnchor(null);
 
-  const handleClickNotification = async (n: { id: string; link?: string; _raw?: any }) => {
+  const handleClickNotification = async (n: NotificationDisplay) => {
     try {
       if (n._raw && !n._raw.read) {
         const res = await markNotificationRead(n.id);
         setUnreadCount(res.unread ?? 0);
       }
-    } catch {}
+    } catch {
+      // Ignore mark read errors
+    }
     if (n.link) {
       navigate(n.link);
     }
@@ -253,6 +284,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       setDeleteConfirmOpen(false);
       setDeleteTargetId(null);
     } catch {
+      // Ignore delete errors
     } finally {
       setDeleting(false);
     }
@@ -277,6 +309,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       setUnreadCount(0);
       setDeleteAllConfirmOpen(false);
     } catch {
+      // Ignore delete all errors
     } finally {
       setDeletingAll(false);
     }
@@ -291,7 +324,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       const res = await markAllNotificationsRead();
       setUnreadCount(res.unread ?? 0);
       setNotifications((prev) => prev.map((p) => ({ ...p, read: true })));
-    } catch {}
+    } catch {
+      // Ignore mark all read errors
+    }
   };
 
   const drawer = (

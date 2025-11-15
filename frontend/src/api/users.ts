@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ withCredentials: true, baseURL: (import.meta as any).env?.VITE_API_BASE || '' });
+const api = axios.create({ withCredentials: true, baseURL: (import.meta as { env?: { VITE_API_BASE?: string } }).env?.VITE_API_BASE || '' });
 
 export interface UserLite {
   _id: string;
@@ -12,7 +12,12 @@ export async function searchUsers(search: string, limit = 10): Promise<UserLite[
   if (!search || !search.trim()) return [];
   const { data } = await api.get('/api/users', { params: { page: 1, limit, search } });
   // Backend returns { users, total, ... }
-  return Array.isArray(data?.users) ? data.users.map((u: any) => ({ _id: String(u._id), name: u.name, email: u.email })) : [];
+  interface UserResponse {
+    _id: string;
+    name: string;
+    email: string;
+  }
+  return Array.isArray(data?.users) ? data.users.map((u: UserResponse) => ({ _id: String(u._id), name: u.name, email: u.email })) : [];
 }
 
 import { apiClient } from './client';

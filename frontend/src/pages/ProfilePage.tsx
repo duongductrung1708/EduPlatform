@@ -40,8 +40,9 @@ const ProfilePage: React.FC = () => {
       try {
         const me = await usersApi.getMe();
         if (mounted) setProfile(me);
-      } catch (e: any) {
-        if (mounted) setError(e.response?.data?.message || 'Không tải được hồ sơ');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        if (mounted) setError(err.response?.data?.message || 'Không tải được hồ sơ');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -56,7 +57,7 @@ const ProfilePage: React.FC = () => {
     setProfile((prev) => (prev ? ({ ...prev, [name]: value } as CurrentUserResponse) : prev));
   };
 
-  const handleGenderChange = (e: any) => {
+  const handleGenderChange = (e: { target: { value: string } }) => {
     const value = e.target.value;
     setProfile((prev) => (prev ? ({ ...prev, gender: value } as CurrentUserResponse) : prev));
   };
@@ -93,8 +94,9 @@ const ProfilePage: React.FC = () => {
         prev ? ({ ...prev, avatar: result.url } as CurrentUserResponse) : prev,
       );
       setSuccess('Đã upload ảnh đại diện thành công');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi khi upload ảnh');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Lỗi khi upload ảnh');
       setAvatarPreview(null);
     } finally {
       setUploadingAvatar(false);
@@ -124,16 +126,17 @@ const ProfilePage: React.FC = () => {
       setUserProfile({
         name: updated.name,
         avatar: updated.avatar,
-        phone: updated.phone as any,
+        phone: updated.phone,
         // email and role typically unchanged; keep existing
-      } as any);
+      });
       setSuccess('Đã lưu hồ sơ thành công');
       // Auto hide success message after 5 seconds
       setTimeout(() => {
         setSuccess(null);
       }, 5000);
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Không thể lưu thay đổi');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Không thể lưu thay đổi');
     } finally {
       setSaving(false);
     }

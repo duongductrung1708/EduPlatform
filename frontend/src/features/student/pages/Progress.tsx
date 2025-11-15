@@ -74,8 +74,9 @@ export default function StudentProgress() {
         });
 
       setProgressData(normalized);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const apiMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       setError(apiMsg || 'Không thể tải tiến độ học tập');
     } finally {
       setLoading(false);

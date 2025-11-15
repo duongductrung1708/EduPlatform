@@ -60,7 +60,10 @@ export default function MyClassrooms() {
   const [success, setSuccess] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState<boolean>(false);
   const [manageLoading, setManageLoading] = useState<boolean>(false);
-  const [currentClass, setCurrentClass] = useState<any | null>(null);
+  const [currentClass, setCurrentClass] = useState<
+    | (ClassroomItem & { studentsCount?: number; studentIds?: string[]; [key: string]: unknown })
+    | null
+  >(null);
   const [editOpen, setEditOpen] = useState<boolean>(false);
   const [editLoading, setEditLoading] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>('');
@@ -69,11 +72,18 @@ export default function MyClassrooms() {
   const [sortBy, setSortBy] = useState<string>('');
   const [addStudentOpen, setAddStudentOpen] = useState<boolean>(false);
   const [studentEmail, setStudentEmail] = useState<string>('');
-  const [foundStudent, setFoundStudent] = useState<any>(null);
+  const [foundStudent, setFoundStudent] = useState<{
+    _id: string;
+    name: string;
+    email: string;
+    [key: string]: unknown;
+  } | null>(null);
   const [searchingStudent, setSearchingStudent] = useState<boolean>(false);
   const [addingStudent, setAddingStudent] = useState<boolean>(false);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
-  const [studentsPreviewMap, setStudentsPreviewMap] = useState<Record<string, any[]>>({});
+  const [studentsPreviewMap, setStudentsPreviewMap] = useState<
+    Record<string, Array<{ _id: string; name: string; email: string; [key: string]: unknown }>>
+  >({});
 
   // Delete classroom states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
@@ -89,14 +99,15 @@ export default function MyClassrooms() {
       setItems(res.items);
       setTotalItems(res.total || 0);
       setTotalPages(Math.ceil((res.total || 0) / itemsPerPage));
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
       // Handle 401 gracefully - user might not be authenticated
-      if (e.response?.status === 401) {
+      if (err.response?.status === 401) {
         setItems([]);
         setTotalItems(0);
         setTotalPages(0);
       } else {
-        setError(e?.response?.data?.message || 'Không thể tải danh sách lớp');
+        setError(err?.response?.data?.message || 'Không thể tải danh sách lớp');
       }
     } finally {
       setLoading(false);
@@ -105,6 +116,7 @@ export default function MyClassrooms() {
 
   useEffect(() => {
     fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, itemsPerPage]);
 
   // Load students preview (first 3) for each classroom on the current page
@@ -116,21 +128,47 @@ export default function MyClassrooms() {
           items.map(async (cls) => {
             try {
               // If already have objects with names, use them directly
-              const raw = (cls as any).studentIds || [];
-              let students: any[] = [];
+              const raw =
+                (
+                  cls as ClassroomItem & {
+                    studentIds?: Array<
+                      string | { _id: string; name: string; email: string; [key: string]: unknown }
+                    >;
+                  }
+                ).studentIds || [];
+              let students: Array<{
+                _id: string;
+                name: string;
+                email: string;
+                [key: string]: unknown;
+              }> = [];
               if (raw.length > 0 && typeof raw[0] === 'object') {
-                students = raw as any[];
+                students = raw as Array<{
+                  _id: string;
+                  name: string;
+                  email: string;
+                  [key: string]: unknown;
+                }>;
               } else {
                 students = await classesApi.getStudents(cls._id);
               }
-              return [cls._id, (students || []).slice(0, 3)] as [string, any[]];
+              return [cls._id, (students || []).slice(0, 3)] as [
+                string,
+                Array<{ _id: string; name: string; email: string; [key: string]: unknown }>,
+              ];
             } catch {
-              return [cls._id, []] as [string, any[]];
+              return [cls._id, []] as [
+                string,
+                Array<{ _id: string; name: string; email: string; [key: string]: unknown }>,
+              ];
             }
           }),
         );
         if (cancelled) return;
-        const map: Record<string, any[]> = {};
+        const map: Record<
+          string,
+          Array<{ _id: string; name: string; email: string; [key: string]: unknown }>
+        > = {};
         entries.forEach((r) => {
           if (r.status === 'fulfilled') {
             const [id, list] = r.value;
@@ -150,13 +188,23 @@ export default function MyClassrooms() {
 
   // Real-time updates for classroom student changes
   useEffect(() => {
-    const handleStudentAdded = (data: { classroomId: string; student: any; timestamp: string }) => {
+    const handleStudentAdded = (data: {
+      classroomId: string;
+      student: { _id?: string; name?: string; email?: string; [key: string]: unknown };
+      timestamp: string;
+    }) => {
       if (currentClass && currentClass._id === data.classroomId) {
         // Refresh current class data
         const refreshCurrentClass = async () => {
           try {
             const data = await classesApi.getById(currentClass._id);
-            setCurrentClass(data);
+            setCurrentClass(
+              data as ClassroomItem & {
+                studentsCount?: number;
+                studentIds?: string[];
+                [key: string]: unknown;
+              },
+            );
           } catch (e) {
             console.error('Failed to refresh current class:', e);
           }
@@ -175,7 +223,13 @@ export default function MyClassrooms() {
         const refreshCurrentClass = async () => {
           try {
             const data = await classesApi.getById(currentClass._id);
-            setCurrentClass(data);
+            setCurrentClass(
+              data as ClassroomItem & {
+                studentsCount?: number;
+                studentIds?: string[];
+                [key: string]: unknown;
+              },
+            );
           } catch (e) {
             console.error('Failed to refresh current class:', e);
           }
@@ -199,7 +253,7 @@ export default function MyClassrooms() {
     offClassroomStudentRemoved,
   ]);
 
-  const createClass = async () => {
+  const _createClass = async () => {
     if (!title.trim()) return;
     try {
       setCreating(true);
@@ -209,8 +263,9 @@ export default function MyClassrooms() {
       setOpen(false);
       setTitle('');
       fetchClasses();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tạo lớp');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tạo lớp');
     } finally {
       setCreating(false);
     }
@@ -224,15 +279,16 @@ export default function MyClassrooms() {
     try {
       setCreating(true);
       setDialogError(null);
-      const payload: any = { title: title.trim() };
+      const payload: { title: string } = { title: title.trim() };
       await classesApi.create(payload);
       setSuccess('Đã tạo lớp');
       setOpen(false);
       setTitle('');
       setDialogError(null);
       fetchClasses();
-    } catch (e: any) {
-      setDialogError(e?.response?.data?.message || 'Không thể tạo lớp');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setDialogError(err?.response?.data?.message || 'Không thể tạo lớp');
     } finally {
       setCreating(false);
     }
@@ -256,7 +312,17 @@ export default function MyClassrooms() {
         try {
           setLoadingStudents(true);
           const students = await classesApi.getStudents(id);
-          data.studentIds = students;
+          // Store students in a separate property for rendering
+          (
+            data as unknown as {
+              students?: Array<{
+                _id: string;
+                name: string;
+                email: string;
+                [key: string]: unknown;
+              }>;
+            }
+          ).students = students;
         } catch (e) {
           console.error('Failed to fetch students separately:', e);
         } finally {
@@ -264,16 +330,29 @@ export default function MyClassrooms() {
         }
       }
 
-      setCurrentClass(data);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tải thành viên lớp');
+      setCurrentClass(
+        data as ClassroomItem & {
+          studentsCount?: number;
+          studentIds?: string[];
+          [key: string]: unknown;
+        },
+      );
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tải thành viên lớp');
     } finally {
       setManageLoading(false);
     }
   };
 
-  const openEdit = async (cls: any) => {
-    setCurrentClass(cls);
+  const openEdit = async (cls: ClassroomItem) => {
+    setCurrentClass(
+      cls as ClassroomItem & {
+        studentsCount?: number;
+        studentIds?: string[];
+        [key: string]: unknown;
+      },
+    );
     setEditTitle(cls.title || '');
     setEditOpen(true);
   };
@@ -282,13 +361,14 @@ export default function MyClassrooms() {
     if (!currentClass) return;
     try {
       setEditLoading(true);
-      const data: any = { title: editTitle.trim() };
-      await classesApi.update(currentClass._id || currentClass.id, data);
+      const data: { title: string } = { title: editTitle.trim() };
+      await classesApi.update(currentClass._id || (currentClass as { id?: string }).id || '', data);
       setSuccess('Đã cập nhật lớp');
       setEditOpen(false);
       fetchClasses();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể cập nhật lớp');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể cập nhật lớp');
     } finally {
       setEditLoading(false);
     }
@@ -297,13 +377,21 @@ export default function MyClassrooms() {
   const removeStudent = async (studentId: string) => {
     if (!currentClass) return;
     try {
-      await classesApi.removeStudent(currentClass.id || currentClass._id, studentId);
+      const classId = (currentClass as { id?: string }).id || currentClass._id;
+      await classesApi.removeStudent(classId, studentId);
       // Refresh current class
-      const data = await classesApi.getById(currentClass.id || currentClass._id);
-      setCurrentClass(data);
+      const data = await classesApi.getById(classId);
+      setCurrentClass(
+        data as ClassroomItem & {
+          studentsCount?: number;
+          studentIds?: string[];
+          [key: string]: unknown;
+        },
+      );
       setSuccess('Đã xóa học sinh khỏi lớp');
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xóa học sinh');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể xóa học sinh');
     }
   };
 
@@ -324,8 +412,9 @@ export default function MyClassrooms() {
       setError(null);
       const student = await classesApi.findStudentByEmail(studentEmail.trim());
       setFoundStudent(student);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không tìm thấy học sinh với email này');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không tìm thấy học sinh với email này');
       setFoundStudent(null);
     } finally {
       setSearchingStudent(false);
@@ -336,16 +425,24 @@ export default function MyClassrooms() {
     if (!currentClass || !foundStudent) return;
     try {
       setAddingStudent(true);
-      await classesApi.addStudent(currentClass.id || currentClass._id, foundStudent._id);
+      const classId = (currentClass as { id?: string }).id || currentClass._id;
+      await classesApi.addStudent(classId, foundStudent._id);
       // Refresh current class
-      const data = await classesApi.getById(currentClass.id || currentClass._id);
-      setCurrentClass(data);
+      const data = await classesApi.getById(classId);
+      setCurrentClass(
+        data as ClassroomItem & {
+          studentsCount?: number;
+          studentIds?: string[];
+          [key: string]: unknown;
+        },
+      );
       setSuccess('Đã thêm học sinh vào lớp');
       setAddStudentOpen(false);
       setStudentEmail('');
       setFoundStudent(null);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể thêm học sinh');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể thêm học sinh');
     } finally {
       setAddingStudent(false);
     }
@@ -368,8 +465,9 @@ export default function MyClassrooms() {
       setDeleteDialogOpen(false);
       setClassroomToDelete(null);
       fetchClasses(); // Refresh the list
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xóa lớp học');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể xóa lớp học');
     } finally {
       setDeleting(false);
     }
@@ -381,12 +479,88 @@ export default function MyClassrooms() {
     setConfirmName('');
   };
 
+  const renderStudentsList = () => {
+    if (!currentClass) return null;
+    const currentClassWithStudents = currentClass as {
+      studentIds?: Array<
+        | string
+        | { _id?: string; id?: string; name?: string; email?: string; [key: string]: unknown }
+      >;
+      students?: Array<{
+        _id?: string;
+        id?: string;
+        name?: string;
+        email?: string;
+        [key: string]: unknown;
+      }>;
+    };
+    const studentsList = (currentClassWithStudents.studentIds ||
+      currentClassWithStudents.students ||
+      []) as Array<{
+      _id?: string;
+      id?: string;
+      name?: string;
+      email?: string;
+      [key: string]: unknown;
+    }>;
+    if (studentsList.length === 0) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Chưa có học sinh nào
+          </Typography>
+          <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={openAddStudent}>
+            Thêm học sinh đầu tiên
+          </Button>
+        </Box>
+      );
+    }
+    return (
+      <List>
+        {studentsList.map(
+          (
+            s: { _id?: string; id?: string; name?: string; email?: string; [key: string]: unknown },
+            index: number,
+          ) => {
+            const studentId = s._id || s.id || '';
+            const studentName = s.name || 'Chưa có tên';
+            const studentEmail = s.email || 'Chưa có email';
+            const displayName = studentName !== 'Chưa có tên' ? studentName : studentEmail;
+            const uniqueKey = studentId || `student-${index}`;
+            return (
+              <ListItem
+                key={uniqueKey}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => removeStudent(studentId)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: '#EF5B5B' }}>{displayName.charAt(0).toUpperCase()}</Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={displayName}
+                  secondary={studentEmail !== 'Chưa có email' ? studentEmail : ''}
+                />
+              </ListItem>
+            );
+          },
+        )}
+      </List>
+    );
+  };
+
   // Search and filter handlers
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
   };
 
-  const handleFilterChange = (filterKey: string, value: string) => {
+  const handleFilterChange = (_filterKey: string, _value: string) => {
     // No filters needed
   };
 
@@ -405,7 +579,7 @@ export default function MyClassrooms() {
       // Search filter
       if (searchTerm.trim()) {
         const searchLower = searchTerm.toLowerCase();
-        const titleMatch = (item.title || (item as any).name || '')
+        const titleMatch = (item.title || (item as ClassroomItem & { name?: string }).name || '')
           .toLowerCase()
           .includes(searchLower);
         if (!titleMatch) return false;
@@ -418,22 +592,32 @@ export default function MyClassrooms() {
 
       switch (sortBy) {
         case 'name-asc':
-          return (a.title || (a as any).name || '').localeCompare(b.title || (b as any).name || '');
+          return (a.title || (a as ClassroomItem & { name?: string }).name || '').localeCompare(
+            b.title || (b as ClassroomItem & { name?: string }).name || '',
+          );
         case 'name-desc':
-          return (b.title || (b as any).name || '').localeCompare(a.title || (a as any).name || '');
+          return (b.title || (b as ClassroomItem & { name?: string }).name || '').localeCompare(
+            a.title || (a as ClassroomItem & { name?: string }).name || '',
+          );
         case 'students-asc':
-          return ((a as any).studentsCount || 0) - ((b as any).studentsCount || 0);
+          return (
+            ((a as ClassroomItem & { studentsCount?: number }).studentsCount || 0) -
+            ((b as ClassroomItem & { studentsCount?: number }).studentsCount || 0)
+          );
         case 'students-desc':
-          return ((b as any).studentsCount || 0) - ((a as any).studentsCount || 0);
+          return (
+            ((b as ClassroomItem & { studentsCount?: number }).studentsCount || 0) -
+            ((a as ClassroomItem & { studentsCount?: number }).studentsCount || 0)
+          );
         case 'created-asc':
           return (
-            new Date((a as any).createdAt || 0).getTime() -
-            new Date((b as any).createdAt || 0).getTime()
+            new Date((a as ClassroomItem & { createdAt?: string }).createdAt || 0).getTime() -
+            new Date((b as ClassroomItem & { createdAt?: string }).createdAt || 0).getTime()
           );
         case 'created-desc':
           return (
-            new Date((b as any).createdAt || 0).getTime() -
-            new Date((a as any).createdAt || 0).getTime()
+            new Date((b as ClassroomItem & { createdAt?: string }).createdAt || 0).getTime() -
+            new Date((a as ClassroomItem & { createdAt?: string }).createdAt || 0).getTime()
           );
         default:
           return 0;
@@ -640,7 +824,7 @@ export default function MyClassrooms() {
                       fontWeight="600"
                       sx={{ color: darkMode ? '#E5E7EB' : '#333333' }}
                     >
-                      {c.title || (c as any).name}
+                      {c.title || (c as ClassroomItem & { name?: string }).name}
                     </Typography>
                   </Box>
                   {/* course info removed */}
@@ -654,8 +838,12 @@ export default function MyClassrooms() {
                       variant="body2"
                       sx={{ color: darkMode ? '#D1D5DB' : '#777777', fontWeight: 500 }}
                     >
-                      {Math.max(0, (c as any).studentsCount ?? (c.studentIds || []).length)} học
-                      sinh
+                      {Math.max(
+                        0,
+                        (c as ClassroomItem & { studentsCount?: number }).studentsCount ??
+                          (c.studentIds || []).length,
+                      )}{' '}
+                      học sinh
                     </Typography>
                     <AvatarGroup
                       max={3}
@@ -675,7 +863,7 @@ export default function MyClassrooms() {
                         return (
                           <Avatar
                             key={s?._id || idx}
-                            src={s?.avatarUrl || s?.avatar}
+                            src={(s?.avatarUrl || s?.avatar) as string | undefined}
                             sx={{
                               bgcolor: s?.avatarUrl ? undefined : bg,
                               color: idx === 1 ? '#333333' : '#fff',
@@ -989,63 +1177,7 @@ export default function MyClassrooms() {
         <DialogContent>
           {manageLoading && <Typography>Đang tải...</Typography>}
           {loadingStudents && <Typography>Đang tải danh sách học sinh...</Typography>}
-          {!manageLoading && !loadingStudents && currentClass && (
-            <>
-              <List>
-                {(currentClass.studentIds || currentClass.students || []).map(
-                  (s: any, index: number) => {
-                    // Handle different data structures
-                    const studentId = s._id || s.id;
-                    const studentName = s.name || 'Chưa có tên';
-                    const studentEmail = s.email || 'Chưa có email';
-                    const displayName = studentName !== 'Chưa có tên' ? studentName : studentEmail;
-
-                    // Ensure unique key
-                    const uniqueKey = studentId || `student-${index}`;
-
-                    return (
-                      <ListItem
-                        key={uniqueKey}
-                        secondaryAction={
-                          <IconButton
-                            edge="end"
-                            aria-label="delete"
-                            onClick={() => removeStudent(studentId)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: '#EF5B5B' }}>
-                            {displayName.charAt(0).toUpperCase()}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={displayName}
-                          secondary={studentEmail !== 'Chưa có email' ? studentEmail : ''}
-                        />
-                      </ListItem>
-                    );
-                  },
-                )}
-                {(currentClass.studentIds || currentClass.students || []).length === 0 && (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography color="text.secondary" sx={{ mb: 2 }}>
-                      Chưa có học sinh nào
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      startIcon={<PersonAddIcon />}
-                      onClick={openAddStudent}
-                    >
-                      Thêm học sinh đầu tiên
-                    </Button>
-                  </Box>
-                )}
-              </List>
-            </>
-          )}
+          {!manageLoading && !loadingStudents && renderStudentsList()}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setManageOpen(false)}>Đóng</Button>
@@ -1182,7 +1314,13 @@ export default function MyClassrooms() {
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             Bạn có chắc chắn muốn xóa lớp học{' '}
-            <strong>"{classroomToDelete?.title || (classroomToDelete as any)?.name}"</strong>?
+            <strong>
+              &quot;
+              {classroomToDelete?.title ||
+                (classroomToDelete as ClassroomItem & { name?: string })?.name}
+              &quot;
+            </strong>
+            ?
           </Typography>
           <Alert severity="warning" sx={{ mb: 2 }}>
             <Typography variant="body2">
@@ -1199,14 +1337,21 @@ export default function MyClassrooms() {
           </Alert>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Vui lòng nhập tên lớp học để xác nhận:{' '}
-            <strong>{classroomToDelete?.title || (classroomToDelete as any)?.name}</strong>
+            <strong>
+              {classroomToDelete?.title ||
+                (classroomToDelete as ClassroomItem & { name?: string })?.name}
+            </strong>
           </Typography>
           <TextField
             fullWidth
             size="small"
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
-            placeholder={(classroomToDelete?.title || (classroomToDelete as any)?.name) as any}
+            placeholder={
+              classroomToDelete?.title ||
+              (classroomToDelete as ClassroomItem & { name?: string })?.name ||
+              ''
+            }
           />
         </DialogContent>
         <DialogActions sx={{ p: 3, gap: 1 }}>
@@ -1222,7 +1367,11 @@ export default function MyClassrooms() {
               deleting ||
               !classroomToDelete ||
               confirmName.trim() !==
-                (classroomToDelete?.title || (classroomToDelete as any)?.name || '').trim()
+                (
+                  classroomToDelete?.title ||
+                  (classroomToDelete as ClassroomItem & { name?: string })?.name ||
+                  ''
+                ).trim()
             }
             sx={{
               background: 'linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%)',

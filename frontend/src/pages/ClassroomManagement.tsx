@@ -24,12 +24,9 @@ import {
   DialogActions,
   Pagination,
   Alert,
-  Skeleton,
-  Tooltip,
   Menu,
   ListItemIcon,
   ListItemText,
-  Fab,
   Card,
   CardContent,
   Grid,
@@ -205,8 +202,9 @@ const ClassroomManagement: React.FC = () => {
       const response = await adminApi.getAllClassrooms(page, 10, statusFilter, searchTerm);
       setClassrooms(response.classrooms);
       setTotalPages(response.pagination.pages);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải danh sách lớp học');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Không thể tải danh sách lớp học');
     } finally {
       setLoading(false);
       setIsFetching(false);
@@ -218,7 +216,7 @@ const ClassroomManagement: React.FC = () => {
     try {
       const response = await adminApi.getClassroomStats();
       setStats(response);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching classroom stats:', err);
     }
   };
@@ -228,7 +226,7 @@ const ClassroomManagement: React.FC = () => {
     // Optimistic update
     const prev = [...classrooms];
     setClassrooms((ls) =>
-      ls.map((l) => (l._id === selectedClassroom._id ? { ...l, status: newStatus as any } : l)),
+      ls.map((l) => (l._id === selectedClassroom._id ? { ...l, status: newStatus as 'active' | 'inactive' | 'archived' } : l)),
     );
     try {
       await adminApi.updateClassroomStatus(selectedClassroom._id, newStatus);
@@ -237,8 +235,9 @@ const ClassroomManagement: React.FC = () => {
       setNewStatus('');
       fetchClassrooms(false);
       fetchStats();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể cập nhật trạng thái lớp học');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Không thể cập nhật trạng thái lớp học');
       setClassrooms(prev);
     }
   };
@@ -298,7 +297,7 @@ const ClassroomManagement: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const _formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
@@ -817,7 +816,7 @@ const ClassroomManagement: React.FC = () => {
                         <Chip
                           icon={getStatusIcon(classroom.status || 'active')}
                           label={getStatusText(classroom.status || 'active')}
-                          color={getStatusColor(classroom.status || 'active') as any}
+                          color={getStatusColor(classroom.status || 'active') as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                           size="small"
                           sx={{
                             color: 'white',
@@ -1086,8 +1085,9 @@ const ClassroomManagement: React.FC = () => {
                   setSelectedStudents([]);
                   fetchClassrooms(false);
                   fetchStats();
-                } catch (e: any) {
-                  setError(e?.response?.data?.message || 'Không thể thêm thành viên');
+                } catch (e: unknown) {
+                  const error = e as { response?: { data?: { message?: string } } };
+                  setError(error?.response?.data?.message || 'Không thể thêm thành viên');
                 } finally {
                   setSubmittingMembers(false);
                 }

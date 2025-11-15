@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { io, Socket } from 'socket.io-client';
 
 const getSocketUrl = () => {
-  const envUrl = (import.meta as any).env?.VITE_API_BASE as string | undefined;
+  const envUrl = (import.meta as { env?: { VITE_API_BASE?: string } }).env?.VITE_API_BASE as string | undefined;
   if (envUrl && envUrl.trim()) return envUrl;
   // Fallback: derive backend from current origin (swap 5173 -> 3000)
   try {
@@ -18,12 +18,16 @@ const getSocketUrl = () => {
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
   const { user } = useAuth();
-  const getUserId = () => (user as any)?.id || (user as any)?._id || null;
+  interface UserWithId {
+    id?: string;
+    _id?: string;
+  }
+  const getUserId = () => (user as UserWithId)?.id || (user as UserWithId)?._id || null;
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const url = getSocketUrl();
-    const debug = (import.meta as any).env?.VITE_DEBUG_SOCKET === '1';
+    const debug = (import.meta as { env?: { VITE_DEBUG_SOCKET?: string } }).env?.VITE_DEBUG_SOCKET === '1';
     socketRef.current = io(url, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -36,10 +40,10 @@ export const useSocket = () => {
       if (uid) socketRef.current?.emit('identify', { userId: String(uid) });
     };
     let identified = false;
-    const handleIdentified = (payload: any) => {
+    const handleIdentified = (_payload: unknown) => {
       identified = true;
     };
-    const handleConnectError = (err: any) => {
+    const handleConnectError = (err: { message?: string } | string) => {
       if (debug) {
         // eslint-disable-next-line no-console
         console.warn('[socket] connect_error', err?.message || err);
@@ -72,7 +76,7 @@ export const useSocket = () => {
       clearTimeout(timer);
       socketRef.current?.disconnect();
     };
-  }, [ (user as any)?.id, (user as any)?._id ]);
+  }, [ (user as UserWithId)?.id, (user as UserWithId)?._id ]);
 
   const joinClassroom = (classroomId: string) => {
     socketRef.current?.emit('joinClassroom', { classroomId });
@@ -131,7 +135,7 @@ export const useSocket = () => {
     socketRef.current?.on('leftCourse', callback);
   };
 
-  const onEnrollmentAdded = (callback: (data: { courseId: string; enrollment: any; timestamp: string }) => void) => {
+  const onEnrollmentAdded = (callback: (data: { courseId: string; enrollment: EnrollmentData; timestamp: string }) => void) => {
     socketRef.current?.on('enrollmentAdded', callback);
   };
 
@@ -147,7 +151,7 @@ export const useSocket = () => {
     socketRef.current?.off('leftCourse', callback);
   };
 
-  const offEnrollmentAdded = (callback: (data: { courseId: string; enrollment: any; timestamp: string }) => void) => {
+  const offEnrollmentAdded = (callback: (data: { courseId: string; enrollment: EnrollmentData; timestamp: string }) => void) => {
     socketRef.current?.off('enrollmentAdded', callback);
   };
 
@@ -156,7 +160,11 @@ export const useSocket = () => {
   };
 
   // Classroom student events
-  const onClassroomStudentAdded = (callback: (data: { classroomId: string; student: any; timestamp: string }) => void) => {
+  interface StudentData {
+    name?: string;
+    [key: string]: unknown;
+  }
+  const onClassroomStudentAdded = (callback: (data: { classroomId: string; student: StudentData; timestamp: string }) => void) => {
     socketRef.current?.on('classroomStudentAdded', callback);
   };
 
@@ -164,7 +172,7 @@ export const useSocket = () => {
     socketRef.current?.on('classroomStudentRemoved', callback);
   };
 
-  const offClassroomStudentAdded = (callback: (data: { classroomId: string; student: any; timestamp: string }) => void) => {
+  const offClassroomStudentAdded = (callback: (data: { classroomId: string; student: StudentData; timestamp: string }) => void) => {
     socketRef.current?.off('classroomStudentAdded', callback);
   };
 
@@ -173,17 +181,17 @@ export const useSocket = () => {
   };
 
   // Generic helpers so listeners can be attached regardless of connection timing
-  const on = (event: string, handler: (...args: any[]) => void) => {
+  const on = (event: string, handler: (...args: unknown[]) => void) => {
     socketRef.current?.on(event, handler);
   };
-  const off = (event: string, handler: (...args: any[]) => void) => {
+  const off = (event: string, handler: (...args: unknown[]) => void) => {
     socketRef.current?.off(event, handler);
   };
-  const onAny = (handler: (event: string, ...args: any[]) => void) => {
-    (socketRef.current as any)?.onAny?.(handler);
+  const onAny = (handler: (event: string, ...args: unknown[]) => void) => {
+    (socketRef.current as { onAny?: (handler: (event: string, ...args: unknown[]) => void) => void })?.onAny?.(handler);
   };
-  const offAny = (handler: (event: string, ...args: any[]) => void) => {
-    (socketRef.current as any)?.offAny?.(handler);
+  const offAny = (handler: (event: string, ...args: unknown[]) => void) => {
+    (socketRef.current as { offAny?: (handler: (event: string, ...args: unknown[]) => void) => void })?.offAny?.(handler);
   };
 
   const onConnect = (handler: () => void) => {

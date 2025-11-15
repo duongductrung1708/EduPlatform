@@ -40,8 +40,9 @@ const ResetPasswordPage: React.FC = () => {
       const res = await authApi.resetPassword(token, newPassword);
       setSuccess(res.message || 'Đặt lại mật khẩu thành công');
       setTimeout(() => navigate('/auth/login'), 2000);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể đặt lại mật khẩu');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể đặt lại mật khẩu');
     } finally {
       setLoading(false);
     }

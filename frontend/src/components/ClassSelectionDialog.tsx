@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -14,11 +14,9 @@ import {
   Stepper,
   Step,
   StepLabel,
-  CircularProgress
 } from '@mui/material';
-import { School, Grade, ArrowBack } from '@mui/icons-material';
+import { ArrowBack } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
-import { coursesApi } from '../api/courses';
 
 interface GradeLevel {
   id: string;
@@ -28,27 +26,25 @@ interface GradeLevel {
   color: string;
 }
 
-interface Course {
-  _id: string;
-  title: string;
-  description?: string;
-  category?: string;
-  level?: string;
-  coverImage?: string;
+interface Subject {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
 }
 
 interface ClassSelectionDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelectClass: (gradeLevel: GradeLevel, subject?: any) => void;
+  onSelectClass: (gradeLevel: GradeLevel, subject?: Subject) => void;
   userId: string;
 }
 
 export default function ClassSelectionDialog({ 
   open, 
   onClose, 
-  onSelectClass, 
-  userId 
+  onSelectClass,
 }: ClassSelectionDialogProps) {
   const { darkMode } = useTheme();
   const [activeStep, setActiveStep] = useState(0);

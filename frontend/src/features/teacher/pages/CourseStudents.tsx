@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -24,12 +24,11 @@ import {
   TableHead,
   TableRow
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RemoveIcon from '@mui/icons-material/Remove';
 import EmailIcon from '@mui/icons-material/Email';
 import SchoolIcon from '@mui/icons-material/School';
-import { coursesApi } from '../../../api/courses';
+import { coursesApi, CourseItem } from '../../../api/courses';
 import { courseInvitationsApi } from '../../../api/course-invitations';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -52,7 +51,7 @@ export default function CourseStudents() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   
-  const [course, setCourse] = useState<any>(null);
+  const [course, setCourse] = useState<CourseItem | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +76,7 @@ export default function CourseStudents() {
     if (courseId) {
       loadCourseData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, currentPage, itemsPerPage]);
 
   const loadCourseData = async () => {
@@ -98,16 +98,16 @@ export default function CourseStudents() {
       
       
       // Handle different response formats
-      let students = [];
+      let students: Student[] = [];
       if (Array.isArray(enrollmentsRes)) {
         // If enrollmentsRes is an array of enrollments
-        students = enrollmentsRes.map(enrollment => {
+        students = enrollmentsRes.map((enrollment: { student?: Student; studentId?: string | Student; _id?: string; enrolledAt?: string; progress?: number }) => {
           
           // Extract student data from different possible structures
-          const studentData = enrollment.student || enrollment.studentId || {};
-          const studentId = studentData._id || enrollment.studentId || enrollment._id;
-          const studentName = studentData.name || 'Chưa có tên';
-          const studentEmail = studentData.email || 'Chưa có email';
+          const studentData = (enrollment.student || enrollment.studentId || {}) as Student | { _id?: string; name?: string; email?: string };
+          const studentId = (typeof studentData === 'object' && '_id' in studentData ? studentData._id : null) || (typeof enrollment.studentId === 'string' ? enrollment.studentId : null) || enrollment._id || '';
+          const studentName = (typeof studentData === 'object' && 'name' in studentData ? studentData.name : null) || 'Chưa có tên';
+          const studentEmail = (typeof studentData === 'object' && 'email' in studentData ? studentData.email : null) || 'Chưa có email';
           
           
           return {
@@ -119,9 +119,16 @@ export default function CourseStudents() {
             progress: enrollment.progress || 0
           };
         });
-      } else if (enrollmentsRes?.students) {
+      } else if (enrollmentsRes?.students && Array.isArray(enrollmentsRes.students)) {
         // If enrollmentsRes has a students property
-        students = enrollmentsRes.students;
+        students = (enrollmentsRes.students as unknown as Array<{ _id: string; name: string; email: string; role?: string; enrolledAt?: string; progress?: number }>).map((s) => ({
+          _id: s._id,
+          name: s.name,
+          email: s.email,
+          role: s.role || 'student',
+          enrolledAt: s.enrolledAt,
+          progress: s.progress || 0,
+        }));
       }
       
       
@@ -169,22 +176,23 @@ export default function CourseStudents() {
       
       // Force refresh the student list
       await loadCourseData();
-    } catch (err: any) {
-      console.error('Error adding student:', err);
+    } catch (err: unknown) {
+      const error = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
+      console.error('Error adding student:', error);
       console.error('Error details:', {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
         studentEmail,
         courseId
       });
       
       let errorMessage = 'Không thể gửi lời mời';
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.response?.status === 404) {
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 404) {
         errorMessage = 'Không tìm thấy học sinh với email này. Vui lòng kiểm tra lại email.';
-      } else if (err.response?.status === 409) {
+      } else if (error.response?.status === 409) {
         errorMessage = 'Học sinh đã có lời mời chờ xử lý hoặc đã tham gia môn học này rồi.';
       }
       
@@ -211,9 +219,10 @@ export default function CourseStudents() {
       
       // Force refresh the student list
       await loadCourseData();
-    } catch (err: any) {
-      console.error('Error removing student:', err);
-      setError(err.response?.data?.message || 'Không thể xóa học sinh');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      console.error('Error removing student:', error);
+      setError(error.response?.data?.message || 'Không thể xóa học sinh');
     } finally {
       setLoading(false);
     }

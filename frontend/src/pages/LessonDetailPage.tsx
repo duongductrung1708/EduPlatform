@@ -19,7 +19,23 @@ export default function LessonDetailPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lesson, setLesson] = useState<any | null>(null);
+  interface LessonContent {
+    videoUrl?: string;
+    htmlContent?: string;
+    [key: string]: unknown;
+  }
+  interface Lesson {
+    _id: string;
+    title: string;
+    description?: string;
+    type?: string;
+    content?: LessonContent;
+    contentHtml?: string;
+    attachments?: Array<{ url?: string; name?: string; type?: string; [key: string]: unknown }>;
+    estimatedDuration?: number;
+    [key: string]: unknown;
+  }
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [moduleTitle, setModuleTitle] = useState<string>('');
   const [courseTitle, setCourseTitle] = useState<string>('');
   const [isCompleted, setIsCompleted] = useState(false);
@@ -34,12 +50,17 @@ export default function LessonDetailPage() {
         setError(null);
         if (!id || !lessonId) return;
         const modules = await coursesApi.getModules(id);
-        let found: any = null;
+        interface Lesson {
+          _id: string;
+          title: string;
+          [key: string]: unknown;
+        }
+        let found: Lesson | null = null;
         let modTitle = '';
         for (const m of modules) {
           try {
             const lessons = await coursesApi.getLessons(m._id);
-            const l = (lessons || []).find((x: any) => String(x._id) === String(lessonId));
+            const l = (lessons || []).find((x: { _id?: string; [key: string]: unknown }) => String(x._id) === String(lessonId));
             if (l) {
               found = l;
               modTitle = m.title;
@@ -57,8 +78,9 @@ export default function LessonDetailPage() {
             setCourseTitle(course.title);
           } catch {}
         }
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải bài học');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải bài học');
       } finally {
         setLoading(false);
       }
@@ -75,7 +97,14 @@ export default function LessonDetailPage() {
         const progressList = await progressApi.getStudentProgress();
         const alreadyCompleted = progressList.some(entry => {
           const completedLessons = entry?.progress?.completedLessons || [];
-          return completedLessons.some((completedId: any) => String(completedId) === String(lessonId));
+          return completedLessons.some((completedId: string | { _id?: string; id?: string; toString?: () => string } | unknown) => {
+            const id = typeof completedId === 'string' 
+              ? completedId 
+              : typeof completedId === 'object' && completedId !== null
+                ? (completedId as { _id?: string; id?: string; toString?: () => string })._id || (completedId as { _id?: string; id?: string; toString?: () => string }).id || (typeof (completedId as { toString?: () => string }).toString === 'function' ? (completedId as { toString: () => string }).toString() : String(completedId))
+                : String(completedId);
+            return String(id) === String(lessonId);
+          });
         });
         setIsCompleted(alreadyCompleted);
       } catch (err) {
@@ -95,8 +124,9 @@ export default function LessonDetailPage() {
       await progressApi.completeLesson(lessonId);
       setIsCompleted(true);
       setCompletionMessage('Đã đánh dấu hoàn thành bài học này.');
-    } catch (err: any) {
-      setCompletionError(err?.response?.data?.message || 'Không thể cập nhật tiến độ. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setCompletionError(error?.response?.data?.message || 'Không thể cập nhật tiến độ. Vui lòng thử lại.');
     } finally {
       setMarkingComplete(false);
     }
@@ -131,7 +161,7 @@ export default function LessonDetailPage() {
     const [ready, setReady] = useState(false);
     const videoRef = React.useRef<HTMLVideoElement | null>(null);
     const enterFullscreen = () => {
-      const el: any = videoRef.current;
+      const el = videoRef.current as HTMLVideoElement & { requestFullscreen?: () => Promise<void>; webkitRequestFullscreen?: () => Promise<void>; mozRequestFullScreen?: () => Promise<void>; msRequestFullscreen?: () => Promise<void> };
       if (!el) return;
       if (el.requestFullscreen) el.requestFullscreen();
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -185,7 +215,13 @@ export default function LessonDetailPage() {
     );
   };
 
-  const getIcon = (a: any) => {
+  interface Attachment {
+    name?: string;
+    url?: string;
+    type?: string;
+    [key: string]: unknown;
+  }
+  const getIcon = (a: Attachment) => {
     const name = (a.name || a.url || '').toLowerCase();
     const type = (a.type || '').toLowerCase();
     if (name.endsWith('.pdf') || type.includes('pdf')) return <PictureAsPdfIcon fontSize="small" color="error" />;
@@ -230,7 +266,7 @@ export default function LessonDetailPage() {
           <Box sx={{ p: 3, background: 'linear-gradient(135deg, #EF5B5B 0%, #FF7B7B 100%)', color: 'white' }}>
             <Typography variant="h5" fontWeight={800} sx={{ color: 'white' }}>{lesson.title}</Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-              <Chip label={getTypeLabel(lesson.type)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
+              <Chip label={getTypeLabel(lesson.type || '')} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
               {moduleTitle && <Chip label={`Chương: ${moduleTitle}`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />}
               {typeof lesson.estimatedDuration === 'number' && (
                 <Chip label={`${lesson.estimatedDuration} phút`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
@@ -253,7 +289,7 @@ export default function LessonDetailPage() {
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Video</Typography>
                 <Box sx={{ position: 'relative', pt: '56.25%', borderRadius: 2, overflow: 'hidden' }}>
                   <iframe
-                    src={lesson.content.videoUrl}
+                    src={lesson.content.videoUrl as string}
                     title="Video bài học"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
@@ -263,7 +299,7 @@ export default function LessonDetailPage() {
               </Box>
             )}
 
-            {lesson.content?.htmlContent && (
+            {(lesson.content?.htmlContent || lesson.contentHtml) && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Nội dung</Typography>
                 <Paper
@@ -313,7 +349,7 @@ export default function LessonDetailPage() {
                     },
                   }}
                 >
-                  <div style={{ lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: lesson.content.htmlContent }} />
+                  <div style={{ lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: (lesson.content?.htmlContent || lesson.contentHtml || '') as string }} />
                 </Paper>
               </Box>
             )}
@@ -322,33 +358,39 @@ export default function LessonDetailPage() {
               <Box>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Tài liệu đính kèm ({lesson.attachments.length}):</Typography>
                 <List dense disablePadding>
-                  {lesson.attachments.map((a: any, idx: number) => (
-                    <React.Fragment key={idx}>
-                      <ListItem disablePadding>
-                        <ListItemIcon sx={{ minWidth: 32 }}>{getIcon(a)}</ListItemIcon>
-                        <ListItemText
-                          primaryTypographyProps={{ variant: 'body2' }}
-                          primary={<MuiLink href={a.url} target="_blank" rel="noreferrer">{a.name || a.url}</MuiLink>}
-                        />
-                      </ListItem>
-                      {idx < lesson.attachments.length - 1 && <Divider component="li" sx={{ my: 0.25 }} />}
-                    </React.Fragment>
-                  ))}
+                  {lesson.attachments.map((a, idx: number) => {
+                    const attachment = a as { url?: string; name?: string; type?: string; [key: string]: unknown };
+                    const url = attachment.url || '';
+                    return (
+                      <React.Fragment key={idx}>
+                        <ListItem disablePadding>
+                          <ListItemIcon sx={{ minWidth: 32 }}>{getIcon(attachment)}</ListItemIcon>
+                          <ListItemText
+                            primaryTypographyProps={{ variant: 'body2' }}
+                            primary={<MuiLink href={url} target="_blank" rel="noreferrer">{attachment.name || url}</MuiLink>}
+                          />
+                        </ListItem>
+                        {idx < (lesson.attachments?.length || 0) - 1 && <Divider component="li" sx={{ my: 0.25 }} />}
+                      </React.Fragment>
+                    );
+                  })}
                 </List>
 
                 {/* Preview block */}
                 <Box sx={{ mt: 1 }}>
                   <Stack direction="row" spacing={2} flexWrap="wrap">
-                    {lesson.attachments.map((a: any, idx: number) => {
-                      const url: string = a.url || '';
+                    {lesson.attachments.map((a, idx: number) => {
+                      const attachment = a as { url?: string; name?: string; type?: string; [key: string]: unknown };
+                      const url: string = attachment.url || '';
                       const lower = url.toLowerCase();
-                      const isImg = /\.(png|jpe?g|gif|webp|svg)$/.test(lower) || (a.type || '').includes('image');
-                      const isMp4 = /\.(mp4|webm|ogg)$/.test(lower) || (a.type || '').includes('video');
-                      const isPdf = lower.endsWith('.pdf') || (a.type || '').includes('pdf');
+                      const type = (attachment.type || '').toLowerCase();
+                      const isImg = /\.(png|jpe?g|gif|webp|svg)$/.test(lower) || type.includes('image');
+                      const isMp4 = /\.(mp4|webm|ogg)$/.test(lower) || type.includes('video');
+                      const isPdf = lower.endsWith('.pdf') || type.includes('pdf');
                       if (isImg) {
                         return (
                           <Box key={`img-${idx}`} sx={{ width: 220 }}>
-                            <LazyImage src={url} alt={a.name || 'attachment'} />
+                            <LazyImage src={url} alt={(attachment.name || 'attachment') as string} />
                           </Box>
                         );
                       }

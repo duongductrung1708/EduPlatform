@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -25,12 +25,6 @@ import {
 } from '@mui/icons-material';
 import { useAdminWebSocket } from '../hooks/useAdminWebSocket';
 
-interface AdminNotification {
-  type: 'user_registered' | 'course_created' | 'classroom_created' | 'system_alert';
-  message: string;
-  timestamp: string;
-  data?: any;
-}
 
 const RealTimeNotifications: React.FC = () => {
   const { notifications, clearNotifications } = useAdminWebSocket();
@@ -129,7 +123,7 @@ const RealTimeNotifications: React.FC = () => {
                       </Typography>
                       <Chip
                         label={notification.type.replace('_', ' ')}
-                        color={getNotificationColor(notification.type) as any}
+                        color={getNotificationColor(notification.type) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                         size="small"
                         variant="outlined"
                       />

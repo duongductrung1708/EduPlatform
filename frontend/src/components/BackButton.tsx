@@ -9,7 +9,7 @@ interface BackButtonProps {
   label?: string;
   variant?: 'text' | 'outlined' | 'contained';
   size?: 'small' | 'medium' | 'large';
-  sx?: any;
+  sx?: React.CSSProperties | Record<string, unknown>;
 }
 
 const BackButton: React.FC<BackButtonProps> = ({

@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import {
   Home,
-  School,
   AssignmentTurnedIn,
   EmojiEvents,
   TrendingUp,

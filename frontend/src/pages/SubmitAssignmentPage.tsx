@@ -56,8 +56,9 @@ const SubmitAssignmentPage: React.FC = () => {
           setContentText(submission.contentText || '');
           setAttachments(submission.attachments || []);
         }
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải thông tin bài tập');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải thông tin bài tập');
       }
     })();
   }, [classroomId, assignmentId]);
@@ -83,8 +84,9 @@ const SubmitAssignmentPage: React.FC = () => {
       });
       const uploadedFiles = await Promise.all(uploadPromises);
       setAttachments((prev) => [...prev, ...uploadedFiles]);
-    } catch (e: any) {
-      setError(e?.message || 'Upload thất bại');
+    } catch (e: unknown) {
+      const err = e as { message?: string; response?: { data?: { message?: string } } };
+      setError(err?.message || err?.response?.data?.message || 'Upload thất bại');
     } finally {
       setUploading(false);
     }
@@ -148,8 +150,9 @@ const SubmitAssignmentPage: React.FC = () => {
       setSuccess('Đã nộp bài thành công');
       setContentText('');
       setAttachments([]);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể nộp bài');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể nộp bài');
     } finally {
       setLoading(false);
     }

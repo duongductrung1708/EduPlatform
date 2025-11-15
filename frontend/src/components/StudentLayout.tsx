@@ -6,11 +6,9 @@ import {
   IconButton,
   Typography,
   Drawer,
-  useMediaQuery,
   Avatar,
   Tooltip,
   InputBase,
-  alpha,
   Badge,
   Menu,
   MenuItem,
@@ -47,12 +45,24 @@ import {
 const drawerWidth = 260;
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { theme, darkMode, toggleDarkMode } = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { darkMode, toggleDarkMode, theme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
+  interface NotificationRaw {
+    _id?: string;
+    id?: string;
+    title?: string;
+    body?: string;
+    link?: string;
+    read?: boolean;
+    meta?: { link?: string };
+    invitationId?: string;
+    courseTitle?: string;
+    grade?: number | string;
+  }
+
   const [notifications, setNotifications] = useState<
-    Array<{ id: string; text: string; ts: string; link?: string; _raw?: any; read?: boolean }>
+    Array<{ id: string; text: string; ts: string; link?: string; _raw?: NotificationRaw; read?: boolean }>
   >([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -63,7 +73,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [deletingAll, setDeletingAll] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { onClassMessage, onJoinedClassroom, on, off, onAny, offAny, onConnect } = useSocket();
+  const { onClassMessage, onJoinedClassroom, on, off, onConnect } = useSocket();
   const location = useLocation();
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('q') || '');
 
@@ -98,8 +108,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   // Wire realtime notifications (classMessage, submissionGraded, enrollment/classroom changes)
   React.useEffect(() => {
-    const handleJoined = (_: any) => {};
-    const handleMsg = (data: any) => {
+    const handleJoined = (_: { classroomId: string }) => {};
+    const handleMsg = (data: { message?: string }) => {
       if (!data?.message) return;
       setNotifications((prev) =>
         [
@@ -113,7 +123,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleGraded = (data: any) => {
+    const handleGraded = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { grade?: number | string };
       setNotifications((prev) =>
         [
           {
@@ -125,7 +136,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         ].slice(0, 10),
       );
     };
-    const handleEnrollmentAdded = (data: any) => {
+    const handleEnrollmentAdded = (..._args: unknown[]) => {
       setNotifications((prev) =>
         [
           {
@@ -138,7 +149,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleEnrollmentRemoved = (data: any) => {
+    const handleEnrollmentRemoved = (..._args: unknown[]) => {
       setNotifications((prev) =>
         [
           {
@@ -151,7 +162,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleClassroomAdded = (data: any) => {
+    const handleClassroomAdded = (..._args: unknown[]) => {
       setNotifications((prev) =>
         [
           {
@@ -164,7 +175,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleClassroomRemoved = (data: any) => {
+    const handleClassroomRemoved = (..._args: unknown[]) => {
       setNotifications((prev) =>
         [
           {
@@ -177,12 +188,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleNotificationCreated = (data: any) => {
+    const handleNotificationCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as NotificationRaw;
       const text = data?.title || data?.body || 'Thông báo mới';
       setNotifications((prev) =>
         [
           {
-            id: data?.id || crypto.randomUUID(),
+            id: data?.id || data?._id || crypto.randomUUID(),
             text,
             ts: new Date().toLocaleTimeString(),
             link: data?.link,
@@ -194,7 +206,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       );
       setUnreadCount((c) => c + 1);
     };
-    const handleCourseInvitationCreated = (data: any) => {
+    const handleCourseInvitationCreated = (...args: unknown[]) => {
+      const data = (args[0] || {}) as NotificationRaw;
       const text = `Bạn được mời tham gia môn học: ${data?.courseTitle}`;
       setNotifications((prev) =>
         [
@@ -219,10 +232,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       on('enrollmentRemoved', handleEnrollmentRemoved);
       on('classroomStudentAdded', handleClassroomAdded);
       on('classroomStudentRemoved', handleClassroomRemoved);
-      const handleAny = (event: string, ...args: any[]) => {
-        // Debug logging removed
-      };
-      onAny(handleAny);
       on('notificationCreated', handleNotificationCreated);
       on('courseInvitationCreated', handleCourseInvitationCreated);
     });
@@ -238,7 +247,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClickNotification = async (n: { id: string; link?: string; _raw?: any }) => {
+  const handleClickNotification = async (n: { id: string; link?: string; _raw?: NotificationRaw }) => {
     try {
       if (n._raw && !n._raw.read) {
         const res = await markNotificationRead(n.id);
@@ -418,7 +427,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                   border: '2px solid rgba(255, 255, 255, 0.3)',
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 }}
-                src={(user as any)?.avatar}
+                src={(user as { avatar?: string })?.avatar}
               >
                 {user?.name?.charAt(0) || 'U'}
               </Avatar>

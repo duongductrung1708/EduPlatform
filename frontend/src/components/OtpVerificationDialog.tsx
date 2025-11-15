@@ -19,7 +19,7 @@ import {
   Refresh as RefreshIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
-import { authApi } from '../api/auth';
+import { authApi, AuthResponse } from '../api/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,7 +27,7 @@ interface OtpVerificationDialogProps {
   open: boolean;
   onClose: () => void;
   email: string;
-  onVerificationSuccess: (authData: any) => void;
+  onVerificationSuccess: (authData: AuthResponse) => void;
 }
 
 const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
@@ -95,8 +95,9 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
         onVerificationSuccess(response);
         onClose();
       }, 1500);
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn');
     } finally {
       setLoading(false);
     }
@@ -110,8 +111,9 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
       await authApi.resendOtp({ email });
       setSuccess('Đã gửi lại mã OTP. Vui lòng kiểm tra email.');
       setCountdown(60); // Reset countdown
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Không thể gửi lại mã OTP');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Không thể gửi lại mã OTP');
     } finally {
       setResendLoading(false);
     }

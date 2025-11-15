@@ -88,7 +88,7 @@ export const adminApi = {
     return response.data;
   },
 
-  updateUser: async (id: string, data: any) => {
+  updateUser: async (id: string, data: { name?: string; email?: string; role?: string; verified?: boolean; [key: string]: unknown }) => {
     const response = await apiClient.put(`/api/admin/users/${id}`, data);
     return response.data;
   },
@@ -272,7 +272,7 @@ export const adminApi = {
     }
   },
 
-  updateSystemSettings: async (settings: any) => {
+  updateSystemSettings: async (settings: Record<string, unknown>) => {
     try {
       const response = await apiClient.put('/api/admin/settings', settings);
       return response.data;
@@ -322,11 +322,11 @@ export const classesApi = {
     const res = await apiClient.post('/api/classes/join', { inviteCode });
     return res.data;
   },
-  async getById(id: string): Promise<any> {
+  async getById(id: string): Promise<ClassroomItem> {
     const res = await apiClient.get(`/api/classes/${id}`);
     return res.data;
   },
-  async update(id: string, data: any): Promise<any> {
+  async update(id: string, data: { title?: string; courseId?: string; [key: string]: unknown }): Promise<Classroom> {
     const res = await apiClient.patch(`/api/classes/${id}` , data);
     return res.data;
   },
@@ -336,15 +336,15 @@ export const classesApi = {
   async removeStudent(classId: string, studentId: string): Promise<void> {
     await apiClient.delete(`/api/classes/${classId}/students/${studentId}`);
   },
-  async addStudent(classId: string, studentId: string): Promise<any> {
+  async addStudent(classId: string, studentId: string): Promise<{ _id: string; [key: string]: unknown }> {
     const res = await apiClient.post(`/api/classes/${classId}/students`, { studentId });
     return res.data;
   },
-  async getStudents(classId: string): Promise<any[]> {
+  async getStudents(classId: string): Promise<Array<{ _id: string; name: string; email: string; [key: string]: unknown }>> {
     const res = await apiClient.get(`/api/classes/${classId}/students`);
     return res.data;
   },
-  async findStudentByEmail(email: string): Promise<any> {
+  async findStudentByEmail(email: string): Promise<{ _id: string; name: string; email: string } | null> {
     const res = await apiClient.get('/api/classes/find-student', { params: { email } });
     return res.data;
   },

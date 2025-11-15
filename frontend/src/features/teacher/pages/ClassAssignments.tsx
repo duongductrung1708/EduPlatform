@@ -41,7 +41,7 @@ import PendingIcon from '@mui/icons-material/Pending';
 import DownloadIcon from '@mui/icons-material/Download';
 import { assignmentsApi, AssignmentItem, AssignmentAttachment } from '../../../api/assignments';
 import { uploadsApi } from '../../../api/uploads';
-import { classesApi } from '../../../api/admin';
+import { classesApi, ClassroomItem } from '../../../api/admin';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AssignmentCardSkeleton } from '../../../components/LoadingSkeleton';
@@ -68,7 +68,7 @@ export default function ClassAssignments() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
-  const [classroomInfo, setClassroomInfo] = useState<any | null>(null);
+  const [classroomInfo, setClassroomInfo] = useState<ClassroomItem | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -92,8 +92,9 @@ export default function ClassAssignments() {
         );
         setMySubmissions(map);
       }
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tải bài tập');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tải bài tập');
     } finally {
       setLoading(false);
     }
@@ -106,7 +107,13 @@ export default function ClassAssignments() {
         if (classroomId) {
           const info = await classesApi.getById(classroomId);
           setClassroomInfo(info);
-          const courseId = typeof info.courseId === 'object' ? info.courseId._id : info.courseId;
+          const classroomWithCourse = info as ClassroomItem & {
+            courseId?: string | { _id: string; [key: string]: unknown };
+          };
+          const courseId =
+            typeof classroomWithCourse.courseId === 'object'
+              ? classroomWithCourse.courseId._id
+              : classroomWithCourse.courseId;
           if (courseId) {
             try {
               const c = await coursesApi.getById(courseId);
@@ -116,6 +123,7 @@ export default function ClassAssignments() {
         }
       } catch {}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroomId]);
 
   const onFiles = async (files: FileList | null) => {
@@ -134,8 +142,9 @@ export default function ClassAssignments() {
       });
       const uploadedFiles = await Promise.all(uploadPromises);
       setAttachments((prev) => [...prev, ...uploadedFiles]);
-    } catch (e: any) {
-      setError(e?.message || 'Upload thất bại');
+    } catch (e: unknown) {
+      const err = e as { message?: string; response?: { data?: { message?: string } } };
+      setError(err?.message || err?.response?.data?.message || 'Upload thất bại');
     } finally {
       setUploading(false);
     }
@@ -193,9 +202,10 @@ export default function ClassAssignments() {
       }
       closeDialog();
       fetchAssignments();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
       setError(
-        e?.response?.data?.message ||
+        err?.response?.data?.message ||
           (editingAssignment ? 'Không thể cập nhật bài tập' : 'Không thể tạo bài tập'),
       );
     } finally {
@@ -211,8 +221,9 @@ export default function ClassAssignments() {
       await assignmentsApi.delete(classroomId, assignmentId);
       setSuccess('Đã xóa bài tập');
       fetchAssignments();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xóa bài tập');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể xóa bài tập');
     } finally {
       setDeletingId(null);
     }
@@ -257,10 +268,11 @@ export default function ClassAssignments() {
                   label={`Khóa học: ${courseInfo.title} (${courseInfo.category || 'Khác'} - ${courseInfo.level || 'N/A'})`}
                 />
               )}
-              {classroomInfo.schedule?.startDate && (
+              {(classroomInfo as ClassroomItem & { schedule?: { startDate?: string } })?.schedule
+                ?.startDate && (
                 <Chip
                   size="small"
-                  label={`Bắt đầu: ${new Date(classroomInfo.schedule.startDate).toLocaleDateString()}`}
+                  label={`Bắt đầu: ${new Date((classroomInfo as ClassroomItem & { schedule?: { startDate?: string } }).schedule!.startDate!).toLocaleDateString()}`}
                 />
               )}
             </Box>

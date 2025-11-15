@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PaletteIcon from '@mui/icons-material/Palette';
-import LanguageIcon from '@mui/icons-material/Language';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
@@ -37,6 +36,7 @@ interface SettingsForm {
   notifyTeacher: boolean;
   notifyStudent: boolean;
   themeColor: string;
+  [key: string]: string | boolean;
 }
 
 const AdminSettingsPage: React.FC = () => {
@@ -71,7 +71,7 @@ const AdminSettingsPage: React.FC = () => {
           notifyStudent: data.notifyStudent ?? false,
           themeColor: data.themeColor || 'default',
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching settings:', err);
         setError('Không thể tải cài đặt hệ thống. Vui lòng thử lại sau.');
       } finally {
@@ -91,7 +91,7 @@ const AdminSettingsPage: React.FC = () => {
       }));
     };
 
-  const handleSelectChange = (field: keyof SettingsForm) => (event: any) => {
+  const handleSelectChange = (field: keyof SettingsForm) => (event: { target: { value: string } }) => {
     const { value } = event.target;
     setForm((prev) => ({
       ...prev,
@@ -105,7 +105,7 @@ const AdminSettingsPage: React.FC = () => {
     try {
       await adminApi.updateSystemSettings(form);
       setOpenSnackbar(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving settings:', err);
       setError('Không thể lưu cài đặt. Vui lòng thử lại sau.');
     } finally {

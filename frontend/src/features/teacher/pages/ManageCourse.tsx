@@ -32,11 +32,12 @@ import {
   Quiz as QuizIcon,
   Assignment as AssignmentIcon,
   Folder as FolderIcon,
+  InsertDriveFile as FileIcon,
   FolderOpen as FolderOpenIcon,
   People as PeopleIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { coursesApi } from '../../../api/courses';
+import { coursesApi, CourseItem } from '../../../api/courses';
 import { useSocket } from '../../../hooks/useSocket';
 import { useTheme } from '../../../contexts/ThemeContext';
 import FileUpload from '../../../components/FileUpload';
@@ -50,11 +51,11 @@ export default function ManageCourse() {
   const courseId = id as string;
   const { joinCourse, leaveCourse, onEnrollmentAdded, onEnrollmentRemoved, offEnrollmentAdded, offEnrollmentRemoved } = useSocket();
 
-  const [course, setCourse] = useState<any>(null);
-  const [modules, setModules] = useState<any[]>([]);
+  const [course, setCourse] = useState<CourseItem | null>(null);
+  const [modules, setModules] = useState<Array<{ _id: string; title: string; description?: string; order?: number; volume?: string; estimatedDuration?: number; [key: string]: unknown }>>([]);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
-  const [lessons, setLessons] = useState<any[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<Array<{ _id: string; title: string; description?: string; type?: string; order?: number; content?: { fileUrl?: string; fileName?: string; [key: string]: unknown }; [key: string]: unknown }>>([]);
+  const [enrollments, setEnrollments] = useState<Array<{ _id: string; student?: { _id: string; name?: string; email?: string; [key: string]: unknown }; studentId?: string; progress?: number; enrolledAt?: string; lastAccessedAt?: string; rating?: number; [key: string]: unknown }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'content' | 'students'>('content');
@@ -83,13 +84,14 @@ export default function ManageCourse() {
         const [courseData, mods, enrollmentsData] = await Promise.all([
           coursesApi.getById(courseId),
           coursesApi.getModules(courseId),
-          coursesApi.getEnrollments(courseId).catch(() => []), // Don't fail if no enrollments
+          coursesApi.getEnrollments(courseId).catch(() => ({ students: [] })), // Don't fail if no enrollments
         ]);
         setCourse(courseData);
         setModules(mods);
-        setEnrollments(enrollmentsData);
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải thông tin môn học');
+        setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : (enrollmentsData.students || []).map((s: { _id: string; name: string; email: string; [key: string]: unknown }) => ({ _id: s._id, student: s, studentId: s._id, progress: 0, enrolledAt: new Date().toISOString() })));
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải thông tin môn học');
       } finally {
         setLoading(false);
       }
@@ -104,8 +106,9 @@ export default function ManageCourse() {
         setError(null);
         const ls = await coursesApi.getLessons(selectedModuleId);
         setLessons(ls);
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải danh sách bài học');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải danh sách bài học');
       } finally {
         setLoading(false);
       }
@@ -119,7 +122,7 @@ export default function ManageCourse() {
     // Join course room for real-time updates
     joinCourse(courseId);
 
-    const handleEnrollmentAdded = (data: { courseId: string; enrollment: any; timestamp: string }) => {
+    const handleEnrollmentAdded = (data: { courseId: string; enrollment: { _id: string; student?: { _id: string; name?: string; email?: string; [key: string]: unknown }; studentId?: string; progress?: number; enrolledAt?: string; [key: string]: unknown }; timestamp: string }) => {
       if (data.courseId === courseId) {
         setEnrollments(prev => [...prev, data.enrollment]);
       }
@@ -127,7 +130,7 @@ export default function ManageCourse() {
 
     const handleEnrollmentRemoved = (data: { courseId: string; studentId: string; timestamp: string }) => {
       if (data.courseId === courseId) {
-        setEnrollments(prev => prev.filter(enrollment => enrollment.student._id !== data.studentId));
+        setEnrollments(prev => prev.filter(enrollment => enrollment.student?._id !== data.studentId));
       }
     };
 
@@ -159,8 +162,9 @@ export default function ManageCourse() {
       setModuleOrder(0);
       setModuleVolume('');
       setModuleDialogOpen(false);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tạo module');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tạo module');
     } finally {
       setLoading(false);
     }
@@ -172,7 +176,7 @@ export default function ManageCourse() {
     try {
       setLoading(true);
       setError(null);
-      const content: any = {};
+      const content: { fileUrl?: string; fileName?: string; fileType?: string; [key: string]: unknown } = {};
       
       // Add file content if lesson type is document and file is uploaded
       if (lessonType === 'document' && lessonFile) {
@@ -195,8 +199,9 @@ export default function ManageCourse() {
       setLessonOrder(0);
       setLessonFile(null);
       setLessonDialogOpen(false);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tạo bài học');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tạo bài học');
     } finally {
       setLoading(false);
     }
@@ -210,9 +215,10 @@ export default function ManageCourse() {
       await coursesApi.removeStudent(courseId, studentId);
       // Refresh enrollments
       const enrollmentsData = await coursesApi.getEnrollments(courseId);
-      setEnrollments(enrollmentsData);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xóa học sinh');
+      setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : (enrollmentsData.students || []).map((s: { _id: string; name: string; email: string; [key: string]: unknown }) => ({ _id: s._id, student: s, studentId: s._id, progress: 0, enrolledAt: new Date().toISOString() })));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể xóa học sinh');
     } finally {
       setLoading(false);
     }
@@ -221,8 +227,8 @@ export default function ManageCourse() {
   const refreshEnrollments = async () => {
     try {
       const enrollmentsData = await coursesApi.getEnrollments(courseId);
-      setEnrollments(enrollmentsData);
-    } catch (e: any) {
+      setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : (enrollmentsData.students || []).map((s: { _id: string; name: string; email: string; [key: string]: unknown }) => ({ _id: s._id, student: s, studentId: s._id, progress: 0, enrolledAt: new Date().toISOString() })));
+    } catch (e: unknown) {
       console.error('Failed to refresh enrollments:', e);
     }
   };
@@ -495,8 +501,8 @@ export default function ManageCourse() {
                     >
                       <CardContent sx={{ p: 2 }}>
                         <Box display="flex" alignItems="center" gap={2}>
-                          <Avatar sx={{ bgcolor: getLessonColor(lesson.type), width: 40, height: 40 }}>
-                            {getLessonIcon(lesson.type)}
+                          <Avatar sx={{ bgcolor: getLessonColor(lesson.type || 'document'), width: 40, height: 40 }}>
+                            {getLessonIcon(lesson.type || 'document')}
                           </Avatar>
                           <Box flex={1}>
                             <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>
@@ -514,7 +520,7 @@ export default function ManageCourse() {
                                   color="primary" 
                                   variant="outlined"
                                   clickable
-                                  onClick={() => window.open(lesson.content.fileUrl, '_blank')}
+                                  onClick={() => window.open(lesson.content?.fileUrl as string, '_blank')}
                                   sx={{
                                     '&:hover': {
                                       backgroundColor: 'primary.main',
@@ -542,10 +548,10 @@ export default function ManageCourse() {
                               </Box>
                             )}
                             <Chip 
-                              label={lesson.type} 
+                              label={lesson.type || 'document'} 
                               size="small" 
                               sx={{ 
-                                bgcolor: getLessonColor(lesson.type),
+                                bgcolor: getLessonColor(lesson.type || 'document'),
                                 color: 'white',
                                 fontSize: '0.7rem'
                               }}
@@ -665,7 +671,7 @@ export default function ManageCourse() {
               select 
               label="Loại bài học" 
               value={lessonType} 
-              onChange={(e) => setLessonType(e.target.value as any)} 
+              onChange={(e) => setLessonType(e.target.value as 'document' | 'video' | 'interactive' | 'quiz' | 'assignment')} 
               fullWidth
             >
               <MenuItem value="document">📄 Tài liệu</MenuItem>
@@ -817,8 +823,8 @@ export default function ManageCourse() {
                           </Box>
                           <IconButton
                             color="error"
-                            onClick={() => handleRemoveStudent(enrollment.student._id)}
-                            disabled={loading}
+                            onClick={() => handleRemoveStudent(enrollment.student?._id || enrollment.studentId || '')}
+                            disabled={loading || !enrollment.student?._id && !enrollment.studentId}
                             size="small"
                           >
                             <DeleteIcon />
@@ -840,7 +846,7 @@ export default function ManageCourse() {
                               Đăng ký:
                             </Typography>
                             <Typography variant="body2">
-                              {new Date(enrollment.enrolledAt).toLocaleDateString('vi-VN')}
+                              {enrollment.enrolledAt ? new Date(enrollment.enrolledAt).toLocaleDateString('vi-VN') : 'N/A'}
                             </Typography>
                           </Box>
 

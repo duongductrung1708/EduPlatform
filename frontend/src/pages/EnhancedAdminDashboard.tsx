@@ -31,19 +31,14 @@ import {
   Class as ClassIcon,
   Assignment as AssignmentIcon,
   TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   Refresh as RefreshIcon,
-  Visibility as ViewIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
   OpenInNew as OpenInNewIcon,
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, DashboardStats, TopCourse } from '../api/admin';
-import { coursesApi } from '../api/courses';
+import { coursesApi, CourseItem } from '../api/courses';
 import StatsChart from '../components/charts/StatsChart';
 import AdminLayout from '../components/AdminLayout';
 import { useTheme } from '../contexts/ThemeContext';
@@ -61,7 +56,7 @@ const EnhancedAdminDashboard: React.FC = () => {
   const [period, setPeriod] = useState<string>('30days');
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<TopCourse | null>(null);
-  const [courseDetails, setCourseDetails] = useState<any>(null);
+  const [courseDetails, setCourseDetails] = useState<CourseItem | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Theme colors
@@ -75,6 +70,7 @@ const EnhancedAdminDashboard: React.FC = () => {
   // Initial load
   useEffect(() => {
     fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load chart data when period changes
@@ -82,6 +78,7 @@ const EnhancedAdminDashboard: React.FC = () => {
     if (stats !== null) {
       fetchChartData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
   const fetchInitialData = async () => {
@@ -994,7 +991,12 @@ const EnhancedAdminDashboard: React.FC = () => {
                 </Box>
               ) : (
                 <StatsChart
-                  data={chartData}
+                  data={chartData.map((item) => ({
+                    name: item.date,
+                    value: item.users,
+                    courses: item.courses,
+                    classrooms: item.classrooms,
+                  }))}
                   title=""
                   type="area"
                   dataKey="users"
@@ -1329,8 +1331,10 @@ const EnhancedAdminDashboard: React.FC = () => {
                             month: 'long',
                             day: 'numeric',
                           })
-                        : courseDetails.createdAt
-                          ? new Date(courseDetails.createdAt).toLocaleDateString('vi-VN', {
+                        : (courseDetails as CourseItem & { createdAt?: string })?.createdAt
+                          ? new Date(
+                              (courseDetails as CourseItem & { createdAt?: string }).createdAt!,
+                            ).toLocaleDateString('vi-VN', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric',

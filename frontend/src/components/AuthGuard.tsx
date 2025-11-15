@@ -19,7 +19,14 @@ export default function AuthGuard({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAuth, setIsAuth] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  interface User {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    verified: boolean;
+  }
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {

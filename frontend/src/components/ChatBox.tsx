@@ -14,10 +14,6 @@ import {
   ClickAwayListener,
   ListItemAvatar,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
 } from '@mui/material';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +23,6 @@ import { listClassMessages, listLessonMessages, deleteMessage } from '../api/cha
 import { resolveFileUrl } from '../utils/url';
 import { usersApi } from '../api/users';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import EditIcon from '@mui/icons-material/EditOutlined';
 
 interface Message {
   id?: string;
@@ -40,6 +35,21 @@ interface Message {
 interface ChatBoxProps {
   classroomId?: string;
   lessonId?: string;
+}
+
+interface MemberWithId {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
+interface UserWithId {
+  id?: string;
+  _id?: string;
+  name: string;
+  email: string;
 }
 
 function escapeRegex(input: string) {
@@ -68,7 +78,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   }, [classroomId, lessonId, user, joinClassroom, joinLesson]);
 
   const [members, setMembers] = useState<Array<UserLite & { avatarUrl?: string }>>([]);
-  const [userInfoCache, setUserInfoCache] = useState<Record<string, { name: string; avatarUrl?: string }>>({});
+  const [userInfoCache] = useState<Record<string, { name: string; avatarUrl?: string }>>({});
   
   useEffect(() => {
     (async () => {
@@ -76,22 +86,22 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
             if (classroomId) {
               const res = await getClassMembers(classroomId);
               // Add current user to members if not already present
-              const membersList = res as any;
-          if (user && !membersList.find((m: any) => String((m as any)._id || (m as any).id || '') === String((user as any).id || (user as any)._id || ''))) {
+              const membersList = res as MemberWithId[];
+          if (user && !membersList.find((m: MemberWithId) => String(m._id || m.id || '') === String((user as UserWithId).id || (user as UserWithId)._id || ''))) {
             // Try to get current user info with avatar
             try {
               const currentUserInfo = await usersApi.getMe();
-              const currentUserMember = {
-                _id: (user as any).id || (user as any)._id,
+              const currentUserMember: MemberWithId = {
+                _id: (user as UserWithId).id || (user as UserWithId)._id,
                 name: currentUserInfo.name || user.name,
                 email: currentUserInfo.email || user.email,
-                avatarUrl: currentUserInfo.avatar || (currentUserInfo as any).avatarUrl,
+                avatarUrl: currentUserInfo.avatar,
               };
               membersList.push(currentUserMember);
             } catch {
               // Fallback if API fails
-              const currentUserMember = {
-                _id: (user as any).id || (user as any)._id,
+              const currentUserMember: MemberWithId = {
+                _id: (user as UserWithId).id || (user as UserWithId)._id,
                 name: user.name,
                 email: user.email,
                 avatarUrl: undefined,
@@ -99,14 +109,19 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
               membersList.push(currentUserMember);
             }
           }
-          setMembers(membersList);
+          setMembers(membersList.map((m: MemberWithId) => ({
+            _id: m._id || m.id || '',
+            name: m.name,
+            email: m.email,
+            avatarUrl: m.avatarUrl,
+          })));
         }
         } catch (err) {
           setMembers([]);
         }
     })();
   }, [classroomId, user]);
-  const currentUserId = String((user as any)?.id || (user as any)?._id || '');
+  const currentUserId = String((user as UserWithId)?.id || (user as UserWithId)?._id || '');
 
   // Load chat history
   useEffect(() => {
@@ -116,26 +131,26 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
         if (lessonId) {
           const hist = await listLessonMessages(lessonId, 50);
           loadedMessages = hist.reverse().map(m => ({ 
-            id: (m as any)._id, 
+            id: m._id, 
             classroomId: '', 
             message: m.message, 
             user: { 
               id: m.authorId, 
               name: m.authorName,
-              avatarUrl: (m as any).authorAvatarUrl,
+              avatarUrl: m.authorAvatarUrl,
             }, 
             timestamp: m.createdAt 
           }));
         } else if (classroomId) {
           const hist = await listClassMessages(classroomId, 50);
           loadedMessages = hist.reverse().map(m => ({ 
-            id: (m as any)._id, 
+            id: m._id, 
             classroomId: classroomId, 
             message: m.message, 
             user: { 
               id: m.authorId, 
               name: m.authorName,
-              avatarUrl: (m as any).authorAvatarUrl,
+              avatarUrl: m.authorAvatarUrl,
             }, 
             timestamp: m.createdAt 
           }));
@@ -146,7 +161,6 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
         // Also merge avatarUrl from API members if available
         if (loadedMessages.length > 0) {
           setMembers(prev => {
-            const existingIds = new Set(prev.map(m => String((m as any)._id || (m as any).id || '')));
             const newMembers = [...prev];
             const usersNeedingAvatar: string[] = [];
             
@@ -155,14 +169,14 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
               if (msgUserId) {
                 // Check if user already exists in members
                 const existingMember = newMembers.find(m => {
-                  const memberId = String((m as any)._id || (m as any).id || '');
+                  const memberId = String(m._id || '');
                   return memberId === msgUserId;
                 });
                 
                 if (existingMember) {
                   // Update name if message has a better name
                   if (msg.user.name && (!existingMember.name || existingMember.name === 'User')) {
-                    (existingMember as any).name = msg.user.name;
+                    existingMember.name = msg.user.name;
                   }
                 } else {
                   // Add new member from message
@@ -171,7 +185,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
                     name: msg.user.name || 'User',
                     email: '',
                     avatarUrl: undefined, // Will be filled by fetch
-                  } as any);
+                  });
                   // Track users that need avatar fetch
                   usersNeedingAvatar.push(msgUserId);
                 }
@@ -192,20 +206,38 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   // Backend should return avatarUrl in message response or ensure all message authors are in members list
 
   useEffect(() => {
-    const handleJoinedClassroom = (data: { classroomId: string }) => {};
+    const handleJoinedClassroom = (_data: { classroomId: string }) => {};
 
-    const handleClassMessage = (data: Message) => {
-      setMessages(prev => [...prev, data]);
+    const handleClassMessage = (data: { classroomId: string; message: string; user: { id: string; name: string }; timestamp: string }) => {
+      setMessages(prev => [...prev, {
+        id: undefined,
+        classroomId: data.classroomId,
+        message: data.message,
+        user: data.user,
+        timestamp: data.timestamp,
+      }]);
     };
-    const handleLessonMessage = (data: any) => {
-      setMessages(prev => [...prev, data]);
+    const handleLessonMessage = (data: { lessonId: string; message: string; user: { id: string; name: string }; timestamp: string }) => {
+      setMessages(prev => [...prev, {
+        id: undefined,
+        classroomId: '',
+        message: data.message,
+        user: data.user,
+        timestamp: data.timestamp,
+      }]);
     };
 
-    const handleClassMessageDeleted = (data: { id: string }) => {
-      setMessages(prev => prev.filter(m => String(m.id || '') !== String(data.id)));
+    const handleClassMessageDeleted = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { id?: string };
+      if (data.id) {
+        setMessages(prev => prev.filter(m => String(m.id || '') !== String(data.id)));
+      }
     };
-    const handleLessonMessageDeleted = (data: { id: string }) => {
-      setMessages(prev => prev.filter(m => String(m.id || '') !== String(data.id)));
+    const handleLessonMessageDeleted = (...args: unknown[]) => {
+      const data = (args[0] || {}) as { id?: string };
+      if (data.id) {
+        setMessages(prev => prev.filter(m => String(m.id || '') !== String(data.id)));
+      }
     };
 
     onJoinedClassroom(handleJoinedClassroom);
@@ -221,31 +253,32 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
       off('classMessageDeleted', handleClassMessageDeleted);
       off('lessonMessageDeleted', handleLessonMessageDeleted);
     };
-  }, [onJoinedClassroom, onClassMessage, onLessonMessage, offLessonMessage, on, off]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const transformOutgoingMentions = (text: string) => {
     let out = text;
     for (const [name, id] of Object.entries(mentionMap)) {
       if (!name || !id) continue;
       // Replace '@Display Name' when followed by whitespace or end of string
-      const pattern = new RegExp(`@${escapeRegex(name)}(?=\s|$)`, 'g');
+      const pattern = new RegExp(`@${escapeRegex(name)}(?=\\s|$)`, 'g');
       out = out.replace(pattern, `@uid:${id}`);
     }
     // Best-effort: convert any '@Full Name' (from members) to @uid:<id> if exact match is present
-    const candidates = (members || []).map((m: any) => ({
+    const candidates = (members || []).map((m: MemberWithId) => ({
       name: (m.name || '').trim(),
       email: (m.email || '').trim(),
-      id: String((m as any)._id || (m as any).id || ''),
+      id: String(m._id || m.id || ''),
     })).filter(c => c.id);
     // Sort by longer names first to avoid partial replacements
     candidates.sort((a, b) => b.name.length - a.name.length);
     for (const c of candidates) {
       if (c.name) {
-        const namePattern = new RegExp(`@${escapeRegex(c.name)}(?=\s|$)`, 'g');
+        const namePattern = new RegExp(`@${escapeRegex(c.name)}(?=\\s|$)`, 'g');
         out = out.replace(namePattern, `@uid:${c.id}`);
       }
       if (c.email) {
-        const emailPattern = new RegExp(`@${escapeRegex(c.email)}(?=\s|$)`, 'g');
+        const emailPattern = new RegExp(`@${escapeRegex(c.email)}(?=\\s|$)`, 'g');
         out = out.replace(emailPattern, `@uid:${c.id}`);
       }
     }
@@ -255,7 +288,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   const handleSendMessage = () => {
     if (newMessage.trim() && user) {
       const payload = transformOutgoingMentions(newMessage.trim());
-      const userId = String((user as any).id || (user as any)._id || '');
+      const userId = String((user as UserWithId).id || (user as UserWithId)._id || '');
       if (lessonId) {
         sendLessonMessage(lessonId, payload, { id: userId, name: user.name });
       } else if (classroomId) {
@@ -306,11 +339,11 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
         if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current);
         searchTimerRef.current = window.setTimeout(() => {
           const q = query.toLowerCase();
-          const pool = (members || []).filter((m: any) => String(m?._id || m?.id || '') !== currentUserId);
+          const pool = (members || []).filter((m: MemberWithId) => String(m?._id || m?.id || '') !== currentUserId);
           const res = q
-            ? pool.filter((m: any) => (m.name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)).slice(0, 8)
+            ? pool.filter((m: MemberWithId) => (m.name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)).slice(0, 8)
             : pool.slice(0, 8);
-          setSuggestions(res as any);
+          setSuggestions(res);
           setShowSuggest(res.length > 0);
           setSelectedIndex(0);
         }, 150);
@@ -381,14 +414,14 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
     let normalized = text;
     const uidRegex = /@uid:([a-fA-F0-9]{24})/g;
     normalized = normalized.replace(uidRegex, (_m, id) => {
-      const found = members.find((m) => String((m as any)._id || '') === String(id));
+      const found = members.find((m: MemberWithId) => String(m._id || '') === String(id));
       const name = (found?.name || found?.email || id) as string;
       return `@${name}`;
     });
 
     // Highlight full @Name (including spaces)
     const names = (members || [])
-      .map((m: any) => (m?.name || '').trim())
+      .map((m: MemberWithId) => (m?.name || '').trim())
       .filter((n: string) => n.length > 0)
       .sort((a: string, b: string) => b.length - a.length);
 
@@ -442,13 +475,13 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
           {messages.map((msg, index) => {
             // Find user avatar from members list - try multiple ID formats
             const msgUserId = String(msg.user.id || '');
-            const userMember = members.find((m) => {
-              const memberId = String((m as any)._id || (m as any).id || '');
+            const userMember = members.find((m: MemberWithId) => {
+              const memberId = String(m._id || m.id || '');
               return memberId === msgUserId || memberId.replace(/^ObjectId\(|\)$/g, '') === msgUserId;
             });
             
             // Priority: message avatarUrl > members list > cache
-            let rawAvatarUrl = msg.user.avatarUrl || (userMember as any)?.avatarUrl || (userMember as any)?.avatar;
+            let rawAvatarUrl = msg.user.avatarUrl || userMember?.avatarUrl;
             let displayName = msg.user.name || (userMember?.name || userMember?.email || 'User');
             
             // If not found in members or message, use cache
@@ -511,8 +544,8 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
                       <ListItemAvatar>
                         <Avatar 
                           src={
-                            (u as any).avatarUrl 
-                              ? resolveFileUrl((u as any).avatarUrl) || undefined
+                            (u as UserLite & { avatarUrl?: string }).avatarUrl 
+                              ? resolveFileUrl((u as UserLite & { avatarUrl?: string }).avatarUrl) || undefined
                               : undefined
                           }
                         >

@@ -24,9 +24,6 @@ import {
   ExpandMore,
   ExpandLess,
   Sort,
-  Category,
-  Grade,
-  DateRange
 } from '@mui/icons-material';
 
 export interface FilterOption {
@@ -71,7 +68,7 @@ export interface SearchFilterBarProps {
   // Styling
   variant?: 'default' | 'compact' | 'minimal';
   elevation?: number;
-  sx?: any;
+  sx?: React.CSSProperties | Record<string, unknown>;
 }
 
 export default function SearchFilterBar({
@@ -83,7 +80,6 @@ export default function SearchFilterBar({
   sortOptions = [],
   sortValue,
   onSortChange,
-  showAdvancedFilters = false,
   onToggleAdvanced,
   onClearAll,
   variant = 'default',

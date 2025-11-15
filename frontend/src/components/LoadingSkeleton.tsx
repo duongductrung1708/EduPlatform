@@ -9,7 +9,6 @@ interface SkeletonCardProps {
 }
 
 export const SkeletonCard: React.FC<SkeletonCardProps> = ({ 
-  height = 200, 
   showAvatar = false, 
   showChips = false, 
   showButton = false 
@@ -139,7 +138,7 @@ export const ShimmerBox: React.FC<{
   width?: string; 
   height?: string; 
   borderRadius?: string;
-  sx?: any;
+  sx?: React.CSSProperties | Record<string, unknown>;
 }> = ({ 
   width = '100%', 
   height = '20px', 

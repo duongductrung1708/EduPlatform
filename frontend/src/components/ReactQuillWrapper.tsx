@@ -3,10 +3,16 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import '../styles/react-quill.css';
 
+interface ReactQuillModules {
+  toolbar?: unknown;
+  clipboard?: unknown;
+  [key: string]: unknown;
+}
+
 interface ReactQuillWrapperProps {
   value: string;
   onChange: (value: string) => void;
-  modules?: any;
+  modules?: ReactQuillModules;
   formats?: string[];
   theme?: string;
   placeholder?: string;
@@ -15,7 +21,7 @@ interface ReactQuillWrapperProps {
   className?: string;
 }
 
-const ReactQuillWrapper = forwardRef<any, ReactQuillWrapperProps>((props, ref) => {
+const ReactQuillWrapper = forwardRef<ReactQuill, ReactQuillWrapperProps>((props, ref) => {
   return <ReactQuill {...props} ref={ref} />;
 });
 

@@ -1,12 +1,17 @@
 import { apiClient } from './client';
 
+export interface NotificationMeta {
+  link?: string;
+  [key: string]: unknown;
+}
+
 export interface NotificationItem {
   _id: string;
   title: string;
   body: string;
   read: boolean;
   createdAt: string;
-  meta?: any;
+  meta?: NotificationMeta;
 }
 
 export async function fetchNotifications(limit = 20): Promise<{ items: NotificationItem[]; unread: number }> {

@@ -10,7 +10,6 @@ import {
   Chip,
   Avatar,
   Paper,
-  Divider,
   IconButton,
   Tooltip,
 } from '@mui/material';
@@ -22,7 +21,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SchoolIcon from '@mui/icons-material/School';
-import { classesApi } from '../../../api/admin';
+import { classesApi, ClassroomItem } from '../../../api/admin';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,7 +30,7 @@ export default function TeacherOverview() {
   const [stats, setStats] = useState<{ classrooms: number; students: number; assignments: number }>(
     { classrooms: 0, students: 0, assignments: 0 },
   );
-  const [recentClasses, setRecentClasses] = useState<any[]>([]);
+  const [recentClasses, setRecentClasses] = useState<Array<ClassroomItem & { studentsCount?: number; studentIds?: string[]; assignmentsCount?: number; teacherNames?: string; courseId?: { title?: string; [key: string]: unknown } }>>([]);
   const [publicCourses, setPublicCourses] = useState<CourseItem[]>([]);
 
   useEffect(() => {
@@ -40,15 +39,16 @@ export default function TeacherOverview() {
         const res = await classesApi.listMy(1, 50);
         const classrooms = res.items || [];
         const students = classrooms.reduce(
-          (sum, c: any) => sum + (c.studentsCount ?? (c.studentIds?.length || 0)),
+          (sum, c: ClassroomItem & { studentsCount?: number; studentIds?: string[] }) => sum + (c.studentsCount ?? (c.studentIds?.length || 0)),
           0,
         );
-        const assignments = classrooms.reduce((sum, c: any) => sum + (c.assignmentsCount || 0), 0);
+        const assignments = classrooms.reduce((sum, c: ClassroomItem & { assignmentsCount?: number }) => sum + (c.assignmentsCount || 0), 0);
         setStats({ classrooms: classrooms.length, students, assignments });
         setRecentClasses(classrooms.slice(0, 5));
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { response?: { status?: number; data?: { message?: string } } };
         // Handle 401 gracefully - user might not be authenticated
-        if (error.response?.status === 401) {
+        if (err.response?.status === 401) {
           setStats({ classrooms: 0, students: 0, assignments: 0 });
           setRecentClasses([]);
         }

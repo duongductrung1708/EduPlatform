@@ -5,7 +5,6 @@ import {
   Link, 
   Typography, 
   Box,
-  Chip
 } from '@mui/material';
 import { 
   Home as HomeIcon,
@@ -26,7 +25,7 @@ interface BreadcrumbItem {
 
 interface BreadcrumbProps {
   items?: BreadcrumbItem[];
-  sx?: any;
+  sx?: React.CSSProperties | Record<string, unknown>;
   showHome?: boolean;
 }
 

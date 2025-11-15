@@ -188,7 +188,7 @@ const UserManagement: React.FC = () => {
     setPage(1);
   };
 
-  const handleRoleFilter = (event: any) => {
+  const handleRoleFilter = (event: { target: { value: string } }) => {
     setRoleFilter(event.target.value);
     setPage(1);
   };
@@ -786,7 +786,7 @@ const UserManagement: React.FC = () => {
                     <TableCell>
                       <Chip
                         label={getRoleLabel(user.role)}
-                        color={getRoleColor(user.role) as any}
+                        color={getRoleColor(user.role) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                         size="small"
                         sx={{
                           '& .MuiChip-label': {

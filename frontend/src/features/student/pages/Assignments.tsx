@@ -57,13 +57,20 @@ export default function StudentAssignments() {
       setError(null);
 
       // Get all classrooms for the student
-      let classrooms: any[] = [];
+      interface Classroom {
+        _id: string;
+        title?: string;
+        name?: string;
+        [key: string]: unknown;
+      }
+      let classrooms: Classroom[] = [];
       try {
         const classroomsResponse = await classesApi.listMy(1, 100);
         classrooms = classroomsResponse.items || [];
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as { response?: { status?: number; data?: { message?: string } } };
         // Handle 401 gracefully - user might not be authenticated or token expired
-        if (err?.response?.status === 401) {
+        if (error?.response?.status === 401) {
           setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
           setAssignments([]);
           return;
@@ -91,14 +98,14 @@ export default function StudentAssignments() {
                 return {
                   ...assignment,
                   classroomId: classroom._id,
-                  classroomName: (classroom as any).title || (classroom as any).name || 'Lớp học',
+                  classroomName: classroom.title || classroom.name || 'Lớp học',
                   mySubmission: submission || undefined,
                 };
               } catch {
                 return {
                   ...assignment,
                   classroomId: classroom._id,
-                  classroomName: (classroom as any).title || (classroom as any).name || 'Lớp học',
+                  classroomName: classroom.title || classroom.name || 'Lớp học',
                 };
               }
             })
@@ -122,8 +129,9 @@ export default function StudentAssignments() {
       });
 
       setAssignments(allAssignments);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const apiMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       setError(apiMsg || 'Không thể tải danh sách bài tập');
     } finally {
       setLoading(false);

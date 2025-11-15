@@ -28,7 +28,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useNavigate } from 'react-router-dom';
-import { SkeletonStats, SkeletonGrid } from '../../../components/LoadingSkeleton';
+import { SkeletonGrid } from '../../../components/LoadingSkeleton';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import ClassSelectionDialog from '../../../components/ClassSelectionDialog';
@@ -119,8 +119,9 @@ export default function StudentHome() {
         ] as string[];
         setAvailableSubjects(subjects);
         setAvailableLevels(levels);
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải dữ liệu môn học');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải dữ liệu môn học');
       } finally {
         setLoading(false);
       }
@@ -205,13 +206,13 @@ export default function StudentHome() {
     setTabValue(newValue);
   };
 
-  const handleSubjectChange = (event: any) => {
+  const handleSubjectChange = (event: { target: { value: string } }) => {
     setSelectedSubjectFilter(event.target.value);
     setSelectedLevel(''); // Reset level when subject changes
     // Không xóa selectedSubject và selectedGradeLevel - giữ lựa chọn ban đầu
   };
 
-  const handleLevelChange = (event: any) => {
+  const handleLevelChange = (event: { target: { value: string } }) => {
     const newLevel = event.target.value;
     setSelectedLevel(newLevel);
 

@@ -35,7 +35,7 @@ export const lessonsApi = {
   async remove(classroomId: string, lessonId: string): Promise<void> {
     await apiClient.delete(`/api/classes/${classroomId}/lessons/${lessonId}`);
   },
-  async getDetail(classroomId: string, lessonId: string): Promise<any> {
+  async getDetail(classroomId: string, lessonId: string): Promise<LessonItem> {
     const res = await apiClient.get(`/api/classes/${classroomId}/lessons/${lessonId}/detail`);
     return res.data;
   },

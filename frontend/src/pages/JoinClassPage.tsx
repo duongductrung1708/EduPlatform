@@ -27,8 +27,9 @@ const JoinClassPage: React.FC = () => {
       const joined = await classesApi.join(code.trim());
       setSuccess(`Đã tham gia lớp: ${joined.title}`);
       setTimeout(() => navigate('/dashboard'), 800);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể tham gia lớp');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể tham gia lớp');
     } finally {
       setLoading(false);
     }

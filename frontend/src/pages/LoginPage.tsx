@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ErrorAlert from '../components/ErrorAlert';
 import OtpVerificationDialog from '../components/OtpVerificationDialog';
 import Logo from '../components/Logo';
+import { AuthResponse } from '../api/auth';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -53,20 +54,21 @@ export const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       navigate(from, { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Extract error message from different possible locations
       let errorMessage = 'Đăng nhập thất bại';
+      const error = err as { response?: { data?: { message?: string | string[] } }; message?: string };
 
       // NestJS returns error in error.response.data.message (can be string or array)
-      if (err.response?.data?.message) {
-        const message = err.response.data.message;
+      if (error.response?.data?.message) {
+        const message = error.response.data.message;
         if (Array.isArray(message)) {
           errorMessage = message[0] || 'Đăng nhập thất bại';
         } else {
           errorMessage = message;
         }
-      } else if (err.message) {
-        errorMessage = err.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       } else if (typeof err === 'string') {
         errorMessage = err;
       }
@@ -87,7 +89,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleOtpVerificationSuccess = (authData: any) => {
+  const handleOtpVerificationSuccess = (_authData: AuthResponse) => {
     // OTP verification successful, user is now logged in
     // AuthContext will automatically detect the stored tokens and update user state
     navigate(from, { replace: true });

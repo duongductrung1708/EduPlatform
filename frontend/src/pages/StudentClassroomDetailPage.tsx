@@ -156,9 +156,13 @@ const StudentClassroomDetailPage: React.FC = () => {
         setLessons(ls);
         setAssignments(asg);
         // fetch my submission status per assignment
-        const map: Record<string, any> = {};
+        interface Assignment {
+          _id: string;
+          [key: string]: unknown;
+        }
+        const map: Record<string, { _id: string; [key: string]: unknown }> = {};
         await Promise.all(
-          asg.map(async (a: any) => {
+          asg.map(async (a: Assignment) => {
             try {
               const sub = await assignmentsApi.getMySubmission(classroomId, a._id);
               if (sub) map[a._id] = sub;
@@ -166,8 +170,9 @@ const StudentClassroomDetailPage: React.FC = () => {
           }),
         );
         setMySubmissions(map);
-      } catch (e: any) {
-        setError(e?.response?.data?.message || 'Không thể tải thông tin lớp học');
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } } };
+        setError(err?.response?.data?.message || 'Không thể tải thông tin lớp học');
       } finally {
         setLoading(false);
       }
@@ -179,7 +184,7 @@ const StudentClassroomDetailPage: React.FC = () => {
     const handleJoined = () => {
       setToast({ open: true, message: 'Đã kết nối lớp (realtime)' });
     };
-    const handleMsg = (data: any) => {
+    const handleMsg = (data: { message?: string }) => {
       if (data?.message) setToast({ open: true, message: `Tin nhắn mới: ${data.message}` });
     };
     const handleGraded = (data: {

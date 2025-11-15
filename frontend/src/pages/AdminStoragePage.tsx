@@ -89,7 +89,7 @@ const AdminStoragePage: React.FC = () => {
       if (filesData.pagination) {
         setTotalPages(filesData.pagination.pages || 1);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching storage data:', err);
       setError('Không thể tải dữ liệu lưu trữ. Vui lòng thử lại sau.');
     } finally {

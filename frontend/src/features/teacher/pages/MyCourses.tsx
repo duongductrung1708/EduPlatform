@@ -20,7 +20,6 @@ import {
   MenuItem,
   Alert
 } from '@mui/material';
-import SchoolIcon from '@mui/icons-material/School';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -168,17 +167,18 @@ export default function MyCourses() {
       setCreateDialogOpen(false);
       resetForm();
       loadCourses();
-    } catch (err: any) {
-      console.error('Create course error:', err);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string | string[] } } };
+      console.error('Create course error:', error);
       
       // Handle validation errors
-      if (err.response?.data?.message && Array.isArray(err.response.data.message)) {
-        const validationErrors = err.response.data.message.join(', ');
+      if (error.response?.data?.message && Array.isArray(error.response.data.message)) {
+        const validationErrors = error.response.data.message.join(', ');
         setError(`Lỗi validation: ${validationErrors}`);
-      } else if (err.response?.data?.message) {
-        setError(`Lỗi: ${err.response.data.message}`);
-      } else if (err.response?.data?.error) {
-        setError(`Lỗi: ${err.response.data.error}`);
+      } else if (error.response?.data?.message) {
+        setError(`Lỗi: ${typeof error.response.data.message === 'string' ? error.response.data.message : 'Có lỗi xảy ra'}`);
+      } else if (error.response?.data?.error) {
+        setError(`Lỗi: ${error.response.data.error}`);
       } else {
         setError('Đã xảy ra lỗi khi tạo môn học. Vui lòng thử lại.');
       }
@@ -220,17 +220,18 @@ export default function MyCourses() {
       resetForm();
       setEditingCourse(null);
       loadCourses();
-    } catch (err: any) {
-      console.error('Update course error:', err);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string | string[] } } };
+      console.error('Update course error:', error);
       
       // Handle validation errors
-      if (err.response?.data?.message && Array.isArray(err.response.data.message)) {
-        const validationErrors = err.response.data.message.join(', ');
+      if (error.response?.data?.message && Array.isArray(error.response.data.message)) {
+        const validationErrors = error.response.data.message.join(', ');
         setError(`Lỗi validation: ${validationErrors}`);
-      } else if (err.response?.data?.message) {
-        setError(`Lỗi: ${err.response.data.message}`);
-      } else if (err.response?.data?.error) {
-        setError(`Lỗi: ${err.response.data.error}`);
+      } else if (error.response?.data?.message) {
+        setError(`Lỗi: ${typeof error.response.data.message === 'string' ? error.response.data.message : 'Có lỗi xảy ra'}`);
+      } else if (error.response?.data?.error) {
+        setError(`Lỗi: ${error.response.data.error}`);
       } else {
         setError('Đã xảy ra lỗi khi cập nhật môn học. Vui lòng thử lại.');
       }
@@ -252,13 +253,14 @@ export default function MyCourses() {
       setConfirmDialogOpen(false);
       setCourseToDelete(null);
       loadCourses();
-    } catch (err: any) {
-      console.error('Delete course error:', err);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } } };
+      console.error('Delete course error:', error);
       
-      if (err.response?.data?.message) {
-        setError(`Lỗi: ${err.response.data.message}`);
-      } else if (err.response?.data?.error) {
-        setError(`Lỗi: ${err.response.data.error}`);
+      if (error.response?.data?.message) {
+        setError(`Lỗi: ${error.response.data.message}`);
+      } else if (error.response?.data?.error) {
+        setError(`Lỗi: ${error.response.data.error}`);
       } else {
         setError('Đã xảy ra lỗi khi xóa môn học. Vui lòng thử lại.');
       }

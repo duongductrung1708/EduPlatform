@@ -1,9 +1,17 @@
 // Authentication utility functions
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  verified: boolean;
+}
+
 export interface AuthTokens {
   accessToken: string | null;
   refreshToken: string | null;
-  user: any | null;
+  user: User | null;
 }
 
 export const getAuthTokens = (): AuthTokens => {
@@ -25,13 +33,13 @@ export const clearAuth = (): void => {
   localStorage.removeItem('user');
 };
 
-export const setAuth = (accessToken: string, refreshToken: string, user: any): void => {
+export const setAuth = (accessToken: string, refreshToken: string, user: User): void => {
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('refreshToken', refreshToken);
   localStorage.setItem('user', JSON.stringify(user));
 };
 
-export const getCurrentUser = (): any | null => {
+export const getCurrentUser = (): User | null => {
   const userStr = localStorage.getItem('user');
   return userStr ? JSON.parse(userStr) : null;
 };

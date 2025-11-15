@@ -16,8 +16,7 @@ import {
   Button,
   InputAdornment
 } from '@mui/material';
-import { School, Public, Search, People, Assignment } from '@mui/icons-material';
-import { classesApi } from '../../../api/admin';
+import { School, Public, Search, People, AccessTime } from '@mui/icons-material';
 import { coursesApi, CourseItem } from '../../../api/courses';
 import { useNavigate } from 'react-router-dom';
 import { SkeletonGrid } from '../../../components/LoadingSkeleton';

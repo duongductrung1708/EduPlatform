@@ -17,7 +17,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { assignmentsApi, AssignmentItem } from '../../../api/assignments';
-import { classesApi } from '../../../api/admin';
+import { classesApi, ClassroomItem } from '../../../api/admin';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { ShimmerBox, DarkShimmerBox } from '../../../components/LoadingSkeleton';
@@ -53,17 +53,18 @@ export default function TeacherAssignments() {
       setError(null);
 
       // Get all classrooms for the teacher
-      let classrooms: any[] = [];
+      let classrooms: ClassroomItem[] = [];
       try {
         const classroomsResponse = await classesApi.listMy(1, 100);
         classrooms = classroomsResponse.items || [];
-      } catch (err: any) {
-        if (err?.response?.status === 401) {
+      } catch (err: unknown) {
+        const error = err as { response?: { status?: number; data?: { message?: string } } };
+        if (error?.response?.status === 401) {
           setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
           setAssignments([]);
           return;
         }
-        throw err;
+        throw error;
       }
 
       if (classrooms.length === 0) {
@@ -86,14 +87,14 @@ export default function TeacherAssignments() {
                 return {
                   ...assignment,
                   classroomId: classroom._id,
-                  classroomName: (classroom as any).title || (classroom as any).name || 'Lớp học',
+                  classroomName: (classroom as ClassroomItem & { name?: string }).title || (classroom as ClassroomItem & { name?: string }).name || 'Lớp học',
                   submissionsCount: submissions?.length || 0,
                 };
               } catch {
                 return {
                   ...assignment,
                   classroomId: classroom._id,
-                  classroomName: (classroom as any).title || (classroom as any).name || 'Lớp học',
+                  classroomName: (classroom as ClassroomItem & { name?: string }).title || (classroom as ClassroomItem & { name?: string }).name || 'Lớp học',
                   submissionsCount: 0,
                 };
               }
@@ -112,15 +113,16 @@ export default function TeacherAssignments() {
       });
 
       setAssignments(allAssignments);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const apiMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       setError(apiMsg || 'Không thể tải danh sách bài tập');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewAssignment = (classroomId: string, assignmentId: string) => {
+  const handleViewAssignment = (classroomId: string, _assignmentId: string) => {
     navigate(`/teacher/classrooms/${classroomId}/assignments`);
   };
 

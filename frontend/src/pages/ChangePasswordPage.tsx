@@ -38,8 +38,9 @@ const ChangePasswordPage: React.FC = () => {
       setTimeout(() => {
         setSuccess(null);
       }, 5000);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể đổi mật khẩu');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message || 'Không thể đổi mật khẩu');
     } finally {
       setLoading(false);
     }

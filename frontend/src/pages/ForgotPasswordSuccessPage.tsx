@@ -26,8 +26,9 @@ const ForgotPasswordSuccessPage: React.FC = () => {
     try {
       await authApi.forgotPassword(email);
       setResendSuccess(true);
-    } catch (error: any) {
-      setResendError(error?.response?.data?.message || 'Không thể gửi lại email');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setResendError(err?.response?.data?.message || 'Không thể gửi lại email');
     } finally {
       setResending(false);
     }

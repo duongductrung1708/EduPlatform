@@ -10,12 +10,9 @@ import {
   Avatar,
   Paper,
   Chip,
-  IconButton,
-  Tooltip
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddIcon from '@mui/icons-material/Add';
 import StarIcon from '@mui/icons-material/Star';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -51,9 +48,10 @@ export default function StudentOverview() {
           notifications: 0 
         });
         setRecentClasses(classes.slice(0, 3));
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { response?: { status?: number; data?: { message?: string } } };
         // Handle 401 gracefully - user might not be authenticated
-        if (error.response?.status === 401) {
+        if (err.response?.status === 401) {
           setStats({ 
             enrolledClasses: 0, 
             pendingAssignments: 0,

@@ -73,9 +73,10 @@ export default function CourseInvitationPage() {
       setLoading(true);
       const data = await courseInvitationsApi.getInvitation(id!);
       setInvitation(data);
-    } catch (error: any) {
-      console.error('Error loading invitation:', error);
-      setError(error.message || 'Không thể tải thông tin lời mời');
+    } catch (error: unknown) {
+      const err = error as { message?: string; response?: { data?: { message?: string } } };
+      console.error('Error loading invitation:', err);
+      setError(err.message || err.response?.data?.message || 'Không thể tải thông tin lời mời');
     } finally {
       setLoading(false);
     }
@@ -91,9 +92,10 @@ export default function CourseInvitationPage() {
       setTimeout(() => {
         navigate(`/courses/${invitation.courseId._id}`);
       }, 2000);
-    } catch (error: any) {
-      console.error('Error accepting invitation:', error);
-      setError(error.message || 'Không thể chấp nhận lời mời');
+    } catch (error: unknown) {
+      const err = error as { message?: string; response?: { data?: { message?: string } } };
+      console.error('Error accepting invitation:', err);
+      setError(err.message || err.response?.data?.message || 'Không thể chấp nhận lời mời');
     } finally {
       setActionLoading(false);
     }
@@ -109,9 +111,10 @@ export default function CourseInvitationPage() {
       setTimeout(() => {
         navigate('/student');
       }, 2000);
-    } catch (error: any) {
-      console.error('Error declining invitation:', error);
-      setError(error.message || 'Không thể từ chối lời mời');
+    } catch (error: unknown) {
+      const err = error as { message?: string; response?: { data?: { message?: string } } };
+      console.error('Error declining invitation:', err);
+      setError(err.message || err.response?.data?.message || 'Không thể từ chối lời mời');
     } finally {
       setActionLoading(false);
     }

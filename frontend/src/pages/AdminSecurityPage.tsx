@@ -71,7 +71,14 @@ const AdminSecurityPage: React.FC = () => {
       ]);
       const settingsList = settingsData.settings || settingsData || [];
       // Map settings to include icons
-      const settingsWithIcons = settingsList.map((setting: any) => {
+      interface SecuritySetting {
+        id: string;
+        title: string;
+        enabled: boolean;
+        description?: string;
+        [key: string]: unknown;
+      }
+      const settingsWithIcons = settingsList.map((setting: SecuritySetting) => {
         let icon = <SecurityIcon />;
         if (setting.id === 'twoFactor') icon = <FingerprintIcon />;
         else if (setting.id === 'loginAlerts') icon = <NotificationsActiveIcon />;
@@ -98,7 +105,7 @@ const AdminSecurityPage: React.FC = () => {
         else if (enabledRatio >= 0.5) setSecurityLevel('Trung bình');
         else setSecurityLevel('Thấp');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching security data:', err);
       setError('Không thể tải dữ liệu bảo mật. Vui lòng thử lại sau.');
     } finally {
@@ -128,7 +135,7 @@ const AdminSecurityPage: React.FC = () => {
     try {
       await adminApi.updateSecuritySetting(id, newEnabled);
       setSuccess(`Đã ${newEnabled ? 'bật' : 'tắt'} ${setting.title} thành công!`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
       setSettings((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !newEnabled } : s)));
       setError(`Không thể ${newEnabled ? 'bật' : 'tắt'} ${setting.title}`);

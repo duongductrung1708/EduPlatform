@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -24,11 +23,9 @@ import {
   Class as ClassIcon,
   Assignment as AssignmentIcon,
   TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   Refresh as RefreshIcon,
   Visibility as ViewIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, DashboardStats, RecentActivity, TopCourse } from '../api/admin';
@@ -330,7 +327,7 @@ const AdminDashboard: React.FC = () => {
                           <Chip
                             label={activity.timestamp}
                             size="small"
-                            color={getActivityColor(activity.type) as any}
+                            color={getActivityColor(activity.type) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                             variant="outlined"
                           />
                         </TableCell>

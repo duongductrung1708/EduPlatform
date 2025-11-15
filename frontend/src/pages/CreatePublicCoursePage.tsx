@@ -5,7 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import BackButton from '../components/BackButton';
 import Breadcrumb from '../components/Breadcrumb';
 
-const categories = ['Toán', 'Tiếng Việt', 'Tiếng Anh', 'Khoa học', 'Tin học', 'Mỹ thuật', 'Âm nhạc'];
+const categories = [
+  'Toán',
+  'Tiếng Việt',
+  'Tiếng Anh',
+  'Khoa học',
+  'Tin học',
+  'Mỹ thuật',
+  'Âm nhạc',
+];
 const levels = ['Lớp 1', 'Lớp 2', 'Lớp 3', 'Lớp 4', 'Lớp 5'];
 
 export default function CreatePublicCoursePage() {
@@ -20,13 +28,23 @@ export default function CreatePublicCoursePage() {
   const handleSubmit = async () => {
     const payload = {
       title,
-      slug: slug || title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      slug:
+        slug ||
+        title
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, ''),
       description,
       category,
       level,
       visibility: 'public' as const,
       status: 'published' as const,
-      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+      tags: tags
+        ? tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined,
     };
     const created = await coursesApi.createPublic(payload);
     navigate(`/courses/${created._id}`);
@@ -35,49 +53,100 @@ export default function CreatePublicCoursePage() {
   return (
     <Box>
       {/* Breadcrumb */}
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: 'Trang chủ', path: '/dashboard' },
           { label: 'Giáo viên', path: '/teacher' },
           { label: 'Môn học', path: '/teacher/courses' },
-          { label: 'Tạo môn học công khai', current: true }
+          { label: 'Tạo môn học công khai', current: true },
         ]}
       />
-      
+
       {/* Back Button */}
       <BackButton to="/teacher/courses" />
-      
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Tạo môn học công khai</Typography>
+
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+        Tạo môn học công khai
+      </Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
-          <TextField fullWidth label="Tiêu đề" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <TextField
+            fullWidth
+            label="Tiêu đề"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField fullWidth label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} helperText="Tự tạo nếu để trống" />
+          <TextField
+            fullWidth
+            label="Slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            helperText="Tự tạo nếu để trống"
+          />
         </Grid>
         <Grid item xs={12}>
-          <TextField fullWidth multiline minRows={3} label="Mô tả" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label="Mô tả"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField select fullWidth label="Danh mục" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categories.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+          <TextField
+            select
+            fullWidth
+            label="Danh mục"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {categories.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
           </TextField>
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField select fullWidth label="Cấp lớp" value={level} onChange={(e) => setLevel(e.target.value)}>
-            {levels.map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
+          <TextField
+            select
+            fullWidth
+            label="Cấp lớp"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
+            {levels.map((l) => (
+              <MenuItem key={l} value={l}>
+                {l}
+              </MenuItem>
+            ))}
           </TextField>
         </Grid>
         <Grid item xs={12}>
-          <TextField fullWidth label="Tags (phân cách bằng dấu phẩy)" value={tags} onChange={(e) => setTags(e.target.value)} />
+          <TextField
+            fullWidth
+            label="Tags (phân cách bằng dấu phẩy)"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+          />
         </Grid>
       </Grid>
       <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={handleSubmit} disabled={!title || !description || !category || !level}>Tạo môn học</Button>
-        <Button variant="text" onClick={() => navigate(-1)}>Hủy</Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={!title || !description || !category || !level}
+        >
+          Tạo môn học
+        </Button>
+        <Button variant="text" onClick={() => navigate(-1)}>
+          Hủy
+        </Button>
       </Stack>
     </Box>
   );
 }
-
-
