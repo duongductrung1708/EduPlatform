@@ -267,13 +267,16 @@ export class AssignmentsService {
       throw new ForbiddenException('Access denied to grade this submission');
     }
 
+    // Only mark as graded if grade or feedback is provided
+    const updateData: any = { ...gradeSubmissionDto };
+    if (gradeSubmissionDto.grade !== undefined || gradeSubmissionDto.feedback) {
+      updateData.graded = true;
+    }
+
     const updatedSubmission = await this.submissionModel
       .findByIdAndUpdate(
         submissionId,
-        {
-          ...gradeSubmissionDto,
-          graded: true,
-        },
+        updateData,
         { new: true, runValidators: true }
       )
       .populate('studentId', 'name email');

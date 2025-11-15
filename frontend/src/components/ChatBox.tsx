@@ -24,6 +24,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { UserLite } from '../api/users';
 import { getClassMembers } from '../api/classrooms';
 import { listClassMessages, listLessonMessages, deleteMessage } from '../api/chat';
+import { resolveFileUrl } from '../utils/url';
+import { usersApi } from '../api/users';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/EditOutlined';
 
@@ -31,7 +33,7 @@ interface Message {
   id?: string;
   classroomId: string;
   message: string;
-  user: { id: string; name: string };
+  user: { id: string; name: string; avatarUrl?: string };
   timestamp: string;
 }
 
@@ -66,34 +68,128 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   }, [classroomId, lessonId, user, joinClassroom, joinLesson]);
 
   const [members, setMembers] = useState<Array<UserLite & { avatarUrl?: string }>>([]);
+  const [userInfoCache, setUserInfoCache] = useState<Record<string, { name: string; avatarUrl?: string }>>({});
+  
   useEffect(() => {
     (async () => {
-      try {
-        if (classroomId) {
-          const res = await getClassMembers(classroomId);
-          setMembers(res as any);
+          try {
+            if (classroomId) {
+              const res = await getClassMembers(classroomId);
+              // Add current user to members if not already present
+              const membersList = res as any;
+          if (user && !membersList.find((m: any) => String((m as any)._id || (m as any).id || '') === String((user as any).id || (user as any)._id || ''))) {
+            // Try to get current user info with avatar
+            try {
+              const currentUserInfo = await usersApi.getMe();
+              const currentUserMember = {
+                _id: (user as any).id || (user as any)._id,
+                name: currentUserInfo.name || user.name,
+                email: currentUserInfo.email || user.email,
+                avatarUrl: currentUserInfo.avatar || (currentUserInfo as any).avatarUrl,
+              };
+              membersList.push(currentUserMember);
+            } catch {
+              // Fallback if API fails
+              const currentUserMember = {
+                _id: (user as any).id || (user as any)._id,
+                name: user.name,
+                email: user.email,
+                avatarUrl: undefined,
+              };
+              membersList.push(currentUserMember);
+            }
+          }
+          setMembers(membersList);
         }
-      } catch {
-        setMembers([]);
-      }
+        } catch (err) {
+          setMembers([]);
+        }
     })();
-  }, [classroomId]);
+  }, [classroomId, user]);
   const currentUserId = String((user as any)?.id || (user as any)?._id || '');
 
   // Load chat history
   useEffect(() => {
     (async () => {
       try {
+        let loadedMessages: Message[] = [];
         if (lessonId) {
           const hist = await listLessonMessages(lessonId, 50);
-          setMessages(hist.reverse().map(m => ({ id: (m as any)._id, classroomId: '', message: m.message, user: { id: m.authorId, name: m.authorName }, timestamp: m.createdAt })));
+          loadedMessages = hist.reverse().map(m => ({ 
+            id: (m as any)._id, 
+            classroomId: '', 
+            message: m.message, 
+            user: { 
+              id: m.authorId, 
+              name: m.authorName,
+              avatarUrl: (m as any).authorAvatarUrl,
+            }, 
+            timestamp: m.createdAt 
+          }));
         } else if (classroomId) {
           const hist = await listClassMessages(classroomId, 50);
-          setMessages(hist.reverse().map(m => ({ id: (m as any)._id, classroomId: classroomId, message: m.message, user: { id: m.authorId, name: m.authorName }, timestamp: m.createdAt })));
+          loadedMessages = hist.reverse().map(m => ({ 
+            id: (m as any)._id, 
+            classroomId: classroomId, 
+            message: m.message, 
+            user: { 
+              id: m.authorId, 
+              name: m.authorName,
+              avatarUrl: (m as any).authorAvatarUrl,
+            }, 
+            timestamp: m.createdAt 
+          }));
+        }
+        setMessages(loadedMessages);
+        
+        // Add message authors to members if not already present
+        // Also merge avatarUrl from API members if available
+        if (loadedMessages.length > 0) {
+          setMembers(prev => {
+            const existingIds = new Set(prev.map(m => String((m as any)._id || (m as any).id || '')));
+            const newMembers = [...prev];
+            const usersNeedingAvatar: string[] = [];
+            
+            loadedMessages.forEach(msg => {
+              const msgUserId = String(msg.user.id || '');
+              if (msgUserId) {
+                // Check if user already exists in members
+                const existingMember = newMembers.find(m => {
+                  const memberId = String((m as any)._id || (m as any).id || '');
+                  return memberId === msgUserId;
+                });
+                
+                if (existingMember) {
+                  // Update name if message has a better name
+                  if (msg.user.name && (!existingMember.name || existingMember.name === 'User')) {
+                    (existingMember as any).name = msg.user.name;
+                  }
+                } else {
+                  // Add new member from message
+                  newMembers.push({
+                    _id: msgUserId,
+                    name: msg.user.name || 'User',
+                    email: '',
+                    avatarUrl: undefined, // Will be filled by fetch
+                  } as any);
+                  // Track users that need avatar fetch
+                  usersNeedingAvatar.push(msgUserId);
+                }
+              }
+            });
+            
+            // Note: Cannot fetch user info from admin API as teacher doesn't have permission
+            // Backend should return avatarUrl in message response or members list
+            
+            return newMembers;
+          });
         }
       } catch {}
     })();
   }, [classroomId, lessonId]);
+
+  // Note: Cannot fetch user info from admin API as teacher doesn't have permission
+  // Backend should return avatarUrl in message response or ensure all message authors are in members list
 
   useEffect(() => {
     const handleJoinedClassroom = (data: { classroomId: string }) => {};
@@ -159,10 +255,11 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
   const handleSendMessage = () => {
     if (newMessage.trim() && user) {
       const payload = transformOutgoingMentions(newMessage.trim());
+      const userId = String((user as any).id || (user as any)._id || '');
       if (lessonId) {
-        sendLessonMessage(lessonId, payload, { id: user.id, name: user.name });
+        sendLessonMessage(lessonId, payload, { id: userId, name: user.name });
       } else if (classroomId) {
-        sendMessage(classroomId, payload, { id: user.id, name: user.name });
+        sendMessage(classroomId, payload, { id: userId, name: user.name });
       }
       setNewMessage('');
       setShowSuggest(false);
@@ -342,31 +439,55 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
       
       <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
         <List>
-          {messages.map((msg, index) => (
-            <ListItem key={index} alignItems="flex-start"
-              secondaryAction={canDelete(msg.user.id) ? (
-                <IconButton edge="end" aria-label="delete" onClick={(e) => requestDelete(msg.id, e)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              ) : undefined}
-            >
-              <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
-                {msg.user.name.charAt(0).toUpperCase()}
-              </Avatar>
-              <ListItemText
-                primary={msg.user.name}
-                secondary={
-                  <Box>
-                    <Typography variant="body2" component="div">{renderMessage(msg.message)}</Typography>
-                    <Typography variant="caption" color="text.secondary" component="div">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </Typography>
-                  </Box>
-                }
-                secondaryTypographyProps={{ component: 'div' }}
-              />
-            </ListItem>
-          ))}
+          {messages.map((msg, index) => {
+            // Find user avatar from members list - try multiple ID formats
+            const msgUserId = String(msg.user.id || '');
+            const userMember = members.find((m) => {
+              const memberId = String((m as any)._id || (m as any).id || '');
+              return memberId === msgUserId || memberId.replace(/^ObjectId\(|\)$/g, '') === msgUserId;
+            });
+            
+            // Priority: message avatarUrl > members list > cache
+            let rawAvatarUrl = msg.user.avatarUrl || (userMember as any)?.avatarUrl || (userMember as any)?.avatar;
+            let displayName = msg.user.name || (userMember?.name || userMember?.email || 'User');
+            
+            // If not found in members or message, use cache
+            if (!rawAvatarUrl && userInfoCache[msgUserId]) {
+              displayName = userInfoCache[msgUserId].name || displayName;
+              rawAvatarUrl = userInfoCache[msgUserId].avatarUrl || rawAvatarUrl;
+            }
+            
+            const avatarUrl = rawAvatarUrl ? resolveFileUrl(rawAvatarUrl) : undefined;
+            
+            return (
+              <ListItem key={index} alignItems="flex-start"
+                secondaryAction={canDelete(msg.user.id) ? (
+                  <IconButton edge="end" aria-label="delete" onClick={(e) => requestDelete(msg.id, e)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                ) : undefined}
+              >
+                <Avatar 
+                  src={avatarUrl || undefined}
+                  sx={{ mr: 1, bgcolor: 'primary.main' }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </Avatar>
+                <ListItemText
+                  primary={displayName}
+                  secondary={
+                    <Box>
+                      <Typography variant="body2" component="div">{renderMessage(msg.message)}</Typography>
+                      <Typography variant="caption" color="text.secondary" component="div">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </Typography>
+                    </Box>
+                  }
+                  secondaryTypographyProps={{ component: 'div' }}
+                />
+              </ListItem>
+            );
+          })}
         </List>
       </Box>
 
@@ -388,7 +509,13 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ classroomId, lessonId }) => {
                   <ListItem key={u._id} disablePadding>
                     <ListItemButton selected={i === selectedIndex} onClick={() => applyMention(u)}>
                       <ListItemAvatar>
-                        <Avatar src={(u as any).avatarUrl || undefined}>
+                        <Avatar 
+                          src={
+                            (u as any).avatarUrl 
+                              ? resolveFileUrl((u as any).avatarUrl) || undefined
+                              : undefined
+                          }
+                        >
                           {(u.name || u.email || 'U').charAt(0).toUpperCase()}
                         </Avatar>
                       </ListItemAvatar>

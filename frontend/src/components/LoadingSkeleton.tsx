@@ -125,28 +125,37 @@ export const SkeletonStats: React.FC<SkeletonStatsProps> = ({ count = 3 }) => (
   </Grid>
 );
 
-// Facebook-style shimmer effect
-export const ShimmerBox: React.FC<{ width?: string; height?: string; borderRadius?: string }> = ({ 
+// Facebook-style shimmer effect with better animation
+const shimmerKeyframes = {
+  '0%': {
+    backgroundPosition: '-1000px 0',
+  },
+  '100%': {
+    backgroundPosition: '1000px 0',
+  },
+};
+
+export const ShimmerBox: React.FC<{ 
+  width?: string; 
+  height?: string; 
+  borderRadius?: string;
+  sx?: any;
+}> = ({ 
   width = '100%', 
   height = '20px', 
-  borderRadius = '4px' 
+  borderRadius = '4px',
+  sx
 }) => (
   <Box
     sx={{
       width,
       height,
       borderRadius,
-      background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-      backgroundSize: '200% 100%',
-      animation: 'shimmer 1.5s infinite',
-      '@keyframes shimmer': {
-        '0%': {
-          backgroundPosition: '-200% 0',
-        },
-        '100%': {
-          backgroundPosition: '200% 0',
-        },
-      },
+      background: 'linear-gradient(90deg, #f0f0f0 0px, #f8f8f8 40px, #f0f0f0 80px)',
+      backgroundSize: '1000px 100%',
+      animation: 'shimmer 2s infinite linear',
+      '@keyframes shimmer': shimmerKeyframes,
+      ...sx,
     }}
   />
 );
@@ -162,17 +171,84 @@ export const DarkShimmerBox: React.FC<{ width?: string; height?: string; borderR
       width,
       height,
       borderRadius,
-      background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
-      backgroundSize: '200% 100%',
-      animation: 'shimmer 1.5s infinite',
-      '@keyframes shimmer': {
-        '0%': {
-          backgroundPosition: '-200% 0',
-        },
-        '100%': {
-          backgroundPosition: '200% 0',
-        },
-      },
+      background: 'linear-gradient(90deg, #2a2a2a 0px, #3a3a3a 40px, #2a2a2a 80px)',
+      backgroundSize: '1000px 100%',
+      animation: 'shimmer 2s infinite linear',
+      '@keyframes shimmer': shimmerKeyframes,
     }}
   />
+);
+
+// Assignment Card Skeleton (Facebook style)
+interface AssignmentCardSkeletonProps {
+  count?: number;
+}
+
+export const AssignmentCardSkeleton: React.FC<AssignmentCardSkeletonProps> = ({ count = 6 }) => (
+  <Grid container spacing={2}>
+    {Array.from({ length: count }).map((_, index) => (
+      <Grid item xs={12} md={6} key={index}>
+        <Card
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            border: '1px solid',
+            borderColor: 'divider',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header skeleton */}
+          <Box
+            sx={{
+              background: 'linear-gradient(90deg, #f0f0f0 0px, #f8f8f8 40px, #f0f0f0 80px)',
+              backgroundSize: '1000px 100%',
+              animation: 'shimmer 2s infinite linear',
+              '@keyframes shimmer': shimmerKeyframes,
+              p: 2,
+              pb: 1.5,
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+              <ShimmerBox width="28px" height="28px" borderRadius="50%" />
+              <ShimmerBox width="60%" height="24px" borderRadius="4px" />
+              <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5 }}>
+                <ShimmerBox width="32px" height="32px" borderRadius="4px" />
+                <ShimmerBox width="32px" height="32px" borderRadius="4px" />
+              </Box>
+            </Box>
+          </Box>
+
+          <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
+            {/* Description skeleton */}
+            <Box sx={{ mb: 2 }}>
+              <ShimmerBox width="100%" height="16px" borderRadius="4px" sx={{ mb: 1 }} />
+              <ShimmerBox width="90%" height="16px" borderRadius="4px" sx={{ mb: 1 }} />
+              <ShimmerBox width="70%" height="16px" borderRadius="4px" />
+            </Box>
+
+            {/* Chips skeleton */}
+            <Box display="flex" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
+              <ShimmerBox width="140px" height="24px" borderRadius="16px" />
+              <ShimmerBox width="80px" height="24px" borderRadius="16px" />
+              <ShimmerBox width="100px" height="24px" borderRadius="16px" />
+            </Box>
+
+            {/* Attachments skeleton */}
+            <Box sx={{ mb: 2 }}>
+              <ShimmerBox width="120px" height="14px" borderRadius="4px" sx={{ mb: 1 }} />
+              <Box sx={{ mb: 0.5 }}>
+                <ShimmerBox width="100%" height="48px" borderRadius="4px" />
+              </Box>
+            </Box>
+
+            {/* Button skeleton */}
+            <Box sx={{ mt: 'auto', pt: 2 }}>
+              <ShimmerBox width="100%" height="36px" borderRadius="4px" />
+            </Box>
+          </CardContent>
+        </Card>
+      </Grid>
+    ))}
+  </Grid>
 );

@@ -5,6 +5,7 @@ import { ChatController } from './chat.controller';
 import { ChatMessage, ChatMessageSchema } from '../../models/chat-message.model';
 import { Classroom, ClassroomSchema } from '../../models/classroom.model';
 import { Lesson, LessonSchema } from '../../models/lesson.model';
+import { User, UserSchema } from '../../models/user.model';
 import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
       { name: ChatMessage.name, schema: ChatMessageSchema },
       { name: Classroom.name, schema: ClassroomSchema },
       { name: Lesson.name, schema: LessonSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     RealtimeModule,
   ],

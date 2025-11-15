@@ -6,6 +6,7 @@ export interface ChatMessageItem {
   lessonId?: string;
   authorId: string;
   authorName: string;
+  authorAvatarUrl?: string;
   message: string;
   createdAt: string;
 }

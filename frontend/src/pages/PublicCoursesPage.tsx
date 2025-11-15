@@ -3,12 +3,10 @@ import {
   Box, 
   Grid, 
   Card, 
-  CardContent, 
   Typography, 
   TextField, 
   Chip, 
   Stack, 
-  CardActionArea,
   Paper,
   InputAdornment,
   FormControl,
@@ -311,128 +309,133 @@ export default function PublicCoursesPage() {
                       }
                     }}
                   >
-                    <CardActionArea 
+                    {/* Course Header */}
+                    <Box 
+                      sx={{ 
+                        p: 2, 
+                        pb: 1,
+                        cursor: 'pointer',
+                        flexGrow: 1,
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
                       onClick={() => navigate(`/courses/${course._id}`)}
-                      sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                     >
-                      {/* Course Header */}
-                      <Box sx={{ p: 2, pb: 1 }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: 'primary.main',
-                              width: 48,
-                              height: 48
-                            }}
-                          >
-                            <SchoolIcon />
-                          </Avatar>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleBookmarkToggle(course._id);
-                            }}
-                            sx={{ 
-                              color: bookmarkedCourses.has(course._id) ? 'warning.main' : 'text.secondary',
-                              '&:hover': { bgcolor: 'action.hover' }
-                            }}
-                          >
-                            {bookmarkedCourses.has(course._id) ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-                          </IconButton>
-                        </Stack>
-                        
-                        <Typography 
-                          variant="h6" 
-                          fontWeight="bold" 
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                        <Avatar 
                           sx={{ 
-                            mb: 1,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            minHeight: '3.6em'
+                            bgcolor: 'primary.main',
+                            width: 48,
+                            height: 48
                           }}
                         >
-                          {course.title}
-                        </Typography>
-                        
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary"
-                          sx={{ 
-                            mb: 2,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            minHeight: '4.5em'
-                          }}
-                        >
-                          {course.description}
-                        </Typography>
-                      </Box>
-
-                      {/* Course Info */}
-                      <Box sx={{ p: 2, pt: 0, mt: 'auto' }}>
-                        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                          {course.category && (
-                            <Chip 
-                              size="small" 
-                              label={course.category}
-                              color="primary"
-                              variant="outlined"
-                            />
-                          )}
-                          {course.level && (
-                            <Chip 
-                              size="small" 
-                              label={course.level}
-                              color="secondary"
-                              variant="outlined"
-                            />
-                          )}
-                        </Stack>
-
-                        <Divider sx={{ mb: 2 }} />
-
-                        {/* Course Stats */}
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <PeopleIcon fontSize="small" color="action" />
-                            <Typography variant="caption" color="text.secondary">
-                              {course.enrollmentCount || 0} học sinh
-                            </Typography>
-                          </Stack>
-                          
-                          <Stack direction="row" spacing={0.5} alignItems="center">
-                            <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {course.averageRating || 0}
-                            </Typography>
-                          </Stack>
-                        </Stack>
-
-                        {/* Action Button */}
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          startIcon={<VisibilityIcon />}
-                          sx={{ 
-                            mt: 2,
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontWeight: 'bold'
-                          }}
+                          <SchoolIcon />
+                        </Avatar>
+                        <IconButton
+                          size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/courses/${course._id}`);
+                            handleBookmarkToggle(course._id);
+                          }}
+                          sx={{ 
+                            color: bookmarkedCourses.has(course._id) ? 'warning.main' : 'text.secondary',
+                            '&:hover': { bgcolor: 'action.hover' }
                           }}
                         >
-                          Xem chi tiết
-                        </Button>
-                      </Box>
-                    </CardActionArea>
+                          {bookmarkedCourses.has(course._id) ? <BookmarkIcon /> : <BookmarkBorderIcon />}
+                        </IconButton>
+                      </Stack>
+                      
+                      <Typography 
+                        variant="h6" 
+                        fontWeight="bold" 
+                        sx={{ 
+                          mb: 1,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          minHeight: '3.6em'
+                        }}
+                      >
+                        {course.title}
+                      </Typography>
+                      
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ 
+                          mb: 2,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          minHeight: '4.5em'
+                        }}
+                      >
+                        {course.description}
+                      </Typography>
+                    </Box>
+
+                    {/* Course Info */}
+                    <Box sx={{ p: 2, pt: 0, mt: 'auto' }}>
+                      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                        {course.category && (
+                          <Chip 
+                            size="small" 
+                            label={course.category}
+                            color="primary"
+                            variant="outlined"
+                          />
+                        )}
+                        {course.level && (
+                          <Chip 
+                            size="small" 
+                            label={course.level}
+                            color="secondary"
+                            variant="outlined"
+                          />
+                        )}
+                      </Stack>
+
+                      <Divider sx={{ mb: 2 }} />
+
+                      {/* Course Stats */}
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <PeopleIcon fontSize="small" color="action" />
+                          <Typography variant="caption" color="text.secondary">
+                            {course.enrollmentCount || 0} học sinh
+                          </Typography>
+                        </Stack>
+                        
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {course.averageRating || 0}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+
+                      {/* Action Button */}
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<VisibilityIcon />}
+                        sx={{ 
+                          mt: 2,
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 'bold'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/courses/${course._id}`);
+                        }}
+                      >
+                        Xem chi tiết
+                      </Button>
+                    </Box>
                   </Card>
                 </Grid>
               ))}

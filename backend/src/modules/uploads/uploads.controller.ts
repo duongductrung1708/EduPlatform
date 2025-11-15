@@ -64,20 +64,37 @@ export class UploadsController {
     };
   }
 
-  @Delete('file/:storedFilename')
-  @ApiOperation({ summary: 'Delete a stored file by its saved filename' })
+  @Delete('file/:storedFilename(*)')
+  @ApiOperation({ summary: 'Delete a stored file by its saved filename or S3 key' })
   async deleteFile(@Param('storedFilename') storedFilename: string) {
-    // Prevent path traversal; only allow basename
-    const safeName = path.basename(storedFilename);
+    // Decode URL-encoded filename/key
+    const decoded = decodeURIComponent(storedFilename);
+    
+    // Check if it's an S3 key (contains path separators)
+    // S3 keys typically look like "uploads/1234567890-file.pdf" or "submissions/..."
+    if (decoded.includes('/')) {
+      try {
+        // Try to delete from S3 (key can contain path separators)
+        await this.uploadsService.deleteFromS3(decoded);
+        return { message: 'Deleted from S3' };
+      } catch (e) {
+        // If S3 delete fails, log but don't throw
+        console.warn('Failed to delete from S3:', e);
+      }
+    }
+    
+    // Try local file deletion (only basename to prevent path traversal)
+    const safeName = path.basename(decoded);
     const filePath = path.join(process.cwd(), 'uploads', safeName);
     try {
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
+        return { message: 'Deleted from local storage' };
       }
-      return { message: 'Deleted' };
     } catch (e) {
       // Still return success-like response to avoid leaking FS details
-      return { message: 'Delete attempted' };
     }
+    
+    return { message: 'Delete attempted' };
   }
 }

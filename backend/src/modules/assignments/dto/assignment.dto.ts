@@ -101,10 +101,11 @@ export class CreateSubmissionDto {
 }
 
 export class GradeSubmissionDto {
-  @ApiProperty({ example: 85 })
+  @ApiProperty({ example: 85, required: false })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  grade!: number;
+  grade?: number;
 
   @ApiProperty({ example: 'Làm tốt! Cần cải thiện chữ viết.', required: false })
   @IsOptional()

@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { ChatMessage, ChatMessageDocument } from '../../models/chat-message.model';
 import { Classroom, ClassroomDocument } from '../../models/classroom.model';
 import { Lesson, LessonDocument } from '../../models/lesson.model';
+import { User, UserDocument } from '../../models/user.model';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class ChatService {
     @InjectModel(ChatMessage.name) private chatModel: Model<ChatMessageDocument>,
     @InjectModel(Classroom.name) private classroomModel: Model<ClassroomDocument>,
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private realtime: RealtimeGateway,
   ) {}
 
@@ -24,11 +26,63 @@ export class ChatService {
   }
 
   async listClassMessages(classroomId: string, limit = 50) {
-    return this.chatModel.find({ classroomId: new Types.ObjectId(classroomId) }).sort({ createdAt: -1 }).limit(limit).lean();
+    const messages = await this.chatModel.find({ classroomId: new Types.ObjectId(classroomId) }).sort({ createdAt: -1 }).limit(limit).lean();
+    // Populate avatarUrl from User model
+    const messagesWithAvatar = await Promise.all(messages.map(async (msg: any) => {
+      try {
+        if (!msg.authorId) return msg;
+        const user = await this.userModel.findById(msg.authorId).select('avatarUrl name email').lean();
+        if (!user) {
+          // User not found - might have been deleted
+          return {
+            ...msg,
+            authorAvatarUrl: null,
+          };
+        }
+        const avatarUrl = (user as any)?.avatarUrl || null;
+        return {
+          ...msg,
+          authorAvatarUrl: avatarUrl,
+        };
+      } catch (err) {
+        return {
+          ...msg,
+          authorAvatarUrl: null,
+        };
+      }
+    }));
+    return messagesWithAvatar;
   }
 
   async listLessonMessages(lessonId: string, limit = 50) {
-    return this.chatModel.find({ lessonId: new Types.ObjectId(lessonId) }).sort({ createdAt: -1 }).limit(limit).lean();
+    const messages = await this.chatModel.find({ lessonId: new Types.ObjectId(lessonId) }).sort({ createdAt: -1 }).limit(limit).lean();
+    // Populate avatarUrl from User model
+    const messagesWithAvatar = await Promise.all(messages.map(async (msg: any) => {
+      try {
+        if (!msg.authorId) {
+          return msg;
+        }
+        const user = await this.userModel.findById(msg.authorId).select('avatarUrl name email').lean();
+        if (!user) {
+          // User not found - might have been deleted
+          return {
+            ...msg,
+            authorAvatarUrl: null,
+          };
+        }
+        const avatarUrl = (user as any)?.avatarUrl || null;
+        return {
+          ...msg,
+          authorAvatarUrl: avatarUrl,
+        };
+      } catch (err) {
+        return {
+          ...msg,
+          authorAvatarUrl: null,
+        };
+      }
+    }));
+    return messagesWithAvatar;
   }
 
   async editMessage(messageId: string, userId: string, message: string) {

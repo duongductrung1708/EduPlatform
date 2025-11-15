@@ -111,11 +111,12 @@ export class AssignmentsController {
     return this.assignmentsService.getMySubmission(assignmentId, user.id);
   }
 
-  @Patch('submissions/:submissionId/grade')
+  @Patch(':id/submissions/:submissionId/grade')
   @Roles('teacher', 'admin')
   @ApiOperation({ summary: 'Grade a submission (teacher/admin only)' })
   @ApiResponse({ status: 200, description: 'Submission graded successfully', type: SubmissionResponseDto })
   async gradeSubmission(
+    @Param('id') assignmentId: string,
     @Param('submissionId') submissionId: string,
     @Body() gradeSubmissionDto: GradeSubmissionDto,
     @CurrentUser() user: any,
